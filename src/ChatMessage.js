@@ -2,6 +2,15 @@ import React from "react";
 import { Box, Typography } from "@mui/material";
 
 const ChatMessage = ({ message, sender, timestamp, isOwnMessage }) => {
+  // Formatierung des Datums und der Uhrzeit
+  const formattedTimestamp = new Date(timestamp).toLocaleString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
   return (
     <Box
       sx={{
@@ -22,7 +31,7 @@ const ChatMessage = ({ message, sender, timestamp, isOwnMessage }) => {
       >
         <Typography variant="body1">{message}</Typography>
         <Typography variant="caption" sx={{ display: "block", textAlign: "right" }}>
-          {sender} - {new Date(timestamp).toLocaleTimeString()}
+          {sender} - {formattedTimestamp}
         </Typography>
       </Box>
     </Box>
