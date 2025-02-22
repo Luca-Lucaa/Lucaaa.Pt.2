@@ -77,6 +77,7 @@ const App = () => {
   const [chatMessages, setChatMessages] = useState([]); // Nachrichten für den aktuellen Chat
   const [newMessage, setNewMessage] = useState(""); // Eingabe für neue Nachricht
   const [unreadMessages, setUnreadMessages] = useState({}); // Ungelesene Nachrichten pro Benutzer
+  const [loadingEntries, setLoadingEntries] = useState(true); // Zustand für Ladeindikator
 
   // Zustand für Snackbar
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -89,6 +90,23 @@ const App = () => {
     setSnackbarSeverity(severity);
     setSnackbarOpen(true);
   };
+
+  // Einträge von Supabase abrufen
+  const fetchEntries = useCallback(async () => {
+    setLoadingEntries(true);
+    try {
+      const { data, error } = await supabase.from("entries_pt2").select("*");
+      if (error) throw error;
+      setEntries(data || []);
+      console.log("Geladene Einträge:", data); // Debugging
+    } catch (error) {
+      setEntries([]); // Standardmäßig leere Liste setzen, falls Fehler
+      showSnackbar("Fehler beim Laden der Einträge: " + error.message, "error");
+      console.error("Fehler beim Laden:", error);
+    } finally {
+      setLoadingEntries(false);
+    }
+  }, []);
 
   // Nachrichten von Supabase abrufen
   const fetchMessages = useCallback(async (user) => {
@@ -104,7 +122,7 @@ const App = () => {
       if (error) {
         throw new Error("Fehler beim Abrufen der Nachrichten: " + error.message);
       }
-      setChatMessages(data);
+      setChatMessages(data || []);
     } catch (error) {
       console.error(error);
       showSnackbar(error.message, "error");
@@ -124,7 +142,7 @@ const App = () => {
         acc[msg.sender] = (acc[msg.sender] || 0) + 1;
         return acc;
       }, {});
-      setUnreadMessages(unreadCount);
+      setUnreadMessages(unreadCount || {});
     } catch (error) {
       showSnackbar("Fehler beim Laden ungelesener Nachrichten.", "error");
     }
@@ -133,6 +151,7 @@ const App = () => {
   // Realtime-Updates für Nachrichten
   useEffect(() => {
     if (loggedInUser) {
+      fetchEntries(); // Einträge laden
       fetchUnreadMessages();
 
       const subscription = supabase
@@ -166,7 +185,7 @@ const App = () => {
         supabase.removeChannel(subscription);
       };
     }
-  }, [loggedInUser, chatUser, fetchMessages, fetchUnreadMessages]);
+  }, [loggedInUser, chatUser, fetchEntries, fetchMessages, fetchUnreadMessages]);
 
   // Login-Logik
   const handleLogin = (username, password) => {
@@ -241,7 +260,7 @@ const App = () => {
     setUnreadMessages((prev) => ({ ...prev, [user]: 0 })); // Ungelesene Nachrichten zurücksetzen
   };
 
-  const uniqueOwners = [...new Set(entries.map((entry) => entry.owner))];
+  const uniqueOwners = [...new Set(entries.map((entry) => entry.owner || ""))]; // Fallback für leere owner-Werte
 
   return (
     <ThemeProvider theme={theme}>
@@ -291,27 +310,30 @@ const App = () => {
                 {/* Auswahl des Chat-Partners als Buttons (nur für Admin) */}
                 {role === "Admin" && (
                   <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
-                    {uniqueOwners
-                      .filter((owner) => owner !== "Admin")
-                      .map((owner) => (
-                        <Badge
-                          key={owner}
-                          badgeContent={unreadMessages[owner] || 0}
-                          color="error"
-                          invisible={!unreadMessages[owner]}
-                        >
-                          <Button
-                            variant={chatUser === owner ? "contained" : "outlined"}
-                            onClick={() => handleSelectChatUser(owner)}
-                            size="small"
-                            startIcon={<ChatIcon />}
+                    {loadingEntries ? (
+                      <Typography>Lade Chat-Partner...</Typography>
+                    ) : uniqueOwners.length > 0 ? (
+                      uniqueOwners
+                        .filter((owner) => owner !== "Admin" && owner.trim() !== "")
+                        .map((owner) => (
+                          <Badge
+                            key={owner}
+                            badgeContent={unreadMessages[owner] || 0}
+                            color="error"
+                            invisible={!unreadMessages[owner]}
                           >
-                            {owner}
-                          </Button>
-                        </Badge>
-                      ))}
-                    {uniqueOwners.filter((owner) => owner !== "Admin").length === 0 && (
-                      <Typography variant="body2">Keine Ersteller verfügbar.</Typography>
+                            <Button
+                              variant={chatUser === owner ? "contained" : "outlined"}
+                              onClick={() => handleSelectChatUser(owner)}
+                              size="small"
+                              startIcon={<ChatIcon />}
+                            >
+                              {owner}
+                            </Button>
+                          </Badge>
+                        ))
+                    ) : (
+                      <Typography variant="body2">Keine Chat-Partner verfügbar.</Typography>
                     )}
                   </Box>
                 )}
@@ -327,6 +349,11 @@ const App = () => {
                       isOwnMessage={msg.sender === loggedInUser}
                     />
                   ))}
+                  {chatMessages.length === 0 && (
+                    <Typography variant="body2" color="textSecondary">
+                      Keine Nachrichten bisher.
+                    </Typography>
+                  )}
                 </Box>
 
                 {/* Eingabefeld für neue Nachrichten */}
@@ -354,6 +381,11 @@ const App = () => {
                       Senden
                     </Button>
                   </Box>
+                )}
+                {!chatUser && role === "Admin" && (
+                  <Typography variant="body2" color="textSecondary">
+                    Wähle einen Chat-Partner, um zu chatten.
+                  </Typography>
                 )}
               </Box>
 
