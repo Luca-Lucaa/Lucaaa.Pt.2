@@ -125,14 +125,14 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
   };
 
   const approveExtension = async (entryId) => {
-    const entry = entries.find((e) => e.id === entryId);
-    const newValidUntil = new Date(entry.validUntil);
+    const currentEntry = entries.find((e) => e.id === entryId); // `entry` statt `entries`
+    const newValidUntil = new Date(currentEntry.validUntil);
     newValidUntil.setFullYear(newValidUntil.getFullYear() + 1);
     const updatedEntry = {
       validUntil: newValidUntil,
       extensionRequest: { pending: false, approved: true, approvalDate: new Date() },
       extensionHistory: [
-        ...(entry.extensionHistory || []),
+        ...(currentEntry.extensionHistory || []),
         { approvalDate: new Date(), validUntil: newValidUntil },
       ],
     };
@@ -308,7 +308,7 @@ const EntryList = ({ role, loggedInUser }) => {
       }
     };
     fetchEntries();
-  }, []);
+  }, [loggedInUser]); // Abhängigkeit hinzugefügt
 
   const handleOpenCreateEntryDialog = () => {
     const username = generateUsername(loggedInUser);
