@@ -19,12 +19,14 @@ import {
   Alert,
   AppBar,
   Toolbar,
+  Badge,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import BackupIcon from "@mui/icons-material/Backup";
+import ChatIcon from "@mui/icons-material/Chat";
 import { supabase } from "./supabaseClient";
 
 // Helper functions
@@ -123,6 +125,10 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [chatUser, setChatUser] = useState(null); // Aktuell ausgewählter Chat-Partner
+  const [chatMessages, setChatMessages] = useState({}); // Nachrichten pro Benutzer
+  const [newMessage, setNewMessage] = useState(""); // Eingabe für neue Nachricht
+  const [unreadMessages, setUnreadMessages] = useState({}); // Ungelesene Nachrichten pro Benutzer
   const debouncedSearch = useDebounce(searchTerm, 300);
 
   const fetchEntries = useCallback(async () => {
@@ -142,6 +148,33 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
   useEffect(() => {
     fetchEntries();
   }, [fetchEntries]);
+
+  // Simulierte Funktion für neue Nachrichten (könnte von Supabase kommen)
+  useEffect(() => {
+    const simulateNewMessage = () => {
+      const users = [...new Set(entries.map((e) => e.owner))];
+      if (users.length > 0 && role === "Admin") {
+        const randomUser = users[Math.floor(Math.random() * users.length)];
+        if (randomUser !== "Admin") {
+          setChatMessages((prev) => ({
+            ...prev,
+            [randomUser]: [
+              ...(prev[randomUser] || []),
+              { sender: randomUser, text: "Hallo Admin, wie geht's?", timestamp: new Date() },
+            ],
+          }));
+          if (chatUser !== randomUser) {
+            setUnreadMessages((prev) => ({
+              ...prev,
+              [randomUser]: (prev[randomUser] || 0) + 1,
+            }));
+          }
+        }
+      }
+    };
+    const interval = setInterval(simulateNewMessage, 10000); // Alle 10 Sekunden eine Nachricht
+    return () => clearInterval(interval);
+  }, [entries, role, chatUser]);
 
   const handleOpenCreateEntryDialog = () => {
     const username = generateUsername(loggedInUser);
@@ -328,6 +361,23 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
       ? `🎉 ${entryCount} Einträge!`
       : "🎉 Los geht's!";
 
+  const sendMessage = () => {
+    if (!newMessage.trim() || !chatUser) return;
+    setChatMessages((prev) => ({
+      ...prev,
+      [chatUser]: [
+        ...(prev[chatUser] || []),
+        { sender: "Admin", text: newMessage, timestamp: new Date() },
+      ],
+    }));
+    setNewMessage("");
+  };
+
+  const handleSelectChatUser = (user) => {
+    setChatUser(user);
+    setUnreadMessages((prev) => ({ ...prev, [user]: 0 })); // Ungelesene Nachrichten auf 0 setzen
+  };
+
   return (
     <Box sx={{ p: 1, maxWidth: "100%", overflowX: "hidden" }}>
       <AppBar position="static" sx={{ mb: 2 }}>
@@ -399,6 +449,62 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
         sx={{ mb: 2 }}
         size="small"
       />
+
+      {/* Chat-Bereich für Admin */}
+      {role === "Admin" && (
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle1">Chats:</Typography>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 1 }}>
+            {uniqueOwners
+              .filter((owner) => owner !== "Admin") // Admin chattet nicht mit sich selbst
+              .map((owner) => (
+                <Badge
+                  key={owner}
+                  badgeContent={unreadMessages[owner] || 0}
+                  color="error"
+                  invisible={!unreadMessages[owner]}
+                >
+                  <Button
+                    variant={chatUser === owner ? "contained" : "outlined"}
+                    onClick={() => handleSelectChatUser(owner)}
+                    size="small"
+                    startIcon={<ChatIcon />}
+                  >
+                    {owner}
+                  </Button>
+                </Badge>
+              ))}
+          </Box>
+
+          {chatUser && (
+            <Box sx={{ border: "1px solid #ccc", p: 1, borderRadius: 1, maxHeight: 200, overflowY: "auto" }}>
+              {(chatMessages[chatUser] || []).map((msg, idx) => (
+                <Typography
+                  key={idx}
+                  variant="body2"
+                  sx={{ textAlign: msg.sender === "Admin" ? "right" : "left", mb: 1 }}
+                >
+                  <strong>{msg.sender}:</strong> {msg.text} ({formatDate(msg.timestamp)})
+                </Typography>
+              ))}
+            </Box>
+          )}
+          {chatUser && (
+            <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
+              <TextField
+                label="Nachricht"
+                fullWidth
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                size="small"
+              />
+              <Button variant="contained" onClick={sendMessage} size="small">
+                Senden
+              </Button>
+            </Box>
+          )}
+        </Box>
+      )}
 
       {loading ? (
         <Typography>Lade...</Typography>
