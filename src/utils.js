@@ -1,8 +1,6 @@
-// utils.js
 import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 
-// Zentrale Fehlerbehandlung
 export const handleError = (error, setSnackbarMessage, setSnackbarOpen) => {
   console.error("Fehler:", error);
   if (setSnackbarMessage && setSnackbarOpen) {
@@ -11,7 +9,6 @@ export const handleError = (error, setSnackbarMessage, setSnackbarOpen) => {
   }
 };
 
-// Hook für Nachrichtenabruf
 export const useMessages = (loggedInUser, selectedUser, withRealtime = true) => {
   const [messages, setMessages] = useState([]);
 
@@ -65,7 +62,6 @@ export const useMessages = (loggedInUser, selectedUser, withRealtime = true) => 
   return { messages, fetchMessages };
 };
 
-// Debounce-Hook
 export const useDebounce = (value, delay) => {
   const [debouncedValue, setDebouncedValue] = useState(value);
 
@@ -77,7 +73,6 @@ export const useDebounce = (value, delay) => {
   return debouncedValue;
 };
 
-// Datum formatieren
 export const formatDate = (date) => {
   if (!date || isNaN(new Date(date).getTime())) return "NaN.NaN.NaN";
   const d = new Date(date);
@@ -86,7 +81,6 @@ export const formatDate = (date) => {
     .padStart(2, "0")}.${d.getFullYear()}`;
 };
 
-// Benutzername generieren
 export const generateUsername = (owner) => {
   const randomNum = Math.floor(100 + Math.random() * 900);
   switch (owner) {
