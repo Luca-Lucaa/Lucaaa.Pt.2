@@ -28,8 +28,14 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import BackupIcon from "@mui/icons-material/Backup";
 import { supabase } from "./supabaseClient";
+import { styled } from "@mui/system";
 
-// Helper functions
+const StyledButton = styled(Button)({
+  borderRadius: "20px",
+  padding: "8px 16px",
+  margin: "5px",
+});
+
 const formatDate = (date) => {
   if (!date || isNaN(new Date(date).getTime())) return "NaN.NaN.NaN";
   const d = new Date(date);
@@ -39,27 +45,18 @@ const formatDate = (date) => {
 };
 
 const generateUsername = (owner) => {
-  const randomNum = Math.floor(100 + Math.random() * 900); // Zufällige Zahl zwischen 100 und 900
-  if (owner === "Test") {
-    return `${randomNum}-telucod-5`;
-  } else if (owner === "Test1") {
-    return `${randomNum}-pricod-4`;
-  } else if (owner === "Admin") {
-    return `${randomNum}-adlucod-0`;
-  } else {
-    return `${randomNum}-siksuk`;
-  }
+  const randomNum = Math.floor(100 + Math.random() * 900);
+  if (owner === "Test") return `${randomNum}-telucod-5`;
+  if (owner === "Test1") return `${randomNum}-pricod-4`;
+  if (owner === "Admin") return `${randomNum}-adlucod-0`;
+  return `${randomNum}-siksuk`;
 };
 
 const useDebounce = (value, delay) => {
   const [debouncedValue, setDebouncedValue] = useState(value);
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-    return () => {
-      clearTimeout(handler);
-    };
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
   }, [value, delay]);
   return debouncedValue;
 };
@@ -67,55 +64,36 @@ const useDebounce = (value, delay) => {
 const ImportBackup = ({ setSnackbarOpen, setSnackbarMessage }) => {
   const [file, setFile] = useState(null);
 
-  const handleFileChange = (event) => {
-    setFile(event.target.files[0]);
-  };
+  const handleFileChange = (event) => setFile(event.target.files[0]);
 
   const importBackup = async () => {
     if (!file) {
-      setSnackbarMessage("Bitte wählen Sie eine Datei aus.");
+      setSnackbarMessage("📤 Bitte wähle eine Datei aus!");
       setSnackbarOpen(true);
       return;
     }
-
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
         const jsonData = JSON.parse(e.target.result);
-        for (const entry of jsonData) {
-          const { error } = await supabase
-            .from("entries_pt2")
-            .insert([entry])
-            .select();
-
-          if (error) {
-            console.error("Fehler beim Importieren des Eintrags:", error);
-          }
-        }
-        setSnackbarMessage("Backup erfolgreich importiert!");
+        const { error } = await supabase.from("entries_pt2").insert(jsonData);
+        if (error) throw error;
+        setSnackbarMessage("✅ Backup erfolgreich importiert!");
         setSnackbarOpen(true);
       } catch (error) {
-        console.error("Fehler beim Importieren des Backups: ", error);
-        setSnackbarMessage("Fehler beim Importieren des Backups.");
+        setSnackbarMessage("❌ Fehler beim Importieren!");
         setSnackbarOpen(true);
       }
     };
-
     reader.readAsText(file);
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2, alignItems: "center" }}>
+    <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1 }}>
       <input type="file" accept=".json" onChange={handleFileChange} />
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={importBackup}
-        fullWidth
-        sx={{ marginTop: { xs: 2, sm: 0 } }}
-      >
-        Backup importieren
-      </Button>
+      <StyledButton variant="contained" color="primary" onClick={importBackup}>
+        📤 Importieren
+      </StyledButton>
     </Box>
   );
 };
@@ -126,11 +104,11 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
   const [openCreateEntryDialog, setOpenCreateEntryDialog] = useState(false);
   const [openManualEntryDialog, setOpenManualEntryDialog] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 300);
   const [selectedUser, setSelectedUser] = useState("");
   const [newEntry, setNewEntry] = useState({
-    username: "",
-    password: "",
+    username: generateUsername(loggedInUser),
+    password: Math.random().toString(36).slice(-8),
     aliasNotes: "",
     type: "Premium",
     status: "Inaktiv",
@@ -154,795 +132,309 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const debouncedSearch = useDebounce(searchTerm, 300);
 
   useEffect(() => {
-    setDebouncedSearchTerm(debouncedSearch);
-  }, [debouncedSearch]);
-
-  const fetchEntries = async () => {
-    setLoading(true);
-    try {
-      const { data: entriesData, error } = await supabase
-        .from("entries_pt2")
-        .select("*");
-
+    const fetchEntries = async () => {
+      setLoading(true);
+      const { data, error } = await supabase.from("entries_pt2").select("*");
       if (error) {
-        console.error("Fehler beim Abrufen der Einträge:", error);
-        setSnackbarMessage("Fehler beim Abrufen der Einträge.");
+        setSnackbarMessage("❌ Fehler beim Laden der Einträge!");
         setSnackbarOpen(true);
       } else {
-        setEntries(entriesData);
+        setEntries(data);
       }
-    } catch (error) {
-      console.error("Fehler beim Abrufen der Einträge: ", error);
-      setSnackbarMessage("Fehler beim Abrufen der Einträge.");
-      setSnackbarOpen(true);
-    } finally {
       setLoading(false);
-    }
-  };
-
-  useEffect(() => {
+    };
     fetchEntries();
   }, []);
 
-  const handleOpenCreateEntryDialog = () => {
-    const username = generateUsername(loggedInUser);
-    const randomPassword = Math.random().toString(36).slice(-8);
-
-    setNewEntry({
-      username: username,
-      password: randomPassword,
-      aliasNotes: "",
-      type: "Premium",
-      status: "Inaktiv",
-      paymentStatus: "Nicht gezahlt",
-      createdAt: new Date(),
-      validUntil: new Date(new Date().getFullYear(), 11, 31),
-      owner: loggedInUser,
-      extensionHistory: [],
-      bougetList: "",
-    });
-
-    setOpenCreateEntryDialog(true);
-  };
-
-  const handleOpenManualEntryDialog = () => {
-    setManualEntry({
-      username: "",
-      password: "",
-      aliasNotes: "",
-      type: "Premium",
-      validUntil: new Date(new Date().getFullYear(), 11, 31),
-      owner: loggedInUser,
-      extensionHistory: [],
-      bougetList: "",
-    });
-    setOpenManualEntryDialog(true);
-  };
+  const handleOpenCreateEntryDialog = () => setOpenCreateEntryDialog(true);
+  const handleOpenManualEntryDialog = () => setOpenManualEntryDialog(true);
 
   const createEntry = async () => {
-    if (!newEntry.aliasNotes.trim() || !newEntry.username.trim()) {
-      setSnackbarMessage("Bitte Spitzname und Benutzername eingeben.");
+    if (!newEntry.aliasNotes.trim()) {
+      setSnackbarMessage("📝 Bitte Spitzname eingeben!");
       setSnackbarOpen(true);
       return;
     }
-    try {
-      const { data, error } = await supabase
-        .from("entries_pt2")
-        .insert([newEntry])
-        .select();
-
-      if (error) {
-        console.error("Fehler beim Hinzufügen des Eintrags:", error);
-        setSnackbarMessage("Fehler beim Hinzufügen des Eintrags.");
-        setSnackbarOpen(true);
-      } else {
-        setEntries((prevEntries) => [data[0], ...prevEntries]);
-        setOpenCreateEntryDialog(false);
-        setSnackbarMessage("Neuer Abonnent erfolgreich angelegt!");
-        setSnackbarOpen(true);
-      }
-    } catch (error) {
-      console.error("Fehler beim Hinzufügen des Eintrags: ", error);
-      setSnackbarMessage("Fehler beim Hinzufügen des Eintrags.");
+    const { data, error } = await supabase.from("entries_pt2").insert([newEntry]).select();
+    if (error) {
+      setSnackbarMessage("❌ Fehler beim Hinzufügen!");
+      setSnackbarOpen(true);
+    } else {
+      setEntries((prev) => [data[0], ...prev]);
+      setOpenCreateEntryDialog(false);
+      setSnackbarMessage("🎉 Abonnent hinzugefügt!");
       setSnackbarOpen(true);
     }
   };
 
   const handleAddManualEntry = async () => {
-    if (
-      !manualEntry.username ||
-      !manualEntry.password ||
-      !manualEntry.aliasNotes
-    ) {
-      setSnackbarMessage("Bitte füllen Sie alle Felder aus.");
+    if (!manualEntry.username || !manualEntry.password || !manualEntry.aliasNotes) {
+      setSnackbarMessage("📝 Bitte alle Felder ausfüllen!");
       setSnackbarOpen(true);
       return;
     }
-
-    const validUntilDate = new Date(manualEntry.validUntil);
-    const newManualEntry = {
-      username: manualEntry.username,
-      password: manualEntry.password,
-      aliasNotes: manualEntry.aliasNotes,
-      type: manualEntry.type,
-      validUntil: validUntilDate,
-      owner: loggedInUser,
-      status: "Aktiv",
-      paymentStatus: "Gezahlt",
-      createdAt: new Date(),
-      note: "Dieser Abonnent besteht bereits",
-      extensionHistory: [],
-      bougetList: manualEntry.bougetList,
-    };
-
-    try {
-      const { data, error } = await supabase
-        .from("entries_pt2")
-        .insert([newManualEntry])
-        .select();
-
-      if (error) {
-        console.error("Fehler beim Hinzufügen des manuellen Eintrags:", error);
-        setSnackbarMessage("Fehler beim Hinzufügen des manuellen Eintrags.");
-        setSnackbarOpen(true);
-      } else {
-        setEntries((prevEntries) => [data[0], ...prevEntries]);
-        setOpenManualEntryDialog(false);
-        setSnackbarMessage("Bestehender Abonnent erfolgreich eingepflegt!");
-        setSnackbarOpen(true);
-      }
-    } catch (error) {
-      console.error("Fehler beim Hinzufügen des manuellen Eintrags: ", error);
-      setSnackbarMessage("Fehler beim Hinzufügen des manuellen Eintrags.");
+    const newManualEntry = { ...manualEntry, status: "Aktiv", paymentStatus: "Gezahlt", createdAt: new Date() };
+    const { data, error } = await supabase.from("entries_pt2").insert([newManualEntry]).select();
+    if (error) {
+      setSnackbarMessage("❌ Fehler beim Hinzufügen!");
       setSnackbarOpen(true);
-    }
-  };
-
-  const changePaymentStatus = async (entryId, paymentStatus) => {
-    try {
-      const { error } = await supabase
-        .from("entries_pt2")
-        .update({ paymentStatus })
-        .eq("id", entryId);
-
-      if (error) {
-        console.error("Fehler beim Aktualisieren des Zahlungsstatus:", error);
-        setSnackbarMessage("Fehler beim Aktualisieren des Zahlungsstatus.");
-        setSnackbarOpen(true);
-      } else {
-        setEntries((prevEntries) =>
-          prevEntries.map((entry) =>
-            entry.id === entryId ? { ...entry, paymentStatus } : entry
-          )
-        );
-      }
-    } catch (error) {
-      console.error("Fehler beim Aktualisieren des Zahlungsstatus: ", error);
-      setSnackbarMessage("Fehler beim Aktualisieren des Zahlungsstatus.");
+    } else {
+      setEntries((prev) => [data[0], ...prev]);
+      setOpenManualEntryDialog(false);
+      setSnackbarMessage("🎉 Bestehender Abonnent eingepflegt!");
       setSnackbarOpen(true);
     }
   };
 
   const changeStatus = async (entryId, newStatus) => {
-    try {
-      const { error } = await supabase
-        .from("entries_pt2")
-        .update({ status: newStatus })
-        .eq("id", entryId);
-
-      if (error) {
-        console.error("Fehler beim Ändern des Status:", error);
-        setSnackbarMessage("Fehler beim Ändern des Status.");
-        setSnackbarOpen(true);
-      } else {
-        setEntries((prevEntries) =>
-          prevEntries.map((entry) =>
-            entry.id === entryId ? { ...entry, status: newStatus } : entry
-          )
-        );
-        setSnackbarMessage(`Status erfolgreich auf "${newStatus}" geändert.`);
-        setSnackbarOpen(true);
-      }
-    } catch (error) {
-      console.error("Fehler beim Ändern des Status: ", error);
-      setSnackbarMessage("Fehler beim Ändern des Status.");
+    const { error } = await supabase.from("entries_pt2").update({ status: newStatus }).eq("id", entryId);
+    if (error) {
+      setSnackbarMessage("❌ Fehler beim Status ändern!");
       setSnackbarOpen(true);
+    } else {
+      setEntries((prev) =>
+        prev.map((entry) => (entry.id === entryId ? { ...entry, status: newStatus } : entry))
+      );
+      setSnackbarMessage(`✅ Status zu "${newStatus}" geändert!`);
+      setSnackbarOpen(true);
+    }
+  };
+
+  const changePaymentStatus = async (entryId, paymentStatus) => {
+    const { error } = await supabase.from("entries_pt2").update({ paymentStatus }).eq("id", entryId);
+    if (error) {
+      setSnackbarMessage("❌ Fehler beim Zahlungsstatus ändern!");
+      setSnackbarOpen(true);
+    } else {
+      setEntries((prev) =>
+        prev.map((entry) => (entry.id === entryId ? { ...entry, paymentStatus } : entry))
+      );
     }
   };
 
   const deleteEntry = async (entryId) => {
-    try {
-      const { error } = await supabase
-        .from("entries_pt2")
-        .delete()
-        .eq("id", entryId);
-
-      if (error) {
-        console.error("Fehler beim Löschen des Eintrags:", error);
-        setSnackbarMessage("Fehler beim Löschen des Eintrags.");
-        setSnackbarOpen(true);
-      } else {
-        setEntries((prevEntries) =>
-          prevEntries.filter((entry) => entry.id !== entryId)
-        );
-      }
-    } catch (error) {
-      console.error("Fehler beim Löschen des Eintrags: ", error);
-      setSnackbarMessage("Fehler beim Löschen des Eintrags.");
+    const { error } = await supabase.from("entries_pt2").delete().eq("id", entryId);
+    if (error) {
+      setSnackbarMessage("❌ Fehler beim Löschen!");
       setSnackbarOpen(true);
+    } else {
+      setEntries((prev) => prev.filter((entry) => entry.id !== entryId));
     }
-  };
-
-  const requestExtension = async (entryId) => {
-    try {
-      const { error } = await supabase
-        .from("entries_pt2")
-        .update({ extensionRequest: { pending: true, approved: false } })
-        .eq("id", entryId);
-
-      if (error) {
-        console.error("Fehler beim Senden der Verlängerungsanfrage:", error);
-        setSnackbarMessage("Fehler beim Senden der Anfrage.");
-        setSnackbarOpen(true);
-      } else {
-        setEntries((prevEntries) =>
-          prevEntries.map((entry) =>
-            entry.id === entryId
-              ? {
-                  ...entry,
-                  extensionRequest: { pending: true, approved: false },
-                }
-              : entry
-          )
-        );
-        setSnackbarMessage("Anfrage zur Verlängerung gesendet.");
-        setSnackbarOpen(true);
-      }
-    } catch (error) {
-      console.error("Fehler beim Senden der Verlängerungsanfrage: ", error);
-      setSnackbarMessage("Fehler beim Senden der Anfrage.");
-      setSnackbarOpen(true);
-    }
-  };
-
-  const approveExtension = async (entryId) => {
-    const entry = entries.find((entry) => entry.id === entryId);
-    const newValidUntil = new Date(entry.validUntil);
-    newValidUntil.setFullYear(newValidUntil.getFullYear() + 1);
-
-    const updatedEntry = {
-      validUntil: newValidUntil,
-      extensionRequest: {
-        pending: false,
-        approved: true,
-        approvalDate: new Date(),
-      },
-      extensionHistory: [
-        ...(entry.extensionHistory || []),
-        {
-          approvalDate: new Date(),
-          validUntil: newValidUntil,
-        },
-      ],
-    };
-
-    try {
-      const { error } = await supabase
-        .from("entries_pt2")
-        .update(updatedEntry)
-        .eq("id", entryId);
-
-      if (error) {
-        console.error("Fehler beim Genehmigen der Verlängerung:", error);
-        setSnackbarMessage("Fehler beim Genehmigen der Verlängerung.");
-        setSnackbarOpen(true);
-      } else {
-        setEntries((prevEntries) =>
-          prevEntries.map((entry) =>
-            entry.id === entryId ? { ...entry, ...updatedEntry } : entry
-          )
-        );
-        setSnackbarMessage("Verlängerung genehmigt.");
-        setSnackbarOpen(true);
-      }
-    } catch (error) {
-      console.error("Fehler beim Genehmigen der Verlängerung: ", error);
-      setSnackbarMessage("Fehler beim Genehmigen der Verlängerung.");
-      setSnackbarOpen(true);
-    }
-  };
-
-  const getStatusColor = (status) => {
-    return status === "Aktiv"
-      ? "green"
-      : status === "Inaktiv"
-      ? "red"
-      : "black";
-  };
-
-  const getPaymentStatusColor = (paymentStatus) => {
-    return paymentStatus === "Gezahlt"
-      ? "green"
-      : paymentStatus === "Nicht gezahlt"
-      ? "red"
-      : "black";
   };
 
   const filterEntries = useMemo(() => {
     return entries
       .filter((entry) =>
-        role === "Admin"
-          ? selectedUser
-            ? entry.owner === selectedUser
-            : true
-          : entry.owner === loggedInUser
+        role === "Admin" ? (selectedUser ? entry.owner === selectedUser : true) : entry.owner === loggedInUser
       )
       .filter(
         (entry) =>
-          (entry.username && entry.username.includes(debouncedSearchTerm)) ||
-          (entry.aliasNotes && entry.aliasNotes.includes(debouncedSearchTerm))
+          entry.username.includes(debouncedSearch) || entry.aliasNotes.includes(debouncedSearch)
       );
-  }, [entries, role, selectedUser, loggedInUser, debouncedSearchTerm]);
+  }, [entries, role, selectedUser, loggedInUser, debouncedSearch]);
 
   const uniqueOwners = [...new Set(entries.map((entry) => entry.owner))];
-  const countEntriesByOwner = (owner) => {
-    return entries.filter((entry) => entry.owner === owner).length;
-  };
-
-  const handleSnackbarClose = () => {
-    setSnackbarOpen(false);
-  };
-
-  const exportEntries = () => {
-    const dataStr = JSON.stringify(entries, null, 2);
-    const blob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "backup_entries.json";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const entryCount = countEntriesByOwner(loggedInUser);
-  let motivationMessage = "";
-  if (entryCount >= 10 && entryCount < 15) {
-    motivationMessage =
-      "🎉 Super! Du hast bereits 10 Einträge erreicht! Mach weiter so, du bist auf dem besten Weg zu 15!";
-  } else if (entryCount >= 15 && entryCount < 20) {
-    motivationMessage =
-      "🎉 Fantastisch! 15 Einträge sind erreicht! Nur noch 5 bis zu 20! Lass uns das schaffen!";
-  } else if (entryCount >= 20 && entryCount < 25) {
-    motivationMessage =
-      "🎉 Großartig! Du hast 20 Einträge! Nur noch 5 bis zu 25! Weiter so!";
-  } else if (entryCount >= 25) {
-    motivationMessage =
-      "🎉 Wow! Du hast 25 Einträge erreicht! Deine Kreativität kennt keine Grenzen! Mach weiter so!";
-  } else if (entryCount > 0) {
-    motivationMessage = `🎉 Du hast ${entryCount} Einträge erstellt! Weiter so, der nächste Meilenstein ist 5!`;
-  } else {
-    motivationMessage =
-      "🎉 Du hast noch keine Einträge erstellt. Lass uns mit dem ersten Eintrag beginnen!";
-  }
+  const countEntriesByOwner = (owner) => entries.filter((entry) => entry.owner === owner).length;
 
   return (
-    <Box sx={{ padding: { xs: 2, sm: 3 } }}>
-      <AppBar position="static">
+    <Box sx={{ padding: { xs: 1, sm: 2 } }}>
+      <AppBar position="static" color="primary">
         <Toolbar>
           {role === "Admin" && (
-            <>
-              <ImportBackup
-                setSnackbarOpen={setSnackbarOpen}
-                setSnackbarMessage={setSnackbarMessage}
-              />
-              <Button
-                variant="contained"
-                color="secondary"
-                startIcon={<BackupIcon />}
-                onClick={exportEntries}
-                sx={{ marginLeft: { xs: 0, sm: 2 }, marginTop: { xs: 2, sm: 0 } }}
-              >
-                Backup erstellen
-              </Button>
-            </>
+            <ImportBackup setSnackbarOpen={setSnackbarOpen} setSnackbarMessage={setSnackbarMessage} />
+          )}
+          {role === "Admin" && (
+            <StyledButton
+              variant="contained"
+              color="secondary"
+              startIcon={<BackupIcon />}
+              onClick={() => {
+                const dataStr = JSON.stringify(entries, null, 2);
+                const blob = new Blob([dataStr], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "backup_entries.json";
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              💾 Backup
+            </StyledButton>
           )}
         </Toolbar>
       </AppBar>
-      <Box
-        sx={{
-          marginBottom: 3,
-          marginTop: 3,
-          display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
-          justifyContent: "space-between",
-          gap: 2,
-        }}
-      >
-        <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
-          <Button
-            onClick={handleOpenCreateEntryDialog}
-            variant="contained"
-            color="success"
-            startIcon={<AddIcon />}
-            fullWidth={isMobile}
-          >
-            Abonnent anlegen
-          </Button>
-          <Button
-            onClick={handleOpenManualEntryDialog}
-            variant="contained"
-            color="primary"
-            startIcon={<EditIcon />}
-            fullWidth={isMobile}
-          >
-            Bestehenden Abonnenten einpflegen
-          </Button>
-        </Box>
-        <Box sx={{ textAlign: { xs: "center", sm: "right" } }}>
-          <Typography variant="h6" sx={{ fontSize: { xs: "18px", sm: "20px" } }}>
-            🎉 Du hast {countEntriesByOwner(loggedInUser)} Einträge erstellt!
-          </Typography>
-          {entryCount >= 5 && (
-            <Fade in={true} timeout={1000}>
-              <Typography variant="body2" color="success.main">
-                {motivationMessage}
-              </Typography>
-            </Fade>
-          )}
-        </Box>
+      <Box sx={{ my: 2, display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1 }}>
+        <StyledButton
+          onClick={handleOpenCreateEntryDialog}
+          variant="contained"
+          color="success"
+          startIcon={<AddIcon />}
+          fullWidth={isMobile}
+        >
+          🌟 Neu
+        </StyledButton>
+        <StyledButton
+          onClick={handleOpenManualEntryDialog}
+          variant="contained"
+          color="primary"
+          startIcon={<EditIcon />}
+          fullWidth={isMobile}
+        >
+          ✏️ Bestehend
+        </StyledButton>
+        <Typography variant="h6" sx={{ flexGrow: 1, textAlign: "right" }}>
+          🎉 {countEntriesByOwner(loggedInUser)} Einträge
+        </Typography>
       </Box>
       {role === "Admin" && (
-        <Box sx={{ marginBottom: 3 }}>
-          <Typography variant="h6">Ersteller filtern:</Typography>
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {uniqueOwners.map((owner, index) => (
-              <Button
-                key={index}
-                variant="outlined"
-                onClick={() => setSelectedUser(owner)}
-                color={selectedUser === owner ? "primary" : "default"}
-                sx={{ marginBottom: { xs: 1, sm: 0 } }}
-              >
-                {owner} ({countEntriesByOwner(owner)})
-              </Button>
-            ))}
-            <Button variant="outlined" onClick={() => setSelectedUser("")}>
-              Alle anzeigen
-            </Button>
-          </Box>
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="h6">👥 Ersteller:</Typography>
+          {uniqueOwners.map((owner) => (
+            <StyledButton
+              key={owner}
+              variant={selectedUser === owner ? "contained" : "outlined"}
+              onClick={() => setSelectedUser(owner)}
+            >
+              {owner} ({countEntriesByOwner(owner)})
+            </StyledButton>
+          ))}
+          <StyledButton variant="outlined" onClick={() => setSelectedUser("")}>
+            Alle
+          </StyledButton>
         </Box>
       )}
       <TextField
-        label="🔍 Suchen nach Benutzername oder Spitzname"
+        label="🔍 Suche"
         variant="outlined"
         fullWidth
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        sx={{ marginBottom: 3 }}
+        sx={{ mb: 2 }}
       />
-      <Divider style={{ margin: "20px 0" }} />
+      <Divider sx={{ my: 2 }} />
       {loading ? (
-        <Typography>🚀 Lade Einträge...</Typography>
+        <Typography>⏳ Lade...</Typography>
       ) : filterEntries.length > 0 ? (
-        filterEntries.map((entry, index) => (
-          <Accordion key={index} sx={{ marginBottom: 2 }}>
+        filterEntries.map((entry) => (
+          <Accordion key={entry.id} sx={{ mb: 1, borderRadius: "10px" }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography sx={{ fontSize: { xs: "14px", sm: "16px" } }}>
-                <strong>Erstellt von:</strong> {entry.owner} <br />
-                <strong> Benutzername:</strong> {entry.username} |{" "}
-                <strong> Passwort:</strong> {entry.password} |{" "}
-                <strong> Spitzname:</strong> {entry.aliasNotes}
-                {entry.note && (
-                  <span style={{ color: "red" }}> ({entry.note})</span>
-                )}
+              <Typography>
+                👤 {entry.username} | ✏️ {entry.aliasNotes}
               </Typography>
             </AccordionSummary>
             <AccordionDetails>
-              <Typography style={{ color: "black" }}>
-                <strong>Typ:</strong> {entry.type}
+              <Typography>📦 Typ: {entry.type}</Typography>
+              <Typography sx={{ color: entry.status === "Aktiv" ? "green" : "red" }}>
+                🚦 Status: {entry.status}
               </Typography>
-              <Typography style={{ color: "black" }}>
-                <strong>Bouget-Liste:</strong> {entry.bougetList}
+              <Typography sx={{ color: entry.paymentStatus === "Gezahlt" ? "green" : "red" }}>
+                💰 Zahlung: {entry.paymentStatus}
               </Typography>
-              <Typography style={{ color: getStatusColor(entry.status) }}>
-                <strong>Status:</strong> {entry.status}
-              </Typography>
-              <Typography
-                style={{ color: getPaymentStatusColor(entry.paymentStatus) }}
-              >
-                <strong>Zahlung:</strong> {entry.paymentStatus}
-              </Typography>
-              <Typography style={{ color: "black" }}>
-                <strong>Erstellt am:</strong> {formatDate(entry.createdAt)}
-              </Typography>
-              <Typography style={{ color: "black" }}>
-                <strong>Gültig bis:</strong> {formatDate(entry.validUntil)}
-                {entry.extensionRequest && entry.extensionRequest.pending && (
-                  <span style={{ color: "orange" }}>
-                    {" "}
-                    (Anfrage beim Admin gestellt)
-                  </span>
-                )}
-                {entry.extensionRequest && entry.extensionRequest.approved && (
-                  <span style={{ color: "green" }}>
-                    {" "}
-                    (Verlängerung genehmigt)
-                  </span>
-                )}
-              </Typography>
-              <Button
-                onClick={async () => {
-                  await requestExtension(entry.id);
-                }}
-                variant="contained"
-                color="primary"
-                sx={{ marginTop: 2 }}
-              >
-                +1 Jahr verlängern
-              </Button>
-              {role === "Admin" && (
-                <Box sx={{ marginTop: 2 }}>
-                  <Button
-                    onClick={() =>
-                      changeStatus(
-                        entry.id,
-                        entry.status === "Aktiv" ? "Inaktiv" : "Aktiv"
-                      )
-                    }
-                    variant="contained"
-                    color="secondary"
-                    sx={{ marginRight: 1 }}
-                  >
-                    {entry.status === "Aktiv" ? "Setze Inaktiv" : "Setze Aktiv"}
-                  </Button>
-                  <Button
-                    onClick={() =>
-                      changePaymentStatus(
-                        entry.id,
-                        entry.paymentStatus === "Gezahlt"
-                          ? "Nicht gezahlt"
-                          : "Gezahlt"
-                      )
-                    }
-                    variant="contained"
-                    color="secondary"
-                    sx={{ marginRight: 1 }}
-                  >
-                    {entry.paymentStatus === "Gezahlt"
-                      ? "Setze Nicht gezahlt"
-                      : "Setze Gezahlt"}
-                  </Button>
-                  <Button
-                    onClick={() => deleteEntry(entry.id)}
-                    variant="contained"
-                    color="error"
-                    startIcon={<DeleteIcon />}
-                  >
-                    Löschen
-                  </Button>
-                  <Button
-                    onClick={() => approveExtension(entry.id)}
-                    variant="contained"
-                    color="success"
-                    sx={{ marginLeft: 1 }}
-                  >
-                    Verlängerung genehmigen
-                  </Button>
-                </Box>
-              )}
-              {role === "Admin" && (
-                <Box sx={{ marginTop: 2 }}>
-                  <Typography variant="body2">
-                    <strong>Verlängerungshistorie:</strong>
-                  </Typography>
-                  {entry.extensionHistory &&
-                  entry.extensionHistory.length > 0 ? (
-                    entry.extensionHistory.map((extension, idx) => {
-                      const approvalDate = extension.approvalDate
-                        ? formatDate(extension.approvalDate)
-                        : "NaN.NaN.NaN";
-                      const validUntil = extension.validUntil
-                        ? formatDate(extension.validUntil)
-                        : "NaN.NaN.NaN";
-                      return (
-                        <Typography key={idx} variant="body2">
-                          Verlängerung genehmigt am: {approvalDate} | Gültig
-                          bis: {validUntil}
-                        </Typography>
-                      );
-                    })
-                  ) : (
-                    <Typography variant="body2">
-                      Keine Verlängerungen vorhanden.
-                    </Typography>
-                  )}
-                </Box>
-              )}
+              <Typography>📅 Erstellt: {formatDate(entry.createdAt)}</Typography>
+              <Typography>⏰ Gültig bis: {formatDate(entry.validUntil)}</Typography>
+              <Box sx={{ mt: 2, display: "flex", flexWrap: "wrap", gap: 1 }}>
+                <StyledButton
+                  onClick={() => changeStatus(entry.id, entry.status === "Aktiv" ? "Inaktiv" : "Aktiv")}
+                  variant="contained"
+                  color="secondary"
+                >
+                  {entry.status === "Aktiv" ? "🔴 Inaktiv" : "🟢 Aktiv"}
+                </StyledButton>
+                <StyledButton
+                  onClick={() =>
+                    changePaymentStatus(
+                      entry.id,
+                      entry.paymentStatus === "Gezahlt" ? "Nicht gezahlt" : "Gezahlt"
+                    )
+                  }
+                  variant="contained"
+                  color="secondary"
+                >
+                  {entry.paymentStatus === "Gezahlt" ? "💸 Nicht gezahlt" : "💰 Gezahlt"}
+                </StyledButton>
+                <StyledButton
+                  onClick={() => deleteEntry(entry.id)}
+                  variant="contained"
+                  color="error"
+                  startIcon={<DeleteIcon />}
+                >
+                  🗑️ Löschen
+                </StyledButton>
+              </Box>
             </AccordionDetails>
           </Accordion>
         ))
       ) : (
-        <Typography>🚀 Keine passenden Einträge gefunden.</Typography>
+        <Typography>😕 Keine Einträge gefunden</Typography>
       )}
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={handleSnackbarClose}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}
       >
-        <Alert
-          onClose={handleSnackbarClose}
-          severity="success"
-          sx={{ width: "100%" }}
-        >
-          {snackbarMessage}
-        </Alert>
+        <Alert severity="info">{snackbarMessage}</Alert>
       </Snackbar>
-      <Dialog
-        open={openCreateEntryDialog}
-        onClose={() => setOpenCreateEntryDialog(false)}
-        fullScreen={isMobile}
-      >
-        <DialogTitle>Neuen Abonnenten anlegen</DialogTitle>
+      <Dialog open={openCreateEntryDialog} onClose={() => setOpenCreateEntryDialog(false)} fullWidth>
+        <DialogTitle>🌟 Neuen Abonnenten anlegen</DialogTitle>
         <DialogContent>
           <TextField
-            label="Spitzname, Notizen etc."
+            label="✏️ Spitzname"
             fullWidth
             margin="normal"
-            sx={{ backgroundColor: "#f0f8ff", borderRadius: "5px" }}
             value={newEntry.aliasNotes}
-            onChange={(e) =>
-              setNewEntry({ ...newEntry, aliasNotes: e.target.value })
-            }
+            onChange={(e) => setNewEntry({ ...newEntry, aliasNotes: e.target.value })}
           />
           <TextField
-            label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
-            fullWidth
-            margin="normal"
-            sx={{ backgroundColor: "#f0f8ff", borderRadius: "5px" }}
-            value={newEntry.bougetList}
-            onChange={(e) =>
-              setNewEntry({ ...newEntry, bougetList: e.target.value })
-            }
-          />
-          <Select
-            fullWidth
-            margin="normal"
-            value={newEntry.type}
-            onChange={(e) => setNewEntry({ ...newEntry, type: e.target.value })}
-          >
-            <MenuItem value="Premium">Premium</MenuItem>
-            <MenuItem value="Basic">Basic</MenuItem>
-          </Select>
-          <TextField
-            label="Benutzername"
+            label="👤 Benutzername"
             fullWidth
             margin="normal"
             value={newEntry.username}
             disabled
           />
           <TextField
-            label="Passwort"
+            label="🔑 Passwort"
             fullWidth
             margin="normal"
-            type="password"
             value={newEntry.password}
             disabled
           />
-          <Typography variant="body1">
-            <strong>Aktuelles Datum:</strong> {formatDate(new Date())}
-          </Typography>
-          <Typography variant="body1">
-            <strong>Gültig bis:</strong> {formatDate(newEntry.validUntil)}{" "}
-          </Typography>
-          <Typography variant="caption" color="textSecondary">
-            Benutzername und Passwort werden automatisch generiert.
-          </Typography>
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => setOpenCreateEntryDialog(false)}
-            color="secondary"
-          >
-            Abbrechen
-          </Button>
-          <Button onClick={createEntry} color="primary">
-            Hinzufügen
-          </Button>
+          <StyledButton onClick={() => setOpenCreateEntryDialog(false)}>✖️ Abbrechen</StyledButton>
+          <StyledButton onClick={createEntry} variant="contained">➕ Hinzufügen</StyledButton>
         </DialogActions>
       </Dialog>
-      <Dialog
-        open={openManualEntryDialog}
-        onClose={() => setOpenManualEntryDialog(false)}
-        fullScreen={isMobile}
-      >
-        <DialogTitle>Bestehenden Abonnenten einpflegen</DialogTitle>
+      <Dialog open={openManualEntryDialog} onClose={() => setOpenManualEntryDialog(false)} fullWidth>
+        <DialogTitle>✏️ Bestehenden Abonnenten einpflegen</DialogTitle>
         <DialogContent>
           <TextField
-            label="Benutzername"
+            label="👤 Benutzername"
             fullWidth
             margin="normal"
             value={manualEntry.username}
-            onChange={(e) =>
-              setManualEntry({ ...manualEntry, username: e.target.value })
-            }
+            onChange={(e) => setManualEntry({ ...manualEntry, username: e.target.value })}
           />
           <TextField
-            label="Passwort"
+            label="🔑 Passwort"
             fullWidth
             margin="normal"
-            type="password"
             value={manualEntry.password}
-            onChange={(e) =>
-              setManualEntry({ ...manualEntry, password: e.target.value })
-            }
+            onChange={(e) => setManualEntry({ ...manualEntry, password: e.target.value })}
           />
           <TextField
-            label="Spitzname, Notizen etc."
+            label="✏️ Spitzname"
             fullWidth
             margin="normal"
             value={manualEntry.aliasNotes}
-            onChange={(e) =>
-              setManualEntry({ ...manualEntry, aliasNotes: e.target.value })
-            }
+            onChange={(e) => setManualEntry({ ...manualEntry, aliasNotes: e.target.value })}
           />
-          <TextField
-            label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
-            fullWidth
-            margin="normal"
-            value={manualEntry.bougetList}
-            onChange={(e) =>
-              setManualEntry({ ...manualEntry, bougetList: e.target.value })
-            }
-          />
-          <Select
-            fullWidth
-            margin="normal"
-            value={manualEntry.type}
-            onChange={(e) =>
-              setManualEntry({ ...manualEntry, type: e.target.value })
-            }
-          >
-            <MenuItem value="Premium">Premium</MenuItem>
-            <MenuItem value="Basic">Basic</MenuItem>
-          </Select>
-          <TextField
-            label="Gültig bis"
-            fullWidth
-            margin="normal"
-            type="date"
-            value={manualEntry.validUntil.toISOString().split("T")[0]}
-            onChange={(e) =>
-              setManualEntry({
-                ...manualEntry,
-                validUntil: new Date(e.target.value),
-              })
-            }
-          />
-          <Typography variant="body1">
-            <strong>Aktuelles Datum:</strong> {formatDate(new Date())}
-          </Typography>
-          <Typography variant="body1">
-            <strong>Gültig bis:</strong> {formatDate(manualEntry.validUntil)}{" "}
-          </Typography>
-          <Typography variant="caption" color="textSecondary">
-            Hier trägst du deine bereits aktiven Mitglieder ein.
-          </Typography>
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => setOpenManualEntryDialog(false)}
-            color="secondary"
-          >
-            Abbrechen
-          </Button>
-          <Button onClick={handleAddManualEntry} color="primary">
-            Hinzufügen
-          </Button>
+          <StyledButton onClick={() => setOpenManualEntryDialog(false)}>✖️ Abbrechen</StyledButton>
+          <StyledButton onClick={handleAddManualEntry} variant="contained">➕ Hinzufügen</StyledButton>
         </DialogActions>
       </Dialog>
     </Box>
