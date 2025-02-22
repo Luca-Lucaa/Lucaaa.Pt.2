@@ -47,7 +47,6 @@ const theme = createTheme({
   },
 });
 
-// Wiederverwendbare Snackbar-Komponente
 const CustomSnackbar = ({ open, message, onClose, severity = "success" }) => (
   <Snackbar open={open} autoHideDuration={4000} onClose={onClose}>
     <Alert onClose={onClose} severity={severity} sx={{ width: "100%" }}>
@@ -147,7 +146,9 @@ const App = () => {
     showSnackbar("Backup erfolgreich erstellt!");
   };
 
-  const handleFileChange = (event) => setFile(event.target.files[0]);
+  const handleFileChange = (event) => {
+    setFile(event.target.files[0]);
+  };
 
   const importBackup = async () => {
     if (!file) {
@@ -164,6 +165,7 @@ const App = () => {
         }
         setEntries((prev) => [...prev, ...jsonData]);
         showSnackbar("Backup erfolgreich importiert!");
+        setFile(null); // Datei nach Import zurücksetzen
       } catch (error) {
         handleError(error, setSnackbarMessage, setSnackbarOpen);
       }
@@ -193,23 +195,6 @@ const App = () => {
             )}
             {role === "Admin" && (
               <Box sx={{ display: "flex", gap: 1, alignItems: "center", marginRight: 2 }}>
-                <input
-                  type="file"
-                  accept=".json"
-                  onChange={handleFileChange}
-                  style={{ display: "none" }}
-                  id="import-backup-input"
-                />
-                <label htmlFor="import-backup-input">
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    component="span"
-                    startIcon={<BackupIcon />}
-                  >
-                    Backup importieren
-                  </Button>
-                </label>
                 <Button
                   variant="contained"
                   color="secondary"
@@ -218,6 +203,28 @@ const App = () => {
                 >
                   Backup erstellen
                 </Button>
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleFileChange}
+                  style={{ display: "none" }}
+                  id="import-backup-input"
+                />
+                <label htmlFor="import-backup-input">
+                  <Button variant="contained" color="secondary" component="span">
+                    Datei auswählen
+                  </Button>
+                </label>
+                {file && (
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={importBackup}
+                    startIcon={<BackupIcon />}
+                  >
+                    Backup importieren
+                  </Button>
+                )}
               </Box>
             )}
             {loggedInUser && (
