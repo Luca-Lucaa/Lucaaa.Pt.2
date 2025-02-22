@@ -125,22 +125,30 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
   };
 
   const approveExtension = async (entryId) => {
-    const currentEntry = entries.find((e) => e.id === entryId); // `entry` statt `entries`
+    const currentEntry = entry; // Verwende die übergebene `entry`-Prop direkt
     const newValidUntil = new Date(currentEntry.validUntil);
     newValidUntil.setFullYear(newValidUntil.getFullYear() + 1);
+
     const updatedEntry = {
-      validUntil: newValidUntil,
-      extensionRequest: { pending: false, approved: true, approvalDate: new Date() },
+      validUntil: newValidUntil.toISOString(), // Stelle sicher, dass das Datum im ISO-Format gespeichert wird
+      extensionRequest: { pending: false, approved: true, approvalDate: new Date().toISOString() },
       extensionHistory: [
         ...(currentEntry.extensionHistory || []),
-        { approvalDate: new Date(), validUntil: newValidUntil },
+        { approvalDate: new Date().toISOString(), validUntil: newValidUntil.toISOString() },
       ],
     };
+
     try {
-      const { error } = await supabase.from("entries").update(updatedEntry).eq("id", entryId);
+      const { data, error } = await supabase
+        .from("entries")
+        .update(updatedEntry)
+        .eq("id", entryId)
+        .select()
+        .single(); // Hole die aktualisierten Daten zurück
       if (error) throw error;
+
       setEntries((prev) =>
-        prev.map((e) => (e.id === entryId ? { ...e, ...updatedEntry } : e))
+        prev.map((e) => (e.id === entryId ? { ...e, ...data } : e))
       );
       setSnackbarMessage("Verlängerung genehmigt.");
       setSnackbarOpen(true);
@@ -308,7 +316,7 @@ const EntryList = ({ role, loggedInUser }) => {
       }
     };
     fetchEntries();
-  }, [loggedInUser]); // Abhängigkeit hinzugefügt
+  }, [loggedInUser]);
 
   const handleOpenCreateEntryDialog = () => {
     const username = generateUsername(loggedInUser);
