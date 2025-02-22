@@ -40,7 +40,7 @@ const LoginForm = ({ handleLogin }) => {
     <StyledCard>
       <CardContent>
         <StyledTitle variant="h5" component="h2" align="center">
-          Willkommen bei Luca-TV
+          Willkommen bei Luca-TV-PT.2
         </StyledTitle>
         <StyledTextField
           label="👤 Benutzername"
