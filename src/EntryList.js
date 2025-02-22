@@ -85,7 +85,7 @@ const ImportBackup = ({ setSnackbarOpen, setSnackbarMessage }) => {
         const jsonData = JSON.parse(e.target.result);
         for (const entry of jsonData) {
           const { error } = await supabase
-            .from("entries")
+            .from("entries_pt2") // Geändert zu entries_pt2
             .insert([entry])
             .select();
 
@@ -162,7 +162,7 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
     setLoading(true);
     try {
       const { data: entriesData, error } = await supabase
-        .from("entries")
+        .from("entries_pt2") // Geändert zu entries_pt2
         .select("*");
 
       if (error) {
@@ -228,7 +228,7 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
     }
     try {
       const { data, error } = await supabase
-        .from("entries")
+        .from("entries_pt2") // Geändert zu entries_pt2
         .insert([newEntry])
         .select();
 
@@ -278,7 +278,7 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
 
     try {
       const { data, error } = await supabase
-        .from("entries")
+        .from("entries_pt2") // Geändert zu entries_pt2
         .insert([newManualEntry])
         .select();
 
@@ -302,7 +302,7 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
   const changePaymentStatus = async (entryId, paymentStatus) => {
     try {
       const { error } = await supabase
-        .from("entries")
+        .from("entries_pt2") // Geändert zu entries_pt2
         .update({ paymentStatus })
         .eq("id", entryId);
 
@@ -327,7 +327,7 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
   const changeStatus = async (entryId, newStatus) => {
     try {
       const { error } = await supabase
-        .from("entries")
+        .from("entries_pt2") // Geändert zu entries_pt2
         .update({ status: newStatus })
         .eq("id", entryId);
 
@@ -354,7 +354,7 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
   const deleteEntry = async (entryId) => {
     try {
       const { error } = await supabase
-        .from("entries")
+        .from("entries_pt2") // Geändert zu entries_pt2
         .delete()
         .eq("id", entryId);
 
@@ -377,7 +377,7 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
   const requestExtension = async (entryId) => {
     try {
       const { error } = await supabase
-        .from("entries")
+        .from("entries_pt2") // Geändert zu entries_pt2
         .update({ extensionRequest: { pending: true, approved: false } })
         .eq("id", entryId);
 
@@ -429,7 +429,7 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
 
     try {
       const { error } = await supabase
-        .from("entries")
+        .from("entries_pt2") // Geändert zu entries_pt2
         .update(updatedEntry)
         .eq("id", entryId);
 
