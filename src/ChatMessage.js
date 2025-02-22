@@ -7,24 +7,20 @@ const ChatMessage = ({ message, sender, timestamp, isOwnMessage }) => {
       sx={{
         display: "flex",
         justifyContent: isOwnMessage ? "flex-end" : "flex-start",
-        marginBottom: 2,
+        mb: 1,
       }}
     >
       <Box
         sx={{
           maxWidth: "70%",
-          padding: 1.5,
-          borderRadius: 2,
-          backgroundColor: isOwnMessage ? "#3b82f6" : "#e0e7ff",
+          p: 1,
+          borderRadius: "10px",
+          backgroundColor: isOwnMessage ? "#60a5fa" : "#e0e7ff",
           color: isOwnMessage ? "#fff" : "#333",
-          boxShadow: 1,
         }}
       >
-        <Typography variant="body1">{message}</Typography>
-        <Typography
-          variant="caption"
-          sx={{ display: "block", textAlign: "right" }}
-        >
+        <Typography variant="body2">{message}</Typography>
+        <Typography variant="caption" sx={{ textAlign: "right", display: "block" }}>
           {new Date(timestamp).toLocaleTimeString()}
         </Typography>
       </Box>
