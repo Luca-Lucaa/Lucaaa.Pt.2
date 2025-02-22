@@ -11,6 +11,7 @@ import {
   Select,
   MenuItem,
   TextField,
+  Alert,
 } from "@mui/material";
 import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
 import { supabase } from "./supabaseClient";
@@ -35,8 +36,8 @@ const StyledAppBar = styled(AppBar)(({ theme }) => ({
 // Benutzer-Emojis
 const userEmojis = {
   Admin: "👑",
-  Test: "🚀",
-  Test1: "🎩",
+  Scholli: "🚀",
+  Jamaica05: "🎩",
 };
 
 // Erstellen des Themes
@@ -58,6 +59,15 @@ const theme = createTheme({
   },
 });
 
+// Wiederverwendbare Snackbar-Komponente
+const CustomSnackbar = ({ open, message, onClose, severity = "success" }) => (
+  <Snackbar open={open} autoHideDuration={4000} onClose={onClose}>
+    <Alert onClose={onClose} severity={severity} sx={{ width: "100%" }}>
+      {message}
+    </Alert>
+  </Snackbar>
+);
+
 const App = () => {
   // Zustand für Benutzer & Rollen
   const [loggedInUser, setLoggedInUser] = useState(
@@ -72,6 +82,14 @@ const App = () => {
   // Zustand für Snackbar
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState("success");
+
+  // Funktion zum Anzeigen von Snackbar-Nachrichten
+  const showSnackbar = (message, severity = "success") => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  };
 
   // Nachrichten von Supabase abrufen
   const fetchMessages = async () => {
@@ -85,12 +103,12 @@ const App = () => {
         .order("created_at", { ascending: true });
 
       if (error) {
-        console.error("Fehler beim Abrufen der Nachrichten:", error);
-      } else {
-        setMessages(data);
+        throw new Error("Fehler beim Abrufen der Nachrichten: " + error.message);
       }
+      setMessages(data);
     } catch (error) {
-      console.error("Fehler beim Abrufen der Nachrichten:", error);
+      console.error(error);
+      showSnackbar(error.message, "error");
     }
   };
 
@@ -122,7 +140,12 @@ const App = () => {
 
   // Login-Logik
   const handleLogin = (username, password) => {
-    const users = { Admin: "Admin", Test: "Test", Test1: "Test1" };
+    const users = {
+      Admin: "Admino25!",
+      Scholli: "Scholli25",
+      Jamaica05: "Werwer55",
+    };
+
     if (users[username] === password) {
       setLoggedInUser(username);
       setRole(username === "Admin" ? "Admin" : "Friend");
@@ -132,12 +155,10 @@ const App = () => {
       localStorage.setItem("role", username === "Admin" ? "Admin" : "Friend");
 
       // Snackbar anzeigen
-      setSnackbarMessage(`✅ Willkommen, ${username}!`);
-      setSnackbarOpen(true);
+      showSnackbar(`✅ Willkommen, ${username}!`);
     } else {
       // Snackbar für falsches Passwort anzeigen
-      setSnackbarMessage("❌ Ungültige Zugangsdaten");
-      setSnackbarOpen(true);
+      showSnackbar("❌ Ungültige Zugangsdaten", "error");
     }
   };
 
@@ -151,13 +172,15 @@ const App = () => {
     localStorage.removeItem("role");
 
     // Snackbar anzeigen
-    setSnackbarMessage("🔓 Erfolgreich abgemeldet!");
-    setSnackbarOpen(true);
+    showSnackbar("🔓 Erfolgreich abgemeldet!");
   };
 
   // Funktion zum Senden einer Nachricht
   const sendMessage = async () => {
-    if (!newMessage.trim()) return; // Leere Nachrichten ignorieren
+    if (!newMessage.trim()) {
+      showSnackbar("❌ Nachricht darf nicht leer sein", "error");
+      return;
+    }
 
     try {
       const { error } = await supabase.from("messages").insert([
@@ -169,16 +192,12 @@ const App = () => {
       ]);
 
       if (error) {
-        console.error("Fehler beim Senden der Nachricht:", error);
-        setSnackbarMessage("Fehler beim Senden der Nachricht.");
-        setSnackbarOpen(true);
-      } else {
-        setNewMessage(""); // Eingabefeld leeren
+        throw new Error("Fehler beim Senden der Nachricht: " + error.message);
       }
+      setNewMessage(""); // Eingabefeld leeren
     } catch (error) {
-      console.error("Fehler beim Senden der Nachricht:", error);
-      setSnackbarMessage("Fehler beim Senden der Nachricht.");
-      setSnackbarOpen(true);
+      console.error(error);
+      showSnackbar(error.message, "error");
     }
   };
 
@@ -191,13 +210,13 @@ const App = () => {
             {loggedInUser && (
               <Typography
                 variant="h6"
-                style={{ marginLeft: "auto", marginRight: "20px" }}
+                sx={{ marginLeft: "auto", marginRight: 2, fontSize: { xs: "14px", sm: "16px" } }}
               >
                 {userEmojis[loggedInUser]} {loggedInUser}
               </Typography>
             )}
             {loggedInUser && (
-              <Button onClick={handleLogout} color="inherit">
+              <Button onClick={handleLogout} color="inherit" sx={{ fontSize: { xs: "12px", sm: "14px" } }}>
                 🔓 Logout
               </Button>
             )}
@@ -240,16 +259,16 @@ const App = () => {
                     sx={{ marginBottom: 2 }}
                   >
                     <MenuItem value="Admin">Admin</MenuItem>
-                    <MenuItem value="Test">Test</MenuItem>
-                    <MenuItem value="Test1">Test1</MenuItem>
+                    <MenuItem value="Scholli">Scholli</MenuItem>
+                    <MenuItem value="Jamaica05">Jamaica05</MenuItem>
                   </Select>
                 )}
 
                 {/* Scrollbarer Bereich für den Chatverlauf */}
                 <Box
                   sx={{
-                    maxHeight: "300px", // Maximale Höhe des Chatverlaufs
-                    overflowY: "auto", // Scrollen aktivieren
+                    maxHeight: { xs: "200px", sm: "300px" }, // Höhe für mobile und Desktop
+                    overflowY: "auto",
                     marginBottom: 2,
                   }}
                 >
@@ -265,7 +284,14 @@ const App = () => {
                 </Box>
 
                 {/* Eingabefeld für neue Nachrichten */}
-                <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: { xs: "column", sm: "row" }, // Vertikal auf mobil, horizontal auf Desktop
+                    gap: 1,
+                    alignItems: "center",
+                  }}
+                >
                   <TextField
                     label="Neue Nachricht"
                     variant="outlined"
@@ -274,7 +300,7 @@ const App = () => {
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyPress={(e) => {
                       if (e.key === "Enter") {
-                        sendMessage(); // Nachricht mit Enter senden
+                        sendMessage();
                       }
                     }}
                   />
@@ -282,6 +308,7 @@ const App = () => {
                     variant="contained"
                     color="primary"
                     onClick={sendMessage}
+                    sx={{ width: { xs: "100%", sm: "auto" } }} // Volle Breite auf mobil
                   >
                     Senden
                   </Button>
@@ -298,12 +325,12 @@ const App = () => {
             </>
           )}
         </Suspense>
-        {/* Snackbar für Login-Feedback */}
-        <Snackbar
+        {/* Snackbar für Feedback */}
+        <CustomSnackbar
           open={snackbarOpen}
-          autoHideDuration={4000}
-          onClose={() => setSnackbarOpen(false)}
           message={snackbarMessage}
+          onClose={() => setSnackbarOpen(false)}
+          severity={snackbarSeverity}
         />
       </StyledContainer>
     </ThemeProvider>
