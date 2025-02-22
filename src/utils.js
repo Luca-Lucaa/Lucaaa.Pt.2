@@ -11,6 +11,7 @@ export const handleError = (error, setSnackbarMessage, setSnackbarOpen) => {
 
 export const useMessages = (loggedInUser, selectedUser, withRealtime = true) => {
   const [messages, setMessages] = useState([]);
+  const [unreadCount, setUnreadCount] = useState({});
 
   const fetchMessages = async () => {
     if (!loggedInUser || !selectedUser) return;
@@ -24,6 +25,12 @@ export const useMessages = (loggedInUser, selectedUser, withRealtime = true) => 
         .order("created_at", { ascending: true });
       if (error) throw error;
       setMessages(data);
+
+      // Zähle ungelesene Nachrichten vom Gesprächspartner
+      const unread = data.filter(
+        (msg) => msg.sender === selectedUser && !msg.read
+      ).length;
+      setUnreadCount((prev) => ({ ...prev, [selectedUser]: unread }));
     } catch (error) {
       handleError(error);
     }
@@ -38,7 +45,19 @@ export const useMessages = (loggedInUser, selectedUser, withRealtime = true) => 
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
-        (payload) => setMessages((prev) => [...prev, payload.new])
+        (payload) => {
+          const newMessage = payload.new;
+          setMessages((prev) => [...prev, newMessage]);
+          if (
+            newMessage.sender === selectedUser &&
+            newMessage.receiver === loggedInUser
+          ) {
+            setUnreadCount((prev) => ({
+              ...prev,
+              [selectedUser]: (prev[selectedUser] || 0) + 1,
+            }));
+          }
+        }
       )
       .on(
         "postgres_changes",
@@ -59,7 +78,30 @@ export const useMessages = (loggedInUser, selectedUser, withRealtime = true) => 
     return () => supabase.removeChannel(subscription);
   }, [loggedInUser, selectedUser]);
 
-  return { messages, fetchMessages };
+  // Markiere Nachrichten als gelesen, wenn der Benutzer den Chat öffnet
+  const markAsRead = async () => {
+    try {
+      const { error } = await supabase
+        .from("messages")
+        .update({ read: true })
+        .eq("receiver", loggedInUser)
+        .eq("sender", selectedUser)
+        .eq("read", false);
+      if (error) throw error;
+      setUnreadCount((prev) => ({ ...prev, [selectedUser]: 0 }));
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.sender === selectedUser && msg.receiver === loggedInUser && !msg.read
+            ? { ...msg, read: true }
+            : msg
+        )
+      );
+    } catch (error) {
+      handleError(error);
+    }
+  };
+
+  return { messages, unreadCount, fetchMessages, markAsRead };
 };
 
 export const useDebounce = (value, delay) => {
