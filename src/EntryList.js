@@ -122,12 +122,22 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
   return (
     <Accordion sx={{ marginBottom: 2 }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Typography>
-          <strong>Erstellt von:</strong> {entry.owner} <br />
-          <strong>Benutzername:</strong> {entry.username} | <strong>Passwort:</strong> {entry.password} |{" "}
-          <strong>Spitzname:</strong> {entry.aliasNotes}
-          {entry.note && <span style={{ color: "red" }}> ({entry.note})</span>}
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Box
+            sx={{
+              width: 10,
+              height: 10,
+              borderRadius: "50%",
+              backgroundColor: getStatusColor(entry.status),
+            }}
+          />
+          <Typography>
+            <strong>Erstellt von:</strong> {entry.owner} <br />
+            <strong>Benutzername:</strong> {entry.username} | <strong>Passwort:</strong> {entry.password} |{" "}
+            <strong>Spitzname:</strong> {entry.aliasNotes}
+            {entry.note && <span style={{ color: "red" }}> ({entry.note})</span>}
+          </Typography>
+        </Box>
       </AccordionSummary>
       <AccordionDetails>
         <Typography style={{ color: "black" }}>
