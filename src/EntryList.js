@@ -125,10 +125,10 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [chatUser, setChatUser] = useState(null); // Aktuell ausgewählter Chat-Partner
-  const [chatMessages, setChatMessages] = useState([]); // Nachrichten für den aktuellen Chat
-  const [newMessage, setNewMessage] = useState(""); // Eingabe für neue Nachricht
-  const [unreadMessages, setUnreadMessages] = useState({}); // Ungelesene Nachrichten pro Benutzer
+  const [chatUser, setChatUser] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [unreadMessages, setUnreadMessages] = useState({});
   const debouncedSearch = useDebounce(searchTerm, 300);
 
   const fetchEntries = useCallback(async () => {
@@ -137,9 +137,11 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
       const { data, error } = await supabase.from("entries_pt2").select("*");
       if (error) throw error;
       setEntries(data);
+      console.log("Geladene Einträge:", data); // Debugging: Überprüfen der geladenen Daten
     } catch (error) {
       setSnackbarMessage("Fehler beim Laden der Einträge.");
       setSnackbarOpen(true);
+      console.error("Fehler beim Laden:", error);
     } finally {
       setLoading(false);
     }
@@ -185,7 +187,6 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
     if (role === "Admin") fetchUnreadMessages();
   }, [fetchEntries, fetchUnreadMessages, role]);
 
-  // Echtzeit-Updates für neue Nachrichten
   useEffect(() => {
     if (role !== "Admin") return;
 
@@ -423,7 +424,7 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
   const handleSelectChatUser = (user) => {
     setChatUser(user);
     fetchMessages(user);
-    setUnreadMessages((prev) => ({ ...prev, [user]: 0 })); // Ungelesene Nachrichten zurücksetzen
+    setUnreadMessages((prev) => ({ ...prev, [user]: 0 }));
   };
 
   return (
@@ -503,26 +504,34 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
         <Box sx={{ mb: 2 }}>
           <Typography variant="subtitle1">Chats:</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 1 }}>
-            {uniqueOwners
-              .filter((owner) => owner !== "Admin")
-              .map((owner) => (
-                <Badge
-                  key={owner}
-                  badgeContent={unreadMessages[owner] || 0}
-                  color="error"
-                  invisible={!unreadMessages[owner]}
-                >
-                  <Button
-                    variant={chatUser === owner ? "contained" : "outlined"}
-                    onClick={() => handleSelectChatUser(owner)}
-                    size="small"
-                    startIcon={<ChatIcon />}
+            {uniqueOwners.length > 0 ? (
+              uniqueOwners
+                .filter((owner) => owner !== "Admin")
+                .map((owner) => (
+                  <Badge
+                    key={owner}
+                    badgeContent={unreadMessages[owner] || 0}
+                    color="error"
+                    invisible={!unreadMessages[owner]}
                   >
-                    {owner}
-                  </Button>
-                </Badge>
-              ))}
+                    <Button
+                      variant={chatUser === owner ? "contained" : "outlined"}
+                      onClick={() => handleSelectChatUser(owner)}
+                      size="small"
+                      startIcon={<ChatIcon />}
+                    >
+                      {owner}
+                    </Button>
+                  </Badge>
+                ))
+            ) : (
+              <Typography variant="body2">Keine Chat-Partner verfügbar.</Typography>
+            )}
           </Box>
+          {/* Debugging: Anzeige der geladenen Owner */}
+          <Typography variant="caption" color="textSecondary">
+            Geladene Benutzer: {uniqueOwners.join(", ") || "Keine"}
+          </Typography>
 
           {chatUser && (
             <Box sx={{ border: "1px solid #ccc", p: 1, borderRadius: 1, maxHeight: 200, overflowY: "auto" }}>
