@@ -16,8 +16,6 @@ import {
   MenuItem,
   Snackbar,
   Alert,
-  AppBar,
-  Toolbar,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddIcon from "@mui/icons-material/Add";
@@ -25,46 +23,6 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { supabase } from "./supabaseClient";
 import { formatDate, generateUsername, useDebounce, handleError } from "./utils";
-
-// Unterkomponente: Backup-Import
-const ImportBackup = ({ setEntries, setSnackbarMessage, setSnackbarOpen }) => {
-  const [file, setFile] = useState(null);
-
-  const handleFileChange = (event) => setFile(event.target.files[0]);
-
-  const importBackup = async () => {
-    if (!file) {
-      setSnackbarMessage("Bitte wählen Sie eine Datei aus.");
-      setSnackbarOpen(true);
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const jsonData = JSON.parse(e.target.result);
-        for (const entry of jsonData) {
-          const { error } = await supabase.from("entries").insert([entry]);
-          if (error) throw error;
-        }
-        setEntries((prev) => [...prev, ...jsonData]);
-        setSnackbarMessage("Backup erfolgreich importiert!");
-        setSnackbarOpen(true);
-      } catch (error) {
-        handleError(error, setSnackbarMessage, setSnackbarOpen);
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  return (
-    <Box sx={{ display: "flex", alignItems: "center" }}>
-      <input type="file" accept=".json" onChange={handleFileChange} />
-      <Button variant="contained" color="primary" onClick={importBackup} sx={{ marginLeft: 2 }}>
-        Backup importieren
-      </Button>
-    </Box>
-  );
-};
 
 // Unterkomponente: Eintrag
 const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMessage, setSnackbarOpen }) => {
@@ -297,7 +255,6 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   });
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [loading, setLoading] = useState(false);
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   const handleOpenCreateEntryDialog = () => {
@@ -400,17 +357,6 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
 
   return (
     <div>
-      <AppBar position="static">
-        <Toolbar>
-          {role === "Admin" && (
-            <ImportBackup
-              setEntries={setEntries}
-              setSnackbarOpen={setSnackbarOpen}
-              setSnackbarMessage={setSnackbarMessage}
-            />
-          )}
-        </Toolbar>
-      </AppBar>
       <Box
         sx={{
           padding: 2,
@@ -468,9 +414,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
         sx={{ marginBottom: 3, padding: 2 }}
       />
       <Box sx={{ maxHeight: "60vh", overflowY: "auto", padding: 2 }}>
-        {loading ? (
-          <Typography>🚀 Lade Einträge...</Typography>
-        ) : filterEntries.length > 0 ? (
+        {filterEntries.length > 0 ? (
           filterEntries.map((entry) => (
             <EntryAccordion
               key={entry.id}
