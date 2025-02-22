@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Typography,
   TextField,
@@ -23,7 +23,6 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import BackupIcon from "@mui/icons-material/Backup";
 import { supabase } from "./supabaseClient";
 import { formatDate, generateUsername, useDebounce, handleError } from "./utils";
 
@@ -125,12 +124,12 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
   };
 
   const approveExtension = async (entryId) => {
-    const currentEntry = entry; // Verwende die übergebene `entry`-Prop direkt
+    const currentEntry = entry;
     const newValidUntil = new Date(currentEntry.validUntil);
     newValidUntil.setFullYear(newValidUntil.getFullYear() + 1);
 
     const updatedEntry = {
-      validUntil: newValidUntil.toISOString(), // Stelle sicher, dass das Datum im ISO-Format gespeichert wird
+      validUntil: newValidUntil.toISOString(),
       extensionRequest: { pending: false, approved: true, approvalDate: new Date().toISOString() },
       extensionHistory: [
         ...(currentEntry.extensionHistory || []),
@@ -144,7 +143,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
         .update(updatedEntry)
         .eq("id", entryId)
         .select()
-        .single(); // Hole die aktualisierten Daten zurück
+        .single();
       if (error) throw error;
 
       setEntries((prev) =>
@@ -268,8 +267,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
   );
 };
 
-const EntryList = ({ role, loggedInUser }) => {
-  const [entries, setEntries] = useState([]);
+const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   const [openCreateEntryDialog, setOpenCreateEntryDialog] = useState(false);
   const [openManualEntryDialog, setOpenManualEntryDialog] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -301,22 +299,6 @@ const EntryList = ({ role, loggedInUser }) => {
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
-
-  useEffect(() => {
-    const fetchEntries = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase.from("entries").select("*");
-        if (error) throw error;
-        setEntries(data);
-      } catch (error) {
-        handleError(error, setSnackbarMessage, setSnackbarOpen);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchEntries();
-  }, [loggedInUser]);
 
   const handleOpenCreateEntryDialog = () => {
     const username = generateUsername(loggedInUser);
@@ -416,40 +398,16 @@ const EntryList = ({ role, loggedInUser }) => {
 
   const uniqueOwners = [...new Set(entries.map((entry) => entry.owner))];
 
-  const exportEntries = () => {
-    const dataStr = JSON.stringify(entries, null, 2);
-    const blob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "backup_entries.json";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <div>
       <AppBar position="static">
         <Toolbar>
           {role === "Admin" && (
-            <>
-              <ImportBackup
-                setEntries={setEntries}
-                setSnackbarOpen={setSnackbarOpen}
-                setSnackbarMessage={setSnackbarMessage}
-              />
-              <Button
-                variant="contained"
-                color="secondary"
-                startIcon={<BackupIcon />}
-                onClick={exportEntries}
-                sx={{ marginLeft: 2 }}
-              >
-                Backup erstellen
-              </Button>
-            </>
+            <ImportBackup
+              setEntries={setEntries}
+              setSnackbarOpen={setSnackbarOpen}
+              setSnackbarMessage={setSnackbarMessage}
+            />
           )}
         </Toolbar>
       </AppBar>
