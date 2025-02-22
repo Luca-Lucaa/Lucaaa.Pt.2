@@ -126,7 +126,7 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [chatUser, setChatUser] = useState(null); // Aktuell ausgewählter Chat-Partner
-  const [chatMessages, setChatMessages] = useState({}); // Nachrichten pro Benutzer
+  const [chatMessages, setChatMessages] = useState([]); // Nachrichten für den aktuellen Chat
   const [newMessage, setNewMessage] = useState(""); // Eingabe für neue Nachricht
   const [unreadMessages, setUnreadMessages] = useState({}); // Ungelesene Nachrichten pro Benutzer
   const debouncedSearch = useDebounce(searchTerm, 300);
@@ -138,43 +138,83 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
       if (error) throw error;
       setEntries(data);
     } catch (error) {
-      setSnackbarMessage("Fehler beim Laden.");
+      setSnackbarMessage("Fehler beim Laden der Einträge.");
       setSnackbarOpen(true);
     } finally {
       setLoading(false);
     }
   }, [setEntries]);
 
+  const fetchMessages = useCallback(async (user) => {
+    try {
+      const { data, error } = await supabase
+        .from("messages_pt2")
+        .select("*")
+        .or(`sender.eq.${user},receiver.eq.${user}`)
+        .or(`sender.eq.Admin,receiver.eq.${user}`)
+        .order("timestamp", { ascending: true });
+      if (error) throw error;
+      setChatMessages(data);
+    } catch (error) {
+      setSnackbarMessage("Fehler beim Laden der Nachrichten.");
+      setSnackbarOpen(true);
+    }
+  }, []);
+
+  const fetchUnreadMessages = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("messages_pt2")
+        .select("sender, receiver")
+        .eq("receiver", "Admin")
+        .neq("sender", "Admin");
+      if (error) throw error;
+      const unreadCount = data.reduce((acc, msg) => {
+        acc[msg.sender] = (acc[msg.sender] || 0) + 1;
+        return acc;
+      }, {});
+      setUnreadMessages(unreadCount);
+    } catch (error) {
+      setSnackbarMessage("Fehler beim Laden ungelesener Nachrichten.");
+      setSnackbarOpen(true);
+    }
+  }, []);
+
   useEffect(() => {
     fetchEntries();
-  }, [fetchEntries]);
+    if (role === "Admin") fetchUnreadMessages();
+  }, [fetchEntries, fetchUnreadMessages, role]);
 
-  // Simulierte Funktion für neue Nachrichten (könnte von Supabase kommen)
+  // Echtzeit-Updates für neue Nachrichten
   useEffect(() => {
-    const simulateNewMessage = () => {
-      const users = [...new Set(entries.map((e) => e.owner))];
-      if (users.length > 0 && role === "Admin") {
-        const randomUser = users[Math.floor(Math.random() * users.length)];
-        if (randomUser !== "Admin") {
-          setChatMessages((prev) => ({
-            ...prev,
-            [randomUser]: [
-              ...(prev[randomUser] || []),
-              { sender: randomUser, text: "Hallo Admin, wie geht's?", timestamp: new Date() },
-            ],
-          }));
-          if (chatUser !== randomUser) {
-            setUnreadMessages((prev) => ({
-              ...prev,
-              [randomUser]: (prev[randomUser] || 0) + 1,
-            }));
+    if (role !== "Admin") return;
+
+    const subscription = supabase
+      .channel("messages_pt2")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages_pt2" },
+        (payload) => {
+          const newMessage = payload.new;
+          if (newMessage.receiver === "Admin" && newMessage.sender !== "Admin") {
+            setChatMessages((prev) =>
+              chatUser === newMessage.sender ? [...prev, newMessage] : prev
+            );
+            if (chatUser !== newMessage.sender) {
+              setUnreadMessages((prev) => ({
+                ...prev,
+                [newMessage.sender]: (prev[newMessage.sender] || 0) + 1,
+              }));
+            }
           }
         }
-      }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
     };
-    const interval = setInterval(simulateNewMessage, 10000); // Alle 10 Sekunden eine Nachricht
-    return () => clearInterval(interval);
-  }, [entries, role, chatUser]);
+  }, [chatUser, role]);
 
   const handleOpenCreateEntryDialog = () => {
     const username = generateUsername(loggedInUser);
@@ -361,21 +401,29 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
       ? `🎉 ${entryCount} Einträge!`
       : "🎉 Los geht's!";
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!newMessage.trim() || !chatUser) return;
-    setChatMessages((prev) => ({
-      ...prev,
-      [chatUser]: [
-        ...(prev[chatUser] || []),
-        { sender: "Admin", text: newMessage, timestamp: new Date() },
-      ],
-    }));
-    setNewMessage("");
+    const message = {
+      sender: "Admin",
+      receiver: chatUser,
+      text: newMessage,
+      timestamp: new Date(),
+    };
+    try {
+      const { error } = await supabase.from("messages_pt2").insert([message]);
+      if (error) throw error;
+      setChatMessages((prev) => [...prev, message]);
+      setNewMessage("");
+    } catch (error) {
+      setSnackbarMessage("Fehler beim Senden der Nachricht.");
+      setSnackbarOpen(true);
+    }
   };
 
   const handleSelectChatUser = (user) => {
     setChatUser(user);
-    setUnreadMessages((prev) => ({ ...prev, [user]: 0 })); // Ungelesene Nachrichten auf 0 setzen
+    fetchMessages(user);
+    setUnreadMessages((prev) => ({ ...prev, [user]: 0 })); // Ungelesene Nachrichten zurücksetzen
   };
 
   return (
@@ -456,7 +504,7 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
           <Typography variant="subtitle1">Chats:</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 1 }}>
             {uniqueOwners
-              .filter((owner) => owner !== "Admin") // Admin chattet nicht mit sich selbst
+              .filter((owner) => owner !== "Admin")
               .map((owner) => (
                 <Badge
                   key={owner}
@@ -478,15 +526,21 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
 
           {chatUser && (
             <Box sx={{ border: "1px solid #ccc", p: 1, borderRadius: 1, maxHeight: 200, overflowY: "auto" }}>
-              {(chatMessages[chatUser] || []).map((msg, idx) => (
-                <Typography
-                  key={idx}
-                  variant="body2"
-                  sx={{ textAlign: msg.sender === "Admin" ? "right" : "left", mb: 1 }}
-                >
-                  <strong>{msg.sender}:</strong> {msg.text} ({formatDate(msg.timestamp)})
+              {chatMessages.length > 0 ? (
+                chatMessages.map((msg, idx) => (
+                  <Typography
+                    key={idx}
+                    variant="body2"
+                    sx={{ textAlign: msg.sender === "Admin" ? "right" : "left", mb: 1 }}
+                  >
+                    <strong>{msg.sender}:</strong> {msg.text} ({formatDate(msg.timestamp)})
+                  </Typography>
+                ))
+              ) : (
+                <Typography variant="body2" color="textSecondary">
+                  Keine Nachrichten bisher.
                 </Typography>
-              ))}
+              )}
             </Box>
           )}
           {chatUser && (
