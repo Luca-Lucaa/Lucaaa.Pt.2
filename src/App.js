@@ -47,6 +47,7 @@ const theme = createTheme({
   },
 });
 
+// Wiederverwendbare Snackbar-Komponente
 const CustomSnackbar = ({ open, message, onClose, severity = "success" }) => (
   <Snackbar open={open} autoHideDuration={4000} onClose={onClose}>
     <Alert onClose={onClose} severity={severity} sx={{ width: "100%" }}>
@@ -63,7 +64,8 @@ const App = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
-  const [entries, setEntries] = useState([]); // Zustand für Entries hinzufügen
+  const [entries, setEntries] = useState([]);
+  const [file, setFile] = useState(null); // Für den Import
 
   const { messages, unreadCount, markAsRead } = useMessages(loggedInUser, selectedUser);
 
@@ -145,6 +147,30 @@ const App = () => {
     showSnackbar("Backup erfolgreich erstellt!");
   };
 
+  const handleFileChange = (event) => setFile(event.target.files[0]);
+
+  const importBackup = async () => {
+    if (!file) {
+      showSnackbar("Bitte wählen Sie eine Datei aus.", "error");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const jsonData = JSON.parse(e.target.result);
+        for (const entry of jsonData) {
+          const { error } = await supabase.from("entries").insert([entry]);
+          if (error) throw error;
+        }
+        setEntries((prev) => [...prev, ...jsonData]);
+        showSnackbar("Backup erfolgreich importiert!");
+      } catch (error) {
+        handleError(error, setSnackbarMessage, setSnackbarOpen);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   useEffect(() => {
     if (selectedUser && messages.length > 0) {
       markAsRead();
@@ -166,15 +192,33 @@ const App = () => {
               </Typography>
             )}
             {role === "Admin" && (
-              <Button
-                variant="contained"
-                color="secondary"
-                startIcon={<BackupIcon />}
-                onClick={exportEntries}
-                sx={{ marginRight: 2 }}
-              >
-                Backup
-              </Button>
+              <Box sx={{ display: "flex", gap: 1, alignItems: "center", marginRight: 2 }}>
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleFileChange}
+                  style={{ display: "none" }}
+                  id="import-backup-input"
+                />
+                <label htmlFor="import-backup-input">
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    component="span"
+                    startIcon={<BackupIcon />}
+                  >
+                    Backup importieren
+                  </Button>
+                </label>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  startIcon={<BackupIcon />}
+                  onClick={exportEntries}
+                >
+                  Backup erstellen
+                </Button>
+              </Box>
             )}
             {loggedInUser && (
               <Button
