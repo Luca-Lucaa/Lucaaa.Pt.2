@@ -8,10 +8,8 @@ import {
   Button,
   Snackbar,
   Box,
-  Select,
-  MenuItem,
-  TextField,
   Alert,
+  TextField,
 } from "@mui/material";
 import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
 import { supabase } from "./supabaseClient";
@@ -58,7 +56,7 @@ const CustomSnackbar = ({ open, message, onClose, severity = "success" }) => (
 const App = () => {
   const [loggedInUser, setLoggedInUser] = useState(() => localStorage.getItem("loggedInUser") || null);
   const [role, setRole] = useState(() => localStorage.getItem("role") || null);
-  const [selectedUser, setSelectedUser] = useState("Admin");
+  const [selectedUser, setSelectedUser] = useState("Scholli"); // Standardmäßig Scholli ausgewählt
   const [newMessage, setNewMessage] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -161,16 +159,22 @@ const App = () => {
                   Chatverlauf mit {selectedUser}
                 </Typography>
                 {role === "Admin" && (
-                  <Select
-                    value={selectedUser}
-                    onChange={(e) => setSelectedUser(e.target.value)}
-                    fullWidth
-                    sx={{ marginBottom: 2 }}
-                  >
-                    <MenuItem value="Admin">Admin</MenuItem>
-                    <MenuItem value="Scholli">Scholli</MenuItem>
-                    <MenuItem value="Jamaica05">Jamaica05</MenuItem>
-                  </Select>
+                  <Box sx={{ display: "flex", gap: 1, marginBottom: 2 }}>
+                    <Button
+                      variant={selectedUser === "Scholli" ? "contained" : "outlined"}
+                      color="primary"
+                      onClick={() => setSelectedUser("Scholli")}
+                    >
+                      Scholli {userEmojis["Scholli"]}
+                    </Button>
+                    <Button
+                      variant={selectedUser === "Jamaica05" ? "contained" : "outlined"}
+                      color="primary"
+                      onClick={() => setSelectedUser("Jamaica05")}
+                    >
+                      Jamaica05 {userEmojis["Jamaica05"]}
+                    </Button>
+                  </Box>
                 )}
                 <Box sx={{ maxHeight: "50vh", overflowY: "auto", marginBottom: 2 }}>
                   {messages.map((msg) => (
