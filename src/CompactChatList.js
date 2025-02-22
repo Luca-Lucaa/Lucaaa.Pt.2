@@ -11,62 +11,47 @@ import {
   IconButton,
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
-import { supabase } from "./supabaseClient"; // Importiere den Supabase-Client
+import { supabase } from "./supabaseClient";
+import { handleError } from "./utils";
 
-const CompactChatList = ({ messages, loggedInUser }) => {
-  const [showAll, setShowAll] = useState(false); // Zustand für das Anzeigen aller Nachrichten
-  const [newMessage, setNewMessage] = useState(""); // Zustand für die neue Nachricht
+const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
+  const [showAll, setShowAll] = useState(false);
+  const [newMessage, setNewMessage] = useState("");
 
-  // Funktion zum Senden einer neuen Nachricht
   const sendMessage = async () => {
-    if (!newMessage.trim()) return; // Leere Nachrichten ignorieren
-
+    if (!newMessage.trim()) return;
     try {
-      // Nachricht an Supabase senden
       const { error } = await supabase
         .from("messages")
-        .insert([
-          { sender: loggedInUser, receiver: "Admin", message: newMessage },
-        ]);
-
-      if (error) {
-        console.error("Fehler beim Senden der Nachricht:", error);
-      } else {
-        setNewMessage(""); // Eingabefeld leeren
-      }
+        .insert([{ sender: loggedInUser, receiver: "Admin", message: newMessage }]);
+      if (error) throw error;
+      setNewMessage("");
     } catch (error) {
-      console.error("Fehler beim Senden der Nachricht:", error);
+      handleError(error);
     }
   };
 
-  // Nur die letzten 5 Nachrichten anzeigen, es sei denn, "Alle anzeigen" ist aktiviert
-  const displayedMessages = showAll ? messages : messages.slice(-5);
+  const displayedMessages = showAll ? initialMessages : initialMessages.slice(-5);
 
   return (
     <Box sx={{ marginBottom: 2 }}>
       <Typography variant="h6" gutterBottom>
         Chatverlauf
       </Typography>
-
-      {/* Chatverlauf anzeigen */}
       <List>
         {displayedMessages.map((msg) => (
           <React.Fragment key={msg.id}>
             <ListItem>
               <ListItemText
                 primary={msg.message}
-                secondary={`Von: ${msg.sender} am ${new Date(
-                  msg.created_at
-                ).toLocaleString()}`}
+                secondary={`Von: ${msg.sender} am ${new Date(msg.created_at).toLocaleString()}`}
               />
             </ListItem>
             <Divider />
           </React.Fragment>
         ))}
       </List>
-
-      {/* Button zum Laden älterer Nachrichten */}
-      {messages.length > 5 && (
+      {initialMessages.length > 5 && (
         <Button
           onClick={() => setShowAll(!showAll)}
           variant="outlined"
@@ -76,8 +61,6 @@ const CompactChatList = ({ messages, loggedInUser }) => {
           {showAll ? "Weniger anzeigen" : "Alle Nachrichten anzeigen"}
         </Button>
       )}
-
-      {/* Eingabefeld für neue Nachrichten */}
       <Box sx={{ display: "flex", gap: 1, alignItems: "center", marginTop: 2 }}>
         <TextField
           label="Neue Nachricht"
@@ -85,13 +68,14 @@ const CompactChatList = ({ messages, loggedInUser }) => {
           fullWidth
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
-          onKeyPress={(e) => {
-            if (e.key === "Enter") {
-              sendMessage(); // Nachricht mit Enter senden
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              sendMessage();
             }
           }}
         />
-        <IconButton onClick={sendMessage} color="primary">
+        <IconButton onClick={sendMessage} color="primary" disabled={!newMessage.trim()}>
           <SendIcon />
         </IconButton>
       </Box>
