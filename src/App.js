@@ -1,4 +1,4 @@
-import React, { useState, Suspense, lazy } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import {
   Container,
   Typography,
@@ -10,6 +10,7 @@ import {
   Box,
   Alert,
   TextField,
+  Badge,
 } from "@mui/material";
 import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
 import { supabase } from "./supabaseClient";
@@ -56,13 +57,13 @@ const CustomSnackbar = ({ open, message, onClose, severity = "success" }) => (
 const App = () => {
   const [loggedInUser, setLoggedInUser] = useState(() => localStorage.getItem("loggedInUser") || null);
   const [role, setRole] = useState(() => localStorage.getItem("role") || null);
-  const [selectedUser, setSelectedUser] = useState("Scholli"); // Standardmäßig Scholli ausgewählt
+  const [selectedUser, setSelectedUser] = useState(role === "Admin" ? "Scholli" : "Admin"); // Standard je nach Rolle
   const [newMessage, setNewMessage] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
 
-  const { messages } = useMessages(loggedInUser, selectedUser);
+  const { messages, unreadCount, markAsRead } = useMessages(loggedInUser, selectedUser);
 
   const showSnackbar = (message, severity = "success") => {
     setSnackbarMessage(message);
@@ -81,6 +82,7 @@ const App = () => {
       setRole(username === "Admin" ? "Admin" : "Friend");
       localStorage.setItem("loggedInUser", username);
       localStorage.setItem("role", username === "Admin" ? "Admin" : "Friend");
+      setSelectedUser(username === "Admin" ? "Scholli" : "Admin"); // Setze Standard-Chatpartner
       showSnackbar(`✅ Willkommen, ${username}!`);
     } else {
       showSnackbar("❌ Ungültige Zugangsdaten", "error");
@@ -103,13 +105,20 @@ const App = () => {
     try {
       const { error } = await supabase
         .from("messages")
-        .insert([{ sender: loggedInUser, receiver: selectedUser, message: newMessage }]);
+        .insert([{ sender: loggedInUser, receiver: selectedUser, message: newMessage, read: false }]);
       if (error) throw error;
       setNewMessage("");
     } catch (error) {
       handleError(error, setSnackbarMessage, setSnackbarOpen);
     }
   };
+
+  // Markiere Nachrichten als gelesen, wenn der Chat geöffnet wird
+  useEffect(() => {
+    if (selectedUser && messages.length > 0) {
+      markAsRead();
+    }
+  }, [selectedUser, messages]);
 
   return (
     <ThemeProvider theme={theme}>
@@ -158,22 +167,38 @@ const App = () => {
                 <Typography variant="h6" gutterBottom>
                   Chatverlauf mit {selectedUser}
                 </Typography>
-                {role === "Admin" && (
+                {role === "Admin" ? (
                   <Box sx={{ display: "flex", gap: 1, marginBottom: 2 }}>
-                    <Button
-                      variant={selectedUser === "Scholli" ? "contained" : "outlined"}
-                      color="primary"
-                      onClick={() => setSelectedUser("Scholli")}
-                    >
-                      Scholli {userEmojis["Scholli"]}
-                    </Button>
-                    <Button
-                      variant={selectedUser === "Jamaica05" ? "contained" : "outlined"}
-                      color="primary"
-                      onClick={() => setSelectedUser("Jamaica05")}
-                    >
-                      Jamaica05 {userEmojis["Jamaica05"]}
-                    </Button>
+                    <Badge badgeContent={unreadCount["Scholli"] || 0} color="error">
+                      <Button
+                        variant={selectedUser === "Scholli" ? "contained" : "outlined"}
+                        color="primary"
+                        onClick={() => setSelectedUser("Scholli")}
+                      >
+                        Scholli {userEmojis["Scholli"]}
+                      </Button>
+                    </Badge>
+                    <Badge badgeContent={unreadCount["Jamaica05"] || 0} color="error">
+                      <Button
+                        variant={selectedUser === "Jamaica05" ? "contained" : "outlined"}
+                        color="primary"
+                        onClick={() => setSelectedUser("Jamaica05")}
+                      >
+                        Jamaica05 {userEmojis["Jamaica05"]}
+                      </Button>
+                    </Badge>
+                  </Box>
+                ) : (
+                  <Box sx={{ marginBottom: 2 }}>
+                    <Badge badgeContent={unreadCount["Admin"] || 0} color="error">
+                      <Button
+                        variant={selectedUser === "Admin" ? "contained" : "outlined"}
+                        color="primary"
+                        onClick={() => setSelectedUser("Admin")}
+                      >
+                        Admin {userEmojis["Admin"]}
+                      </Button>
+                    </Badge>
                   </Box>
                 )}
                 <Box sx={{ maxHeight: "50vh", overflowY: "auto", marginBottom: 2 }}>
