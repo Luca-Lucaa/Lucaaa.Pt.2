@@ -11,6 +11,12 @@ import {
   Alert,
   TextField,
   Badge,
+  Menu,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import BackupIcon from "@mui/icons-material/Backup";
 import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
@@ -64,7 +70,9 @@ const App = () => {
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
   const [entries, setEntries] = useState([]);
-  const [file, setFile] = useState(null); // Für den Import
+  const [file, setFile] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null); // Für das Dropdown-Menü
+  const [importDialogOpen, setImportDialogOpen] = useState(false); // Für den Import-Dialog
 
   const { messages, unreadCount, markAsRead } = useMessages(loggedInUser, selectedUser);
 
@@ -144,6 +152,7 @@ const App = () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     showSnackbar("Backup erfolgreich erstellt!");
+    setAnchorEl(null); // Schließe das Menü
   };
 
   const handleFileChange = (event) => {
@@ -165,12 +174,27 @@ const App = () => {
         }
         setEntries((prev) => [...prev, ...jsonData]);
         showSnackbar("Backup erfolgreich importiert!");
-        setFile(null); // Datei nach Import zurücksetzen
+        setFile(null);
+        setImportDialogOpen(false);
+        setAnchorEl(null); // Schließe das Menü
       } catch (error) {
         handleError(error, setSnackbarMessage, setSnackbarOpen);
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleBackupClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleBackupClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleImportOpen = () => {
+    setImportDialogOpen(true);
+    setAnchorEl(null); // Schließe das Menü
   };
 
   useEffect(() => {
@@ -194,37 +218,23 @@ const App = () => {
               </Typography>
             )}
             {role === "Admin" && (
-              <Box sx={{ display: "flex", gap: 1, alignItems: "center", marginRight: 2 }}>
+              <Box sx={{ marginRight: 2 }}>
                 <Button
                   variant="contained"
                   color="secondary"
                   startIcon={<BackupIcon />}
-                  onClick={exportEntries}
+                  onClick={handleBackupClick}
                 >
-                  Backup erstellen
+                  Backup
                 </Button>
-                <input
-                  type="file"
-                  accept=".json"
-                  onChange={handleFileChange}
-                  style={{ display: "none" }}
-                  id="import-backup-input"
-                />
-                <label htmlFor="import-backup-input">
-                  <Button variant="contained" color="secondary" component="span">
-                    Datei auswählen
-                  </Button>
-                </label>
-                {file && (
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    onClick={importBackup}
-                    startIcon={<BackupIcon />}
-                  >
-                    Backup importieren
-                  </Button>
-                )}
+                <Menu
+                  anchorEl={anchorEl}
+                  open={Boolean(anchorEl)}
+                  onClose={handleBackupClose}
+                >
+                  <MenuItem onClick={exportEntries}>Backup erstellen</MenuItem>
+                  <MenuItem onClick={handleImportOpen}>Backup importieren</MenuItem>
+                </Menu>
               </Box>
             )}
             {loggedInUser && (
@@ -340,6 +350,25 @@ const App = () => {
           onClose={() => setSnackbarOpen(false)}
           severity={snackbarSeverity}
         />
+        <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)}>
+          <DialogTitle>Backup importieren</DialogTitle>
+          <DialogContent>
+            <input type="file" accept=".json" onChange={handleFileChange} />
+            {file && (
+              <Typography sx={{ mt: 2 }}>
+                Ausgewählte Datei: {file.name}
+              </Typography>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setImportDialogOpen(false)} color="secondary">
+              Abbrechen
+            </Button>
+            <Button onClick={importBackup} color="primary" disabled={!file}>
+              Importieren
+            </Button>
+          </DialogActions>
+        </Dialog>
       </StyledContainer>
     </ThemeProvider>
   );
