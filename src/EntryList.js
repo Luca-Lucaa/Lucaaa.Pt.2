@@ -14,7 +14,6 @@ import {
   Box,
   Select,
   MenuItem,
-  Fade,
   Snackbar,
   Alert,
   AppBar,
@@ -137,7 +136,7 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
       const { data, error } = await supabase.from("entries_pt2").select("*");
       if (error) throw error;
       setEntries(data);
-      console.log("Geladene Einträge:", data); // Debugging: Überprüfen der geladenen Daten
+      console.log("Geladene Einträge:", data); // Debugging
     } catch (error) {
       setSnackbarMessage("Fehler beim Laden der Einträge.");
       setSnackbarOpen(true);
@@ -220,11 +219,7 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
   const handleOpenCreateEntryDialog = () => {
     const username = generateUsername(loggedInUser);
     const randomPassword = Math.random().toString(36).slice(-8);
-    setNewEntry({
-      ...newEntry,
-      username,
-      password: randomPassword,
-    });
+    setNewEntry({ ...newEntry, username, password: randomPassword });
     setOpenCreateEntryDialog(true);
   };
 
@@ -504,34 +499,29 @@ const EntryList = ({ entries, setEntries, role, loggedInUser }) => {
         <Box sx={{ mb: 2 }}>
           <Typography variant="subtitle1">Chats:</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 1 }}>
-            {uniqueOwners.length > 0 ? (
-              uniqueOwners
-                .filter((owner) => owner !== "Admin")
-                .map((owner) => (
-                  <Badge
-                    key={owner}
-                    badgeContent={unreadMessages[owner] || 0}
-                    color="error"
-                    invisible={!unreadMessages[owner]}
+            {uniqueOwners
+              .filter((owner) => owner !== "Admin")
+              .map((owner) => (
+                <Badge
+                  key={owner}
+                  badgeContent={unreadMessages[owner] || 0}
+                  color="error"
+                  invisible={!unreadMessages[owner]}
+                >
+                  <Button
+                    variant={chatUser === owner ? "contained" : "outlined"}
+                    onClick={() => handleSelectChatUser(owner)}
+                    size="small"
+                    startIcon={<ChatIcon />}
                   >
-                    <Button
-                      variant={chatUser === owner ? "contained" : "outlined"}
-                      onClick={() => handleSelectChatUser(owner)}
-                      size="small"
-                      startIcon={<ChatIcon />}
-                    >
-                      {owner}
-                    </Button>
-                  </Badge>
-                ))
-            ) : (
-              <Typography variant="body2">Keine Chat-Partner verfügbar.</Typography>
+                    {owner}
+                  </Button>
+                </Badge>
+              ))}
+            {uniqueOwners.filter((owner) => owner !== "Admin").length === 0 && (
+              <Typography variant="body2">Keine Ersteller verfügbar.</Typography>
             )}
           </Box>
-          {/* Debugging: Anzeige der geladenen Owner */}
-          <Typography variant="caption" color="textSecondary">
-            Geladene Benutzer: {uniqueOwners.join(", ") || "Keine"}
-          </Typography>
 
           {chatUser && (
             <Box sx={{ border: "1px solid #ccc", p: 1, borderRadius: 1, maxHeight: 200, overflowY: "auto" }}>
