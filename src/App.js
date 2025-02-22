@@ -12,6 +12,7 @@ import {
   TextField,
   Badge,
 } from "@mui/material";
+import BackupIcon from "@mui/icons-material/Backup";
 import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
 import { supabase } from "./supabaseClient";
 import ChatMessage from "./ChatMessage";
@@ -57,11 +58,12 @@ const CustomSnackbar = ({ open, message, onClose, severity = "success" }) => (
 const App = () => {
   const [loggedInUser, setLoggedInUser] = useState(() => localStorage.getItem("loggedInUser") || null);
   const [role, setRole] = useState(() => localStorage.getItem("role") || null);
-  const [selectedUser, setSelectedUser] = useState(role === "Admin" ? "Scholli" : "Admin"); // Standard je nach Rolle
+  const [selectedUser, setSelectedUser] = useState(role === "Admin" ? "Scholli" : "Admin");
   const [newMessage, setNewMessage] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
+  const [entries, setEntries] = useState([]); // Zustand für Entries hinzufügen
 
   const { messages, unreadCount, markAsRead } = useMessages(loggedInUser, selectedUser);
 
@@ -82,7 +84,7 @@ const App = () => {
       setRole(username === "Admin" ? "Admin" : "Friend");
       localStorage.setItem("loggedInUser", username);
       localStorage.setItem("role", username === "Admin" ? "Admin" : "Friend");
-      setSelectedUser(username === "Admin" ? "Scholli" : "Admin"); // Setze Standard-Chatpartner
+      setSelectedUser(username === "Admin" ? "Scholli" : "Admin");
       showSnackbar(`✅ Willkommen, ${username}!`);
     } else {
       showSnackbar("❌ Ungültige Zugangsdaten", "error");
@@ -113,12 +115,41 @@ const App = () => {
     }
   };
 
-  // Markiere Nachrichten als gelesen, wenn der Chat geöffnet wird
+  const fetchEntries = async () => {
+    try {
+      const { data, error } = await supabase.from("entries").select("*");
+      if (error) throw error;
+      setEntries(data);
+    } catch (error) {
+      handleError(error, setSnackbarMessage, setSnackbarOpen);
+    }
+  };
+
+  useEffect(() => {
+    if (loggedInUser) {
+      fetchEntries();
+    }
+  }, [loggedInUser]);
+
+  const exportEntries = () => {
+    const dataStr = JSON.stringify(entries, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "backup_entries.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showSnackbar("Backup erfolgreich erstellt!");
+  };
+
   useEffect(() => {
     if (selectedUser && messages.length > 0) {
       markAsRead();
     }
-  }, [selectedUser, messages]);
+  }, [selectedUser, messages, markAsRead]);
 
   return (
     <ThemeProvider theme={theme}>
@@ -133,6 +164,17 @@ const App = () => {
               >
                 {userEmojis[loggedInUser]} {loggedInUser}
               </Typography>
+            )}
+            {role === "Admin" && (
+              <Button
+                variant="contained"
+                color="secondary"
+                startIcon={<BackupIcon />}
+                onClick={exportEntries}
+                sx={{ marginRight: 2 }}
+              >
+                Backup
+              </Button>
             )}
             {loggedInUser && (
               <Button
@@ -237,7 +279,7 @@ const App = () => {
                   </Button>
                 </Box>
               </Box>
-              <EntryList role={role} loggedInUser={loggedInUser} />
+              <EntryList role={role} loggedInUser={loggedInUser} entries={entries} setEntries={setEntries} />
             </>
           )}
         </Suspense>
