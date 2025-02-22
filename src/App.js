@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy, useCallback } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import {
   Container,
   Typography,
@@ -8,11 +8,13 @@ import {
   Button,
   Snackbar,
   Box,
-  Badge,
+  Select,
+  MenuItem,
+  TextField,
+  Alert,
 } from "@mui/material";
 import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
 import { supabase } from "./supabaseClient";
-import ChatIcon from "@mui/icons-material/Chat"; // Importiere ChatIcon für Buttons
 import ChatMessage from "./ChatMessage"; // Importiere die ChatMessage-Komponente
 
 // Dynamischer Import der Komponenten
@@ -73,11 +75,9 @@ const App = () => {
   );
   const [role, setRole] = useState(() => localStorage.getItem("role") || null);
   const [entries, setEntries] = useState([]); // Einträge werden jetzt von Supabase abgerufen
-  const [chatUser, setChatUser] = useState(null); // Aktuell ausgewählter Chat-Partner
-  const [chatMessages, setChatMessages] = useState([]); // Nachrichten für den aktuellen Chat
-  const [newMessage, setNewMessage] = useState(""); // Eingabe für neue Nachricht
-  const [unreadMessages, setUnreadMessages] = useState({}); // Ungelesene Nachrichten pro Benutzer
-  const [loadingEntries, setLoadingEntries] = useState(true); // Zustand für Ladeindikator
+  const [messages, setMessages] = useState([]); // Zustand für Nachrichten
+  const [selectedUser, setSelectedUser] = useState("Admin"); // Zustand für den ausgewählten Chat-Partner
+  const [newMessage, setNewMessage] = useState(""); // Zustand für die neue Nachricht
 
   // Zustand für Snackbar
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -91,101 +91,52 @@ const App = () => {
     setSnackbarOpen(true);
   };
 
-  // Einträge von Supabase abrufen
-  const fetchEntries = useCallback(async () => {
-    setLoadingEntries(true);
-    try {
-      const { data, error } = await supabase.from("entries_pt2").select("*");
-      if (error) throw error;
-      setEntries(data || []);
-      console.log("Geladene Einträge:", data); // Debugging
-    } catch (error) {
-      setEntries([]); // Standardmäßig leere Liste setzen, falls Fehler
-      showSnackbar("Fehler beim Laden der Einträge: " + error.message, "error");
-      console.error("Fehler beim Laden:", error);
-    } finally {
-      setLoadingEntries(false);
-    }
-  }, []);
-
   // Nachrichten von Supabase abrufen
-  const fetchMessages = useCallback(async (user) => {
-    if (!user) return;
+  const fetchMessages = async () => {
     try {
       const { data, error } = await supabase
-        .from("messages_pt2")
+        .from("messages_pt2") // Geändert zu messages_pt2
         .select("*")
-        .or(`sender.eq.${user},receiver.eq.${user}`)
-        .or(`sender.eq.${loggedInUser},receiver.eq.${user}`)
+        .or(
+          `and(sender.eq.${loggedInUser},receiver.eq.${selectedUser}),and(sender.eq.${selectedUser},receiver.eq.${loggedInUser})`
+        )
         .order("created_at", { ascending: true });
 
       if (error) {
         throw new Error("Fehler beim Abrufen der Nachrichten: " + error.message);
       }
-      setChatMessages(data || []);
+      setMessages(data);
     } catch (error) {
       console.error(error);
       showSnackbar(error.message, "error");
     }
-  }, [loggedInUser]);
-
-  // Ungelesene Nachrichten abrufen
-  const fetchUnreadMessages = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from("messages_pt2")
-        .select("sender, receiver")
-        .eq("receiver", "Admin")
-        .neq("sender", "Admin");
-      if (error) throw error;
-      const unreadCount = data.reduce((acc, msg) => {
-        acc[msg.sender] = (acc[msg.sender] || 0) + 1;
-        return acc;
-      }, {});
-      setUnreadMessages(unreadCount || {});
-    } catch (error) {
-      showSnackbar("Fehler beim Laden ungelesener Nachrichten.", "error");
-    }
-  }, []);
+  };
 
   // Realtime-Updates für Nachrichten
   useEffect(() => {
     if (loggedInUser) {
-      fetchEntries(); // Einträge laden
-      fetchUnreadMessages();
-
+      // Abonniere Änderungen in der `messages_pt2`-Tabelle
       const subscription = supabase
-        .channel("messages_pt2")
+        .channel("messages_pt2") // Geändert zu messages_pt2
         .on(
           "postgres_changes",
-          { event: "INSERT", schema: "public", table: "messages_pt2" },
+          { event: "INSERT", schema: "public", table: "messages_pt2" }, // Geändert zu messages_pt2
           (payload) => {
-            const newMessage = payload.new;
-            if (newMessage.receiver === "Admin" && newMessage.sender !== "Admin") {
-              setChatMessages((prev) =>
-                chatUser === newMessage.sender ? [...prev, newMessage] : prev
-              );
-              if (chatUser !== newMessage.sender) {
-                setUnreadMessages((prev) => ({
-                  ...prev,
-                  [newMessage.sender]: (prev[newMessage.sender] || 0) + 1,
-                }));
-              }
-            }
+            // Neue Nachricht zur Liste hinzufügen
+            setMessages((prevMessages) => [...prevMessages, payload.new]);
           }
         )
         .subscribe();
 
-      // Initiale Nachrichten laden, wenn ein Chat-Partner ausgewählt ist
-      if (chatUser) {
-        fetchMessages(chatUser);
-      }
+      // Initiale Nachrichten laden
+      fetchMessages();
 
+      // Abonnement beenden, wenn die Komponente unmountet
       return () => {
         supabase.removeChannel(subscription);
       };
     }
-  }, [loggedInUser, chatUser, fetchEntries, fetchMessages, fetchUnreadMessages]);
+  }, [loggedInUser, selectedUser]);
 
   // Login-Logik
   const handleLogin = (username, password) => {
@@ -215,9 +166,6 @@ const App = () => {
   const handleLogout = () => {
     setLoggedInUser(null);
     setRole(null);
-    setChatUser(null); // Chat-Partner zurücksetzen
-    setChatMessages([]); // Nachrichten zurücksetzen
-    setUnreadMessages({}); // Ungelesene Nachrichten zurücksetzen
 
     // Zustand aus localStorage entfernen
     localStorage.removeItem("loggedInUser");
@@ -229,18 +177,17 @@ const App = () => {
 
   // Funktion zum Senden einer Nachricht
   const sendMessage = async () => {
-    if (!newMessage.trim() || !chatUser) {
-      showSnackbar("❌ Nachricht oder Chat-Partner fehlt", "error");
+    if (!newMessage.trim()) {
+      showSnackbar("❌ Nachricht darf nicht leer sein", "error");
       return;
     }
 
     try {
-      const { error } = await supabase.from("messages_pt2").insert([
+      const { error } = await supabase.from("messages_pt2").insert([ // Geändert zu messages_pt2
         {
           sender: loggedInUser,
-          receiver: chatUser,
+          receiver: selectedUser,
           message: newMessage,
-          created_at: new Date().toISOString(),
         },
       ]);
 
@@ -253,14 +200,6 @@ const App = () => {
       showSnackbar(error.message, "error");
     }
   };
-
-  const handleSelectChatUser = (user) => {
-    setChatUser(user);
-    fetchMessages(user);
-    setUnreadMessages((prev) => ({ ...prev, [user]: 0 })); // Ungelesene Nachrichten zurücksetzen
-  };
-
-  const uniqueOwners = [...new Set(entries.map((entry) => entry.owner || ""))]; // Fallback für leere owner-Werte
 
   return (
     <ThemeProvider theme={theme}>
@@ -285,7 +224,11 @@ const App = () => {
         </StyledAppBar>
         <Suspense fallback={<div>🔄 Lade...</div>}>
           {!loggedInUser ? (
-            <Grid container justifyContent="center" style={{ marginTop: "20px" }}>
+            <Grid
+              container
+              justifyContent="center"
+              style={{ marginTop: "20px" }}
+            >
               <Grid item xs={12} sm={6} md={4}>
                 <LoginForm handleLogin={handleLogin} />
               </Grid>
@@ -304,43 +247,32 @@ const App = () => {
                 }}
               >
                 <Typography variant="h6" gutterBottom>
-                  Chatverlauf mit {chatUser || "Kein Partner"}
+                  Chatverlauf mit {selectedUser}
                 </Typography>
 
-                {/* Auswahl des Chat-Partners als Buttons (nur für Admin) */}
+                {/* Auswahl des Chat-Partners (nur für Admin) */}
                 {role === "Admin" && (
-                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
-                    {loadingEntries ? (
-                      <Typography>Lade Chat-Partner...</Typography>
-                    ) : uniqueOwners.length > 0 ? (
-                      uniqueOwners
-                        .filter((owner) => owner !== "Admin" && owner.trim() !== "")
-                        .map((owner) => (
-                          <Badge
-                            key={owner}
-                            badgeContent={unreadMessages[owner] || 0}
-                            color="error"
-                            invisible={!unreadMessages[owner]}
-                          >
-                            <Button
-                              variant={chatUser === owner ? "contained" : "outlined"}
-                              onClick={() => handleSelectChatUser(owner)}
-                              size="small"
-                              startIcon={<ChatIcon />}
-                            >
-                              {owner}
-                            </Button>
-                          </Badge>
-                        ))
-                    ) : (
-                      <Typography variant="body2">Keine Chat-Partner verfügbar.</Typography>
-                    )}
-                  </Box>
+                  <Select
+                    value={selectedUser}
+                    onChange={(e) => setSelectedUser(e.target.value)}
+                    fullWidth
+                    sx={{ marginBottom: 2 }}
+                  >
+                    <MenuItem value="Admin">Admin</MenuItem>
+                    <MenuItem value="Scholli">Scholli</MenuItem>
+                    <MenuItem value="Jamaica05">Jamaica05</MenuItem>
+                  </Select>
                 )}
 
                 {/* Scrollbarer Bereich für den Chatverlauf */}
-                <Box sx={{ maxHeight: { xs: "200px", sm: "300px" }, overflowY: "auto", marginBottom: 2 }}>
-                  {chatMessages.map((msg) => (
+                <Box
+                  sx={{
+                    maxHeight: { xs: "200px", sm: "300px" }, // Höhe für mobile und Desktop
+                    overflowY: "auto",
+                    marginBottom: 2,
+                  }}
+                >
+                  {messages.map((msg) => (
                     <ChatMessage
                       key={msg.id}
                       message={msg.message}
@@ -349,44 +281,38 @@ const App = () => {
                       isOwnMessage={msg.sender === loggedInUser}
                     />
                   ))}
-                  {chatMessages.length === 0 && (
-                    <Typography variant="body2" color="textSecondary">
-                      Keine Nachrichten bisher.
-                    </Typography>
-                  )}
                 </Box>
 
                 {/* Eingabefeld für neue Nachrichten */}
-                {chatUser && (
-                  <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1, alignItems: "center" }}>
-                    <TextField
-                      label="Neue Nachricht"
-                      variant="outlined"
-                      fullWidth
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === "Enter") {
-                          sendMessage();
-                        }
-                      }}
-                      size="small"
-                    />
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={sendMessage}
-                      sx={{ width: { xs: "100%", sm: "auto" } }}
-                    >
-                      Senden
-                    </Button>
-                  </Box>
-                )}
-                {!chatUser && role === "Admin" && (
-                  <Typography variant="body2" color="textSecondary">
-                    Wähle einen Chat-Partner, um zu chatten.
-                  </Typography>
-                )}
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: { xs: "column", sm: "row" }, // Vertikal auf mobil, horizontal auf Desktop
+                    gap: 1,
+                    alignItems: "center",
+                  }}
+                >
+                  <TextField
+                    label="Neue Nachricht"
+                    variant="outlined"
+                    fullWidth
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        sendMessage();
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={sendMessage}
+                    sx={{ width: { xs: "100%", sm: "auto" } }} // Volle Breite auf mobil
+                  >
+                    Senden
+                  </Button>
+                </Box>
               </Box>
 
               {/* EntryList-Komponente */}
@@ -395,7 +321,7 @@ const App = () => {
                 setEntries={setEntries}
                 role={role}
                 loggedInUser={loggedInUser}
-                tableName="entries_pt2"
+                tableName="entries_pt2" // Geändert zu entries_pt2
               />
             </>
           )}
