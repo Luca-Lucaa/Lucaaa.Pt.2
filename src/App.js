@@ -95,7 +95,7 @@ const App = () => {
   const fetchMessages = async () => {
     try {
       const { data, error } = await supabase
-        .from("messages")
+        .from("messages_pt2") // Geändert zu messages_pt2
         .select("*")
         .or(
           `and(sender.eq.${loggedInUser},receiver.eq.${selectedUser}),and(sender.eq.${selectedUser},receiver.eq.${loggedInUser})`
@@ -115,12 +115,12 @@ const App = () => {
   // Realtime-Updates für Nachrichten
   useEffect(() => {
     if (loggedInUser) {
-      // Abonniere Änderungen in der `messages`-Tabelle
+      // Abonniere Änderungen in der `messages_pt2`-Tabelle
       const subscription = supabase
-        .channel("messages")
+        .channel("messages_pt2") // Geändert zu messages_pt2
         .on(
           "postgres_changes",
-          { event: "INSERT", schema: "public", table: "messages" },
+          { event: "INSERT", schema: "public", table: "messages_pt2" }, // Geändert zu messages_pt2
           (payload) => {
             // Neue Nachricht zur Liste hinzufügen
             setMessages((prevMessages) => [...prevMessages, payload.new]);
@@ -183,7 +183,7 @@ const App = () => {
     }
 
     try {
-      const { error } = await supabase.from("messages").insert([
+      const { error } = await supabase.from("messages_pt2").insert([ // Geändert zu messages_pt2
         {
           sender: loggedInUser,
           receiver: selectedUser,
@@ -321,6 +321,7 @@ const App = () => {
                 setEntries={setEntries}
                 role={role}
                 loggedInUser={loggedInUser}
+                tableName="entries_pt2" // Geändert zu entries_pt2
               />
             </>
           )}
