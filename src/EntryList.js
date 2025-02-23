@@ -288,7 +288,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
     motivationMessage =
       "🎉 Wow! Du hast 25 Einträge erreicht! Deine Kreativität kennt keine Grenzen! Mach weiter so!";
   } else if (entryCount > 0) {
-    motivationMessage = `🎉 Du hast ${entryCount} Einträge erstellt! Weiter so, der nächste Meilenstein ist 5!`;
+    motivationMessage = `🎉 Du hast ${entryCount} Einträge erstellt! Weiter so, der nächste Meilenstein ist 10!`;
   } else {
     motivationMessage =
       "🎉 Du hast noch keine Einträge erstellt. Lass uns mit dem ersten Eintrag beginnen!";
