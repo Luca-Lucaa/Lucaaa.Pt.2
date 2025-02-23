@@ -208,7 +208,7 @@ const App = () => {
 
   // Liste der verfügbaren Anleitungen (statisch definiert)
   const guides = [
-    { name: "Anleitung PlockTV", path: "/guides/guide1.pdf" },
+    { name: "Anleitung PlockTV", path: "/guides/PlockTV.pdf" },
     { name: "Anleitung TiviMate", path: "/guides/guide2.pdf" },
   ];
 
