@@ -209,7 +209,7 @@ const App = () => {
   // Liste der verfügbaren Anleitungen (statisch definiert)
   const guides = [
     { name: "Anleitung PlockTV", path: "/guides/PlockTV.pdf" },
-    { name: "Anleitung TiviMate", path: "/guides/guide2.pdf" },
+    { name: "Anleitung 2", path: "/guides/guide2.pdf" },
   ];
 
   const handleGuideDownload = (path) => {
@@ -237,48 +237,48 @@ const App = () => {
                 {userEmojis[loggedInUser]} {loggedInUser}
               </Typography>
             )}
-            {loggedInUser && ( // Änderung: Nur für eingeloggte Benutzer, nicht nur Admin
-              <>
-                <Box sx={{ marginRight: 2 }}>
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    startIcon={<BackupIcon />}
-                    onClick={handleBackupClick}
-                  >
-                    Backup
-                  </Button>
-                  <Menu
-                    anchorEl={backupAnchorEl}
-                    open={Boolean(backupAnchorEl)}
-                    onClose={handleBackupClose}
-                  >
-                    <MenuItem onClick={exportEntries}>Backup erstellen</MenuItem>
-                    <MenuItem onClick={handleImportOpen}>Backup importieren</MenuItem>
-                  </Menu>
-                </Box>
-                <Box sx={{ marginRight: 2 }}>
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    startIcon={<DescriptionIcon />}
-                    onClick={handleGuidesClick}
-                  >
-                    Anleitungen
-                  </Button>
-                  <Menu
-                    anchorEl={guidesAnchorEl}
-                    open={Boolean(guidesAnchorEl)}
-                    onClose={handleGuidesClose}
-                  >
-                    {guides.map((guide) => (
-                      <MenuItem key={guide.name} onClick={() => handleGuideDownload(guide.path)}>
-                        {guide.name}
-                      </MenuItem>
-                    ))}
-                  </Menu>
-                </Box>
-              </>
+            {role === "Admin" && ( // Backup nur für Admin
+              <Box sx={{ marginRight: 2 }}>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  startIcon={<BackupIcon />}
+                  onClick={handleBackupClick}
+                >
+                  Backup
+                </Button>
+                <Menu
+                  anchorEl={backupAnchorEl}
+                  open={Boolean(backupAnchorEl)}
+                  onClose={handleBackupClose}
+                >
+                  <MenuItem onClick={exportEntries}>Backup erstellen</MenuItem>
+                  <MenuItem onClick={handleImportOpen}>Backup importieren</MenuItem>
+                </Menu>
+              </Box>
+            )}
+            {loggedInUser && ( // Anleitungen für alle eingeloggten Benutzer
+              <Box sx={{ marginRight: 2 }}>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  startIcon={<DescriptionIcon />}
+                  onClick={handleGuidesClick}
+                >
+                  Anleitungen
+                </Button>
+                <Menu
+                  anchorEl={guidesAnchorEl}
+                  open={Boolean(guidesAnchorEl)}
+                  onClose={handleGuidesClose}
+                >
+                  {guides.map((guide) => (
+                    <MenuItem key={guide.name} onClick={() => handleGuideDownload(guide.path)}>
+                      {guide.name}
+                    </MenuItem>
+                  ))}
+                </Menu>
+              </Box>
             )}
             {loggedInUser && (
               <Button
