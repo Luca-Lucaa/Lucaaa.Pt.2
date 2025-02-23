@@ -17,9 +17,13 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  IconButton,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import BackupIcon from "@mui/icons-material/Backup";
 import DescriptionIcon from "@mui/icons-material/Description"; // Icon für Anleitungen
+import MenuIcon from "@mui/icons-material/Menu"; // Icon für mobiles Menü
 import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
 import { supabase } from "./supabaseClient";
 import ChatMessage from "./ChatMessage";
@@ -217,6 +221,9 @@ const App = () => {
     setGuidesAnchorEl(null);
   };
 
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm")); // Bildschirmgröße < 600px
+
   useEffect(() => {
     if (selectedUser && messages.length > 0) {
       markAsRead();
@@ -237,36 +244,52 @@ const App = () => {
                 {userEmojis[loggedInUser]} {loggedInUser}
               </Typography>
             )}
-            {role === "Admin" && ( // Backup nur für Admin
+            {loggedInUser && (
               <Box sx={{ marginRight: 2 }}>
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  startIcon={<BackupIcon />}
-                  onClick={handleBackupClick}
-                >
-                  Backup
-                </Button>
-                <Menu
-                  anchorEl={backupAnchorEl}
-                  open={Boolean(backupAnchorEl)}
-                  onClose={handleBackupClose}
-                >
-                  <MenuItem onClick={exportEntries}>Backup erstellen</MenuItem>
-                  <MenuItem onClick={handleImportOpen}>Backup importieren</MenuItem>
-                </Menu>
-              </Box>
-            )}
-            {loggedInUser && ( // Anleitungen für alle eingeloggten Benutzer
-              <Box sx={{ marginRight: 2 }}>
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  startIcon={<DescriptionIcon />}
-                  onClick={handleGuidesClick}
-                >
-                  Anleitungen
-                </Button>
+                {isMobile ? (
+                  // Mobiles Menü (Hamburger-Icon mit Dropdown)
+                  <IconButton
+                    variant="contained"
+                    color="secondary"
+                    onClick={handleBackupClick}
+                    sx={{ p: 0.5 }}
+                  >
+                    <MenuIcon />
+                  </IconButton>
+                ) : (
+                  // Desktop-Ansicht: Separate Buttons
+                  <>
+                    {role === "Admin" && (
+                      <Button
+                        variant="contained"
+                        color="secondary"
+                        startIcon={<BackupIcon />}
+                        onClick={handleBackupClick}
+                        sx={{ mr: 1 }}
+                      >
+                        Backup
+                      </Button>
+                    )}
+                    <Button
+                      variant="contained"
+                      color="secondary"
+                      startIcon={<DescriptionIcon />}
+                      onClick={handleGuidesClick}
+                    >
+                      Anleitungen
+                    </Button>
+                  </>
+                )}
+                {!isMobile && (
+                  <Menu
+                    anchorEl={backupAnchorEl}
+                    open={Boolean(backupAnchorEl)}
+                    onClose={handleBackupClose}
+                  >
+                    <MenuItem onClick={exportEntries}>Backup erstellen</MenuItem>
+                    <MenuItem onClick={handleImportOpen}>Backup importieren</MenuItem>
+                  </Menu>
+                )}
                 <Menu
                   anchorEl={guidesAnchorEl}
                   open={Boolean(guidesAnchorEl)}
