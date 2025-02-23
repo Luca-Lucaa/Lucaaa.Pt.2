@@ -189,8 +189,10 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
               : ""
           }
           placement="top"
+          arrow // Fügt einen Pfeil zum Tooltip hinzu für bessere Sichtbarkeit
+          sx={{ maxWidth: 200 }} // Begrenzt die Breite des Tooltips, falls der Text zu lang ist
         >
-          <span>
+          <Box> {/* Verwende Box statt span für bessere Flexibilität */}
             <Button
               onClick={() => requestExtension(entry.id)}
               variant="contained"
@@ -200,7 +202,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
             >
               +1 Jahr verlängern
             </Button>
-          </span>
+          </Box>
         </Tooltip>
         {role === "Admin" && (
           <Box sx={{ marginTop: 2 }}>
@@ -452,7 +454,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             onClick={handleOpenManualEntryDialog}
             variant="contained"
             color="primary"
-            startIcon={<EditIcon />}
+            startIcon=<EditIcon />
             fullWidth
           >
             Bestehenden Abonnenten einpflegen
