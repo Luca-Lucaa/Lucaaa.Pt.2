@@ -358,7 +358,7 @@ const App = () => {
               <Accordion expanded={chatExpanded} onChange={() => setChatExpanded(!chatExpanded)} sx={{ mb: 2 }}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Typography variant="h6">Chatverlauf mit {selectedUser}</Typography>
-                  {role === "Admin" ? (
+                  {role === "Admin" && ( // Nur für Admin sichtbar
                     <Box sx={{ display: "flex", gap: 1, ml: 2 }}>
                       <Badge badgeContent={unreadCount["Scholli"] || 0} color="error">
                         <Button
@@ -384,22 +384,6 @@ const App = () => {
                           sx={{ minWidth: 0, p: 0.5 }}
                         >
                           Jamaica05 {userEmojis["Jamaica05"]}
-                        </Button>
-                      </Badge>
-                    </Box>
-                  ) : (
-                    <Box sx={{ ml: 2 }}>
-                      <Badge badgeContent={unreadCount["Admin"] || 0} color="error">
-                        <Button
-                          variant={selectedUser === "Admin" ? "contained" : "outlined"}
-                          color="primary"
-                          onClick={(e) => {
-                            e.stopPropagation(); // Verhindert, dass der Accordion toggled wird
-                            setSelectedUser("Admin");
-                          }}
-                          sx={{ minWidth: 0, p: 0.5 }}
-                        >
-                          Admin {userEmojis["Admin"]}
                         </Button>
                       </Badge>
                     </Box>
