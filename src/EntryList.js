@@ -26,6 +26,9 @@ import { formatDate, generateUsername, useDebounce, handleError } from "./utils"
 
 // Unterkomponente: Eintrag
 const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMessage, setSnackbarOpen }) => {
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false); // Dialog für Löschen
+  const [extensionConfirmOpen, setExtensionConfirmOpen] = useState(false); // Dialog für Verlängerung
+
   const changePaymentStatus = async (entryId, paymentStatus) => {
     try {
       const { error } = await supabase.from("entries").update({ paymentStatus }).eq("id", entryId);
@@ -57,6 +60,9 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
       const { error } = await supabase.from("entries").delete().eq("id", entryId);
       if (error) throw error;
       setEntries((prev) => prev.filter((e) => e.id !== entryId));
+      setDeleteConfirmOpen(false); // Schließe den Dialog nach dem Löschen
+      setSnackbarMessage("Eintrag erfolgreich gelöscht.");
+      setSnackbarOpen(true);
     } catch (error) {
       handleError(error, setSnackbarMessage, setSnackbarOpen);
     }
@@ -118,6 +124,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
       setEntries((prev) =>
         prev.map((e) => (e.id === entryId ? { ...e, ...data } : e))
       );
+      setExtensionConfirmOpen(false); // Schließe den Dialog nach dem Genehmigen
       setSnackbarMessage("Verlängerung genehmigt.");
       setSnackbarOpen(true);
     } catch (error) {
@@ -220,7 +227,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
               {entry.paymentStatus === "Gezahlt" ? "Setze Nicht gezahlt" : "Setze Gezahlt"}
             </Button>
             <Button
-              onClick={() => deleteEntry(entry.id)}
+              onClick={() => setDeleteConfirmOpen(true)} // Öffne Dialog für Löschen
               variant="contained"
               color="error"
               startIcon={<DeleteIcon />}
@@ -228,7 +235,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
               Löschen
             </Button>
             <Button
-              onClick={() => approveExtension(entry.id)}
+              onClick={() => setExtensionConfirmOpen(true)} // Öffne Dialog für Verlängerung
               variant="contained"
               color="success"
               sx={{ marginLeft: 1 }}
@@ -254,6 +261,48 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
             )}
           </Box>
         )}
+        {/* Dialog für Bestätigung des Löschens */}
+        <Dialog
+          open={deleteConfirmOpen}
+          onClose={() => setDeleteConfirmOpen(false)}
+          aria-labelledby="delete-confirm-dialog"
+        >
+          <DialogTitle id="delete-confirm-dialog">Eintrag löschen</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Möchtest du den Eintrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteConfirmOpen(false)} color="secondary">
+              Abbrechen
+            </Button>
+            <Button onClick={() => deleteEntry(entry.id)} color="error">
+              Löschen
+            </Button>
+          </DialogActions>
+        </Dialog>
+        {/* Dialog für Bestätigung der Verlängerung */}
+        <Dialog
+          open={extensionConfirmOpen}
+          onClose={() => setExtensionConfirmOpen(false)}
+          aria-labelledby="extension-confirm-dialog"
+        >
+          <DialogTitle id="extension-confirm-dialog">Verlängerung genehmigen</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Möchtest du die Verlängerung wirklich genehmigen? Dies verlängert die Gültigkeit um ein Jahr.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setExtensionConfirmOpen(false)} color="secondary">
+              Abbrechen
+            </Button>
+            <Button onClick={() => approveExtension(entry.id)} color="success">
+              Genehmigen
+            </Button>
+          </DialogActions>
+        </Dialog>
       </AccordionDetails>
     </Accordion>
   );
