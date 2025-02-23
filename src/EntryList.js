@@ -16,7 +16,6 @@ import {
   MenuItem,
   Snackbar,
   Alert,
-  Tooltip,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddIcon from "@mui/icons-material/Add";
@@ -182,28 +181,21 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
             <span style={{ color: "green" }}> (Verlängerung genehmigt)</span>
           )}
         </Typography>
-        <Tooltip
-          title={
-            isBeforeOctober
-              ? "Die Verlängerung ist erst ab dem 01.10. des aktuellen Jahres möglich."
-              : ""
-          }
-          placement="top"
-          arrow // Fügt einen Pfeil zum Tooltip hinzu für bessere Sichtbarkeit
-          sx={{ maxWidth: 200 }} // Begrenzt die Breite des Tooltips, falls der Text zu lang ist
-        >
-          <Box> {/* Verwende Box statt span für bessere Flexibilität */}
-            <Button
-              onClick={() => requestExtension(entry.id)}
-              variant="contained"
-              color="primary"
-              sx={{ marginTop: 2 }}
-              disabled={isBeforeOctober}
-            >
-              +1 Jahr verlängern
-            </Button>
-          </Box>
-        </Tooltip>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, marginTop: 2 }}>
+          {isBeforeOctober && (
+            <Typography variant="caption" sx={{ color: "gray", fontStyle: "italic" }}>
+              Ab 01.10 anwählbar
+            </Typography>
+          )}
+          <Button
+            onClick={() => requestExtension(entry.id)}
+            variant="contained"
+            color="primary"
+            disabled={isBeforeOctober}
+          >
+            +1 Jahr verlängern
+          </Button>
+        </Box>
         {role === "Admin" && (
           <Box sx={{ marginTop: 2 }}>
             <Button
@@ -454,7 +446,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             onClick={handleOpenManualEntryDialog}
             variant="contained"
             color="primary"
-            startIcon=<EditIcon />
+            startIcon={<EditIcon />}
             fullWidth
           >
             Bestehenden Abonnenten einpflegen
