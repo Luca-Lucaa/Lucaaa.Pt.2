@@ -77,7 +77,7 @@ const App = () => {
   const [entries, setEntries] = useState([]);
   const [file, setFile] = useState(null);
   const [menuAnchorEl, setMenuAnchorEl] = useState(null); // Einheitliches Menü für mobile Geräte
-  const [guidesAnchorEl, setGuidesAnchorEl] = useState(null); // Für Anleitungen-Menü (Desktop)
+  const [guidesAnchorEl, setGuidesAnchorEl] = useState(null); // Für Anleitungen-Menü (Desktop und Mobile)
   const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const { messages, unreadCount, markAsRead } = useMessages(loggedInUser, selectedUser);
@@ -195,6 +195,7 @@ const App = () => {
 
   const handleMenuClose = () => {
     setMenuAnchorEl(null);
+    setGuidesAnchorEl(null); // Schließe auch das Anleitungen-Menü, falls offen
   };
 
   const handleImportOpen = () => {
@@ -203,7 +204,7 @@ const App = () => {
   };
 
   const handleGuidesClick = (event) => {
-    setGuidesAnchorEl(event.currentTarget);
+    setGuidesAnchorEl(event.currentTarget || menuAnchorEl); // Unterstützt sowohl Desktop als auch Mobile
   };
 
   const handleGuidesClose = () => {
@@ -219,7 +220,7 @@ const App = () => {
   const handleGuideDownload = (path) => {
     window.open(path, "_blank"); // Öffnet die PDF in einem neuen Tab
     setGuidesAnchorEl(null);
-    setMenuAnchorEl(null); // Schließe auch das mobile Menü, falls offen
+    setMenuAnchorEl(null); // Schließe beide Menüs
   };
 
   const theme = useTheme();
@@ -265,7 +266,7 @@ const App = () => {
                         variant="contained"
                         color="secondary"
                         startIcon={<BackupIcon />}
-                        onClick={handleMenuClick} // Verwende handleMenuClick für Konsistenz
+                        onClick={handleMenuClick}
                         sx={{ mr: 1 }}
                       >
                         Backup
