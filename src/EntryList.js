@@ -267,6 +267,33 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
+  // Funktion zur Zählung der Einträge des Benutzers
+  const countEntriesByOwner = (owner) => {
+    return entries.filter((entry) => entry.owner === owner).length;
+  };
+
+  // Motivationsnachricht basierend auf der Anzahl der Einträge
+  const entryCount = countEntriesByOwner(loggedInUser);
+  let motivationMessage = "";
+  if (entryCount >= 10 && entryCount < 15) {
+    motivationMessage =
+      "🎉 Super! Du hast bereits 10 Einträge erreicht! Mach weiter so, du bist auf dem besten Weg zu 15!";
+  } else if (entryCount >= 15 && entryCount < 20) {
+    motivationMessage =
+      "🎉 Fantastisch! 15 Einträge sind erreicht! Nur noch 5 bis zu 20! Lass uns das schaffen!";
+  } else if (entryCount >= 20 && entryCount < 25) {
+    motivationMessage =
+      "🎉 Großartig! Du hast 20 Einträge! Nur noch 5 bis zu 25! Weiter so!";
+  } else if (entryCount >= 25) {
+    motivationMessage =
+      "🎉 Wow! Du hast 25 Einträge erreicht! Deine Kreativität kennt keine Grenzen! Mach weiter so!";
+  } else if (entryCount > 0) {
+    motivationMessage = `🎉 Du hast ${entryCount} Einträge erstellt! Weiter so, der nächste Meilenstein ist 5!`;
+  } else {
+    motivationMessage =
+      "🎉 Du hast noch keine Einträge erstellt. Lass uns mit dem ersten Eintrag beginnen!";
+  }
+
   const handleOpenCreateEntryDialog = () => {
     const username = generateUsername(loggedInUser);
     const randomPassword = Math.random().toString(36).slice(-8);
@@ -371,29 +398,36 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
         sx={{
           padding: 2,
           display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
+          flexDirection: "column",
           gap: 2,
           marginBottom: 3,
         }}
       >
-        <Button
-          onClick={handleOpenCreateEntryDialog}
-          variant="contained"
-          color="success"
-          startIcon={<AddIcon />}
-          fullWidth
-        >
-          Abonnent anlegen
-        </Button>
-        <Button
-          onClick={handleOpenManualEntryDialog}
-          variant="contained"
-          color="primary"
-          startIcon={<EditIcon />}
-          fullWidth
-        >
-          Bestehenden Abonnenten einpflegen
-        </Button>
+        {/* Motivationsnachricht anzeigen */}
+        <Typography variant="body1" sx={{ fontStyle: "italic", color: "green" }}>
+          {motivationMessage}
+        </Typography>
+
+        <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
+          <Button
+            onClick={handleOpenCreateEntryDialog}
+            variant="contained"
+            color="success"
+            startIcon={<AddIcon />}
+            fullWidth
+          >
+            Abonnent anlegen
+          </Button>
+          <Button
+            onClick={handleOpenManualEntryDialog}
+            variant="contained"
+            color="primary"
+            startIcon={<EditIcon />}
+            fullWidth
+          >
+            Bestehenden Abonnenten einpflegen
+          </Button>
+        </Box>
       </Box>
       {role === "Admin" && (
         <Box sx={{ marginBottom: 3, padding: 2 }}>
