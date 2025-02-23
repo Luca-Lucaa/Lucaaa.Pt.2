@@ -16,6 +16,7 @@ import {
   MenuItem,
   Snackbar,
   Alert,
+  Tooltip,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddIcon from "@mui/icons-material/Add";
@@ -63,6 +64,17 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
   };
 
   const requestExtension = async (entryId) => {
+    // Prüfe, ob das aktuelle Datum ab dem 1. Oktober des aktuellen Jahres ist
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const octoberFirst = new Date(currentYear, 9, 1); // Monat 9 = Oktober (0-basiert)
+
+    if (today < octoberFirst) {
+      setSnackbarMessage("Die Verlängerung ist erst ab dem 01.10. aktiviert.");
+      setSnackbarOpen(true);
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("entries")
@@ -119,6 +131,12 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
   const getPaymentStatusColor = (paymentStatus) =>
     paymentStatus === "Gezahlt" ? "green" : paymentStatus === "Nicht gezahlt" ? "red" : "black";
 
+  // Prüfe, ob das aktuelle Datum vor dem 1. Oktober liegt
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const octoberFirst = new Date(currentYear, 9, 1); // Monat 9 = Oktober (0-basiert)
+  const isBeforeOctober = today < octoberFirst;
+
   return (
     <Accordion sx={{ marginBottom: 2 }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -164,14 +182,26 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
             <span style={{ color: "green" }}> (Verlängerung genehmigt)</span>
           )}
         </Typography>
-        <Button
-          onClick={() => requestExtension(entry.id)}
-          variant="contained"
-          color="primary"
-          sx={{ marginTop: 2 }}
+        <Tooltip
+          title={
+            isBeforeOctober
+              ? "Die Verlängerung ist erst ab dem 01.10. des aktuellen Jahres möglich."
+              : ""
+          }
+          placement="top"
         >
-          +1 Jahr verlängern
-        </Button>
+          <span>
+            <Button
+              onClick={() => requestExtension(entry.id)}
+              variant="contained"
+              color="primary"
+              sx={{ marginTop: 2 }}
+              disabled={isBeforeOctober}
+            >
+              +1 Jahr verlängern
+            </Button>
+          </span>
+        </Tooltip>
         {role === "Admin" && (
           <Box sx={{ marginTop: 2 }}>
             <Button
@@ -288,7 +318,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
     motivationMessage =
       "🎉 Wow! Du hast 25 Einträge erreicht! Deine Kreativität kennt keine Grenzen! Mach weiter so!";
   } else if (entryCount > 0) {
-    motivationMessage = `🎉 Du hast ${entryCount} Einträge erstellt! Weiter so, der nächste Meilenstein ist 10!`;
+    motivationMessage = `🎉 Du hast ${entryCount} Einträge erstellt! Weiter so, der nächste Meilenstein ist 5!`;
   } else {
     motivationMessage =
       "🎉 Du hast noch keine Einträge erstellt. Lass uns mit dem ersten Eintrag beginnen!";
