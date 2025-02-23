@@ -19,6 +19,7 @@ import {
   DialogActions,
 } from "@mui/material";
 import BackupIcon from "@mui/icons-material/Backup";
+import DescriptionIcon from "@mui/icons-material/Description"; // Icon für Anleitungen
 import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
 import { supabase } from "./supabaseClient";
 import ChatMessage from "./ChatMessage";
@@ -71,8 +72,9 @@ const App = () => {
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
   const [entries, setEntries] = useState([]);
   const [file, setFile] = useState(null);
-  const [anchorEl, setAnchorEl] = useState(null); // Für das Dropdown-Menü
-  const [importDialogOpen, setImportDialogOpen] = useState(false); // Für den Import-Dialog
+  const [backupAnchorEl, setBackupAnchorEl] = useState(null); // Für Backup-Menü
+  const [guidesAnchorEl, setGuidesAnchorEl] = useState(null); // Für Anleitungen-Menü
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const { messages, unreadCount, markAsRead } = useMessages(loggedInUser, selectedUser);
 
@@ -152,7 +154,7 @@ const App = () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     showSnackbar("Backup erfolgreich erstellt!");
-    setAnchorEl(null); // Schließe das Menü
+    setBackupAnchorEl(null);
   };
 
   const handleFileChange = (event) => {
@@ -176,7 +178,6 @@ const App = () => {
         showSnackbar("Backup erfolgreich importiert!");
         setFile(null);
         setImportDialogOpen(false);
-        setAnchorEl(null); // Schließe das Menü
       } catch (error) {
         handleError(error, setSnackbarMessage, setSnackbarOpen);
       }
@@ -185,16 +186,35 @@ const App = () => {
   };
 
   const handleBackupClick = (event) => {
-    setAnchorEl(event.currentTarget);
+    setBackupAnchorEl(event.currentTarget);
   };
 
   const handleBackupClose = () => {
-    setAnchorEl(null);
+    setBackupAnchorEl(null);
   };
 
   const handleImportOpen = () => {
     setImportDialogOpen(true);
-    setAnchorEl(null); // Schließe das Menü
+    setBackupAnchorEl(null);
+  };
+
+  const handleGuidesClick = (event) => {
+    setGuidesAnchorEl(event.currentTarget);
+  };
+
+  const handleGuidesClose = () => {
+    setGuidesAnchorEl(null);
+  };
+
+  // Liste der verfügbaren Anleitungen (statisch definiert)
+  const guides = [
+    { name: "Anleitung 1", path: "/guides/PlockTV.pdf" },
+    { name: "Anleitung 2", path: "/guides/guide2.pdf" },
+  ];
+
+  const handleGuideDownload = (path) => {
+    window.open(path, "_blank"); // Öffnet die PDF in einem neuen Tab
+    setGuidesAnchorEl(null);
   };
 
   useEffect(() => {
@@ -218,30 +238,53 @@ const App = () => {
               </Typography>
             )}
             {role === "Admin" && (
-              <Box sx={{ marginRight: 2 }}>
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  startIcon={<BackupIcon />}
-                  onClick={handleBackupClick}
-                >
-                  Backup
-                </Button>
-                <Menu
-                  anchorEl={anchorEl}
-                  open={Boolean(anchorEl)}
-                  onClose={handleBackupClose}
-                >
-                  <MenuItem onClick={exportEntries}>Backup erstellen</MenuItem>
-                  <MenuItem onClick={handleImportOpen}>Backup importieren</MenuItem>
-                </Menu>
-              </Box>
+              <>
+                <Box sx={{ marginRight: 2 }}>
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    startIcon={<BackupIcon />}
+                    onClick={handleBackupClick}
+                  >
+                    Backup
+                  </Button>
+                  <Menu
+                    anchorEl={backupAnchorEl}
+                    open={Boolean(backupAnchorEl)}
+                    onClose={handleBackupClose}
+                  >
+                    <MenuItem onClick={exportEntries}>Backup erstellen</MenuItem>
+                    <MenuItem onClick={handleImportOpen}>Backup importieren</MenuItem>
+                  </Menu>
+                </Box>
+                <Box sx={{ marginRight: 2 }}>
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    startIcon={<DescriptionIcon />}
+                    onClick={handleGuidesClick}
+                  >
+                    Anleitungen
+                  </Button>
+                  <Menu
+                    anchorEl={guidesAnchorEl}
+                    open={Boolean(guidesAnchorEl)}
+                    onClose={handleGuidesClose}
+                  >
+                    {guides.map((guide) => (
+                      <MenuItem key={guide.name} onClick={() => handleGuideDownload(guide.path)}>
+                        {guide.name}
+                      </MenuItem>
+                    ))}
+                  </Menu>
+                </Box>
+              </>
             )}
             {loggedInUser && (
               <Button
                 onClick={handleLogout}
                 color="inherit"
-                sx={{ fontSize: { xs: "12px", sm: "14px" } }}
+                sx={{ fontSize: { xs: "12px", sm: "16px" } }}
               >
                 🔓 Logout
               </Button>
