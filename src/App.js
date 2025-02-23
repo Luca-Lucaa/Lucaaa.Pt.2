@@ -208,8 +208,8 @@ const App = () => {
 
   // Liste der verfügbaren Anleitungen (statisch definiert)
   const guides = [
-    { name: "Anleitung PlockTV", path: "/guides/PlockTV.pdf" },
-    { name: "Anleitung TiviMate", path: "/guides/guide2.pdf" },
+    { name: "Anleitung 1", path: "/guides/guide1.pdf" },
+    { name: "Anleitung 2", path: "/guides/guide2.pdf" },
   ];
 
   const handleGuideDownload = (path) => {
@@ -237,7 +237,7 @@ const App = () => {
                 {userEmojis[loggedInUser]} {loggedInUser}
               </Typography>
             )}
-            {role === "Admin" && (
+            {loggedInUser && ( // Änderung: Nur für eingeloggte Benutzer, nicht nur Admin
               <>
                 <Box sx={{ marginRight: 2 }}>
                   <Button
