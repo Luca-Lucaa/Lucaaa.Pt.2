@@ -18,12 +18,16 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
 import BackupIcon from "@mui/icons-material/Backup";
 import DescriptionIcon from "@mui/icons-material/Description"; // Icon für Anleitungen
 import MenuIcon from "@mui/icons-material/Menu"; // Icon für mobiles Menü
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore"; // Icon für Accordion
 import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
 import { supabase } from "./supabaseClient";
 import ChatMessage from "./ChatMessage";
@@ -79,6 +83,7 @@ const App = () => {
   const [menuAnchorEl, setMenuAnchorEl] = useState(null); // Einheitliches Menü für mobile Geräte
   const [guidesAnchorEl, setGuidesAnchorEl] = useState(null); // Für Anleitungen-Menü (Desktop und Mobile)
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [chatExpanded, setChatExpanded] = useState(false); // Zustand für den Accordion des Chats
 
   const { messages, unreadCount, markAsRead } = useMessages(loggedInUser, selectedUser);
 
@@ -350,89 +355,94 @@ const App = () => {
             </Grid>
           ) : (
             <>
-              <Box
-                sx={{
-                  marginTop: 2,
-                  marginBottom: 2,
-                  border: "1px solid #ccc",
-                  borderRadius: 2,
-                  padding: 2,
-                  backgroundColor: "background.paper",
-                }}
-              >
-                <Typography variant="h6" gutterBottom>
-                  Chatverlauf mit {selectedUser}
-                </Typography>
-                {role === "Admin" ? (
-                  <Box sx={{ display: "flex", gap: 1, marginBottom: 2 }}>
-                    <Badge badgeContent={unreadCount["Scholli"] || 0} color="error">
-                      <Button
-                        variant={selectedUser === "Scholli" ? "contained" : "outlined"}
-                        color="primary"
-                        onClick={() => setSelectedUser("Scholli")}
-                      >
-                        Scholli {userEmojis["Scholli"]}
-                      </Button>
-                    </Badge>
-                    <Badge badgeContent={unreadCount["Jamaica05"] || 0} color="error">
-                      <Button
-                        variant={selectedUser === "Jamaica05" ? "contained" : "outlined"}
-                        color="primary"
-                        onClick={() => setSelectedUser("Jamaica05")}
-                      >
-                        Jamaica05 {userEmojis["Jamaica05"]}
-                      </Button>
-                    </Badge>
+              <Accordion expanded={chatExpanded} onChange={() => setChatExpanded(!chatExpanded)} sx={{ mb: 2 }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="h6">Chatverlauf mit {selectedUser}</Typography>
+                  {role === "Admin" ? (
+                    <Box sx={{ display: "flex", gap: 1, ml: 2 }}>
+                      <Badge badgeContent={unreadCount["Scholli"] || 0} color="error">
+                        <Button
+                          variant={selectedUser === "Scholli" ? "contained" : "outlined"}
+                          color="primary"
+                          onClick={(e) => {
+                            e.stopPropagation(); // Verhindert, dass der Accordion toggled wird
+                            setSelectedUser("Scholli");
+                          }}
+                          sx={{ minWidth: 0, p: 0.5 }}
+                        >
+                          Scholli {userEmojis["Scholli"]}
+                        </Button>
+                      </Badge>
+                      <Badge badgeContent={unreadCount["Jamaica05"] || 0} color="error">
+                        <Button
+                          variant={selectedUser === "Jamaica05" ? "contained" : "outlined"}
+                          color="primary"
+                          onClick={(e) => {
+                            e.stopPropagation(); // Verhindert, dass der Accordion toggled wird
+                            setSelectedUser("Jamaica05");
+                          }}
+                          sx={{ minWidth: 0, p: 0.5 }}
+                        >
+                          Jamaica05 {userEmojis["Jamaica05"]}
+                        </Button>
+                      </Badge>
+                    </Box>
+                  ) : (
+                    <Box sx={{ ml: 2 }}>
+                      <Badge badgeContent={unreadCount["Admin"] || 0} color="error">
+                        <Button
+                          variant={selectedUser === "Admin" ? "contained" : "outlined"}
+                          color="primary"
+                          onClick={(e) => {
+                            e.stopPropagation(); // Verhindert, dass der Accordion toggled wird
+                            setSelectedUser("Admin");
+                          }}
+                          sx={{ minWidth: 0, p: 0.5 }}
+                        >
+                          Admin {userEmojis["Admin"]}
+                        </Button>
+                      </Badge>
+                    </Box>
+                  )}
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Box sx={{ maxHeight: "50vh", overflowY: "auto", mb: 2 }}>
+                    {messages.map((msg) => (
+                      <ChatMessage
+                        key={msg.id}
+                        message={msg.message}
+                        sender={msg.sender}
+                        timestamp={msg.created_at}
+                        isOwnMessage={msg.sender === loggedInUser}
+                      />
+                    ))}
                   </Box>
-                ) : (
-                  <Box sx={{ marginBottom: 2 }}>
-                    <Badge badgeContent={unreadCount["Admin"] || 0} color="error">
-                      <Button
-                        variant={selectedUser === "Admin" ? "contained" : "outlined"}
-                        color="primary"
-                        onClick={() => setSelectedUser("Admin")}
-                      >
-                        Admin {userEmojis["Admin"]}
-                      </Button>
-                    </Badge>
-                  </Box>
-                )}
-                <Box sx={{ maxHeight: "50vh", overflowY: "auto", marginBottom: 2 }}>
-                  {messages.map((msg) => (
-                    <ChatMessage
-                      key={msg.id}
-                      message={msg.message}
-                      sender={msg.sender}
-                      timestamp={msg.created_at}
-                      isOwnMessage={msg.sender === loggedInUser}
+                  <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1 }}>
+                    <TextField
+                      label="Neue Nachricht"
+                      variant="outlined"
+                      fullWidth
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          sendMessage();
+                        }
+                      }}
                     />
-                  ))}
-                </Box>
-                <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1 }}>
-                  <TextField
-                    label="Neue Nachricht"
-                    variant="outlined"
-                    fullWidth
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        sendMessage();
-                      }
-                    }}
-                  />
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={sendMessage}
-                    sx={{ width: { xs: "100%", sm: "auto" } }}
-                    disabled={!newMessage.trim()}
-                  >
-                    Senden
-                  </Button>
-                </Box>
-              </Box>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={sendMessage}
+                      sx={{ width: { xs: "100%", sm: "auto" } }}
+                      disabled={!newMessage.trim()}
+                    >
+                      Senden
+                    </Button>
+                  </Box>
+                </AccordionDetails>
+              </Accordion>
               <EntryList role={role} loggedInUser={loggedInUser} entries={entries} setEntries={setEntries} />
             </>
           )}
