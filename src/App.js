@@ -228,7 +228,7 @@ const App = () => {
       <StyledContainer>
         <StyledAppBar position="static">
           <Toolbar>
-            <Typography variant="h6">Eintragsverwaltung</Typography>
+            <Typography variant="h6">Luca-TV</Typography>
             {loggedInUser && (
               <Typography
                 variant="h6"
