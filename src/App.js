@@ -76,8 +76,8 @@ const App = () => {
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
   const [entries, setEntries] = useState([]);
   const [file, setFile] = useState(null);
-  const [backupAnchorEl, setBackupAnchorEl] = useState(null); // Für Backup-Menü
-  const [guidesAnchorEl, setGuidesAnchorEl] = useState(null); // Für Anleitungen-Menü
+  const [menuAnchorEl, setMenuAnchorEl] = useState(null); // Einheitliches Menü für mobile Geräte
+  const [guidesAnchorEl, setGuidesAnchorEl] = useState(null); // Für Anleitungen-Menü (Desktop)
   const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const { messages, unreadCount, markAsRead } = useMessages(loggedInUser, selectedUser);
@@ -158,7 +158,7 @@ const App = () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     showSnackbar("Backup erfolgreich erstellt!");
-    setBackupAnchorEl(null);
+    setMenuAnchorEl(null);
   };
 
   const handleFileChange = (event) => {
@@ -189,17 +189,17 @@ const App = () => {
     reader.readAsText(file);
   };
 
-  const handleBackupClick = (event) => {
-    setBackupAnchorEl(event.currentTarget);
+  const handleMenuClick = (event) => {
+    setMenuAnchorEl(event.currentTarget);
   };
 
-  const handleBackupClose = () => {
-    setBackupAnchorEl(null);
+  const handleMenuClose = () => {
+    setMenuAnchorEl(null);
   };
 
   const handleImportOpen = () => {
     setImportDialogOpen(true);
-    setBackupAnchorEl(null);
+    setMenuAnchorEl(null);
   };
 
   const handleGuidesClick = (event) => {
@@ -219,6 +219,7 @@ const App = () => {
   const handleGuideDownload = (path) => {
     window.open(path, "_blank"); // Öffnet die PDF in einem neuen Tab
     setGuidesAnchorEl(null);
+    setMenuAnchorEl(null); // Schließe auch das mobile Menü, falls offen
   };
 
   const theme = useTheme();
@@ -251,7 +252,7 @@ const App = () => {
                   <IconButton
                     variant="contained"
                     color="secondary"
-                    onClick={handleBackupClick}
+                    onClick={handleMenuClick}
                     sx={{ p: 0.5 }}
                   >
                     <MenuIcon />
@@ -264,7 +265,7 @@ const App = () => {
                         variant="contained"
                         color="secondary"
                         startIcon={<BackupIcon />}
-                        onClick={handleBackupClick}
+                        onClick={handleMenuClick} // Verwende handleMenuClick für Konsistenz
                         sx={{ mr: 1 }}
                       >
                         Backup
@@ -280,27 +281,52 @@ const App = () => {
                     </Button>
                   </>
                 )}
-                {!isMobile && (
+                {isMobile ? (
                   <Menu
-                    anchorEl={backupAnchorEl}
-                    open={Boolean(backupAnchorEl)}
-                    onClose={handleBackupClose}
+                    anchorEl={menuAnchorEl}
+                    open={Boolean(menuAnchorEl)}
+                    onClose={handleMenuClose}
                   >
-                    <MenuItem onClick={exportEntries}>Backup erstellen</MenuItem>
-                    <MenuItem onClick={handleImportOpen}>Backup importieren</MenuItem>
-                  </Menu>
-                )}
-                <Menu
-                  anchorEl={guidesAnchorEl}
-                  open={Boolean(guidesAnchorEl)}
-                  onClose={handleGuidesClose}
-                >
-                  {guides.map((guide) => (
-                    <MenuItem key={guide.name} onClick={() => handleGuideDownload(guide.path)}>
-                      {guide.name}
+                    {role === "Admin" && (
+                      <>
+                        <MenuItem onClick={exportEntries}>Backup erstellen</MenuItem>
+                        <MenuItem onClick={handleImportOpen}>Backup importieren</MenuItem>
+                      </>
+                    )}
+                    <MenuItem onClick={() => {
+                      handleGuidesClick({ currentTarget: menuAnchorEl });
+                      setMenuAnchorEl(null);
+                    }}>
+                      Anleitungen
                     </MenuItem>
-                  ))}
-                </Menu>
+                  </Menu>
+                ) : (
+                  <>
+                    <Menu
+                      anchorEl={menuAnchorEl}
+                      open={Boolean(menuAnchorEl)}
+                      onClose={handleMenuClose}
+                    >
+                      {role === "Admin" && (
+                        <>
+                          <MenuItem onClick={exportEntries}>Backup erstellen</MenuItem>
+                          <MenuItem onClick={handleImportOpen}>Backup importieren</MenuItem>
+                        </>
+                      )}
+                    </Menu>
+                    <Menu
+                      anchorEl={guidesAnchorEl}
+                      open={Boolean(guidesAnchorEl)}
+                      onClose={handleGuidesClose}
+                    >
+                      {guides.map((guide) => (
+                        <MenuItem key={guide.name} onClick={() => handleGuideDownload(guide.path)}>
+                          {guide.name}
+                        </MenuItem>
+                      ))}
+                    </Menu>
+                  </>
+                )}
               </Box>
             )}
             {loggedInUser && (
