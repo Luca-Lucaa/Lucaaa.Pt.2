@@ -146,27 +146,9 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
     <Accordion sx={{ marginBottom: 2, borderRadius: 2, boxShadow: 1 }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, width: "100%" }}>
-          <Box
-            sx={{
-              width: 12,
-              height: 12,
-              borderRadius: "50%",
-              backgroundColor: getStatusColor(entry.status),
-            }}
-          />
           <Typography sx={{ flexGrow: 1 }}>
             <strong>{entry.aliasNotes}</strong> ({entry.username})
           </Typography>
-          <Chip
-            label={entry.status}
-            size="small"
-            sx={{ backgroundColor: getStatusColor(entry.status), color: "white" }}
-          />
-          <Chip
-            label={entry.paymentStatus}
-            size="small"
-            sx={{ backgroundColor: getPaymentStatusColor(entry.paymentStatus), color: "white" }}
-          />
         </Box>
       </AccordionSummary>
       <AccordionDetails>
@@ -178,10 +160,22 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
             <strong>Typ:</strong> {entry.type}
           </Typography>
           <Typography>
+            <strong>Benutzername:</strong> {entry.username}
+          </Typography>
+          <Typography>
             <strong>Passwort:</strong> {entry.password}
           </Typography>
           <Typography>
+            <strong>Spitzname:</strong> {entry.aliasNotes}
+          </Typography>
+          <Typography>
             <strong>Bouget-Liste:</strong> {entry.bougetList || "Nicht angegeben"}
+          </Typography>
+          <Typography sx={{ color: getStatusColor(entry.status) }}>
+            <strong>Status:</strong> {entry.status}
+          </Typography>
+          <Typography sx={{ color: getPaymentStatusColor(entry.paymentStatus) }}>
+            <strong>Zahlung:</strong> {entry.paymentStatus}
           </Typography>
           <Typography>
             <strong>Erstellt am:</strong> {formatDate(entry.createdAt)}
