@@ -36,7 +36,7 @@ const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
   return (
     <Box sx={{ marginBottom: 2 }}>
       <Typography variant="h6" gutterBottom>
-        Chatverlauf
+        Chat {/* Geändert von "Chatverlauf" zu "Chat" */}
       </Typography>
       <List>
         {displayedMessages.map((msg) => (
