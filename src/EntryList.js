@@ -17,6 +17,7 @@ import {
   Snackbar,
   Alert,
   Chip,
+  IconButton,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddIcon from "@mui/icons-material/Add";
@@ -29,6 +30,8 @@ import { formatDate, generateUsername, useDebounce, handleError } from "./utils"
 const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMessage, setSnackbarOpen }) => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [extensionConfirmOpen, setExtensionConfirmOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false); // Für das Bearbeitungs-Dialogfeld
+  const [editedAliasNotes, setEditedAliasNotes] = useState(entry.aliasNotes); // Zustand für den bearbeiteten Spitzname
 
   const changePaymentStatus = async (entryId, paymentStatus) => {
     try {
@@ -132,6 +135,29 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
     }
   };
 
+  const updateAliasNotes = async () => {
+    if (!editedAliasNotes.trim()) {
+      setSnackbarMessage("Spitzname darf nicht leer sein.");
+      setSnackbarOpen(true);
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from("entries")
+        .update({ aliasNotes: editedAliasNotes })
+        .eq("id", entry.id);
+      if (error) throw error;
+      setEntries((prev) =>
+        prev.map((e) => (e.id === entry.id ? { ...e, aliasNotes: editedAliasNotes } : e))
+      );
+      setEditDialogOpen(false);
+      setSnackbarMessage("Spitzname erfolgreich aktualisiert.");
+      setSnackbarOpen(true);
+    } catch (error) {
+      handleError(error, setSnackbarMessage, setSnackbarOpen);
+    }
+  };
+
   const getStatusColor = (status) =>
     status === "Aktiv" ? "green" : status === "Inaktiv" ? "red" : "black";
   const getPaymentStatusColor = (paymentStatus) =>
@@ -141,6 +167,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
   const currentYear = today.getFullYear();
   const octoberFirst = new Date(currentYear, 9, 1);
   const isBeforeOctober = today < octoberFirst;
+  const isOwner = entry.owner === loggedInUser; // Prüft, ob der eingeloggte Benutzer der Ersteller ist
 
   return (
     <Accordion sx={{ marginBottom: 2, borderRadius: 2, boxShadow: 1 }}>
@@ -149,6 +176,16 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
           <Typography sx={{ flexGrow: 1 }}>
             <strong>{entry.aliasNotes}</strong> ({entry.username})
           </Typography>
+          <Chip
+            label={entry.status}
+            size="small"
+            sx={{ backgroundColor: getStatusColor(entry.status), color: "white" }}
+          />
+          <Chip
+            label={entry.paymentStatus}
+            size="small"
+            sx={{ backgroundColor: getPaymentStatusColor(entry.paymentStatus), color: "white" }}
+          />
         </Box>
       </AccordionSummary>
       <AccordionDetails>
@@ -165,9 +202,16 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
           <Typography>
             <strong>Passwort:</strong> {entry.password}
           </Typography>
-          <Typography>
-            <strong>Spitzname:</strong> {entry.aliasNotes}
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Typography>
+              <strong>Spitzname:</strong> {entry.aliasNotes}
+            </Typography>
+            {isOwner && (
+              <IconButton size="small" onClick={() => setEditDialogOpen(true)}>
+                <EditIcon />
+              </IconButton>
+            )}
+          </Box>
           <Typography>
             <strong>Bouget-Liste:</strong> {entry.bougetList || "Nicht angegeben"}
           </Typography>
@@ -290,6 +334,26 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
             </Button>
             <Button onClick={() => approveExtension(entry.id)} color="success">
               Genehmigen
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)}>
+          <DialogTitle>Spitzname bearbeiten</DialogTitle>
+          <DialogContent>
+            <TextField
+              label="Spitzname, Notizen etc."
+              fullWidth
+              margin="normal"
+              value={editedAliasNotes}
+              onChange={(e) => setEditedAliasNotes(e.target.value)}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEditDialogOpen(false)} color="secondary">
+              Abbrechen
+            </Button>
+            <Button onClick={updateAliasNotes} color="primary">
+              Speichern
             </Button>
           </DialogActions>
         </Dialog>
