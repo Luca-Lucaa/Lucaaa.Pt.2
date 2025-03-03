@@ -26,8 +26,8 @@ import { formatDate, generateUsername, useDebounce, handleError } from "./utils"
 
 // Unterkomponente: Eintrag
 const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMessage, setSnackbarOpen }) => {
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false); // Dialog für Löschen
-  const [extensionConfirmOpen, setExtensionConfirmOpen] = useState(false); // Dialog für Verlängerung
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [extensionConfirmOpen, setExtensionConfirmOpen] = useState(false);
 
   const changePaymentStatus = async (entryId, paymentStatus) => {
     try {
@@ -60,7 +60,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
       const { error } = await supabase.from("entries").delete().eq("id", entryId);
       if (error) throw error;
       setEntries((prev) => prev.filter((e) => e.id !== entryId));
-      setDeleteConfirmOpen(false); // Schließe den Dialog nach dem Löschen
+      setDeleteConfirmOpen(false);
       setSnackbarMessage("Eintrag erfolgreich gelöscht.");
       setSnackbarOpen(true);
     } catch (error) {
@@ -69,10 +69,9 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
   };
 
   const requestExtension = async (entryId) => {
-    // Prüfe, ob das aktuelle Datum ab dem 1. Oktober des aktuellen Jahres ist
     const today = new Date();
     const currentYear = today.getFullYear();
-    const octoberFirst = new Date(currentYear, 9, 1); // Monat 9 = Oktober (0-basiert)
+    const octoberFirst = new Date(currentYear, 9, 1);
 
     if (today < octoberFirst) {
       setSnackbarMessage("Die Verlängerung ist erst ab dem 01.10. aktiviert.");
@@ -124,7 +123,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
       setEntries((prev) =>
         prev.map((e) => (e.id === entryId ? { ...e, ...data } : e))
       );
-      setExtensionConfirmOpen(false); // Schließe den Dialog nach dem Genehmigen
+      setExtensionConfirmOpen(false);
       setSnackbarMessage("Verlängerung genehmigt.");
       setSnackbarOpen(true);
     } catch (error) {
@@ -137,10 +136,9 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
   const getPaymentStatusColor = (paymentStatus) =>
     paymentStatus === "Gezahlt" ? "green" : paymentStatus === "Nicht gezahlt" ? "red" : "black";
 
-  // Prüfe, ob das aktuelle Datum vor dem 1. Oktober liegt
   const today = new Date();
   const currentYear = today.getFullYear();
-  const octoberFirst = new Date(currentYear, 9, 1); // Monat 9 = Oktober (0-basiert)
+  const octoberFirst = new Date(currentYear, 9, 1);
   const isBeforeOctober = today < octoberFirst;
 
   return (
@@ -227,7 +225,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
               {entry.paymentStatus === "Gezahlt" ? "Setze Nicht gezahlt" : "Setze Gezahlt"}
             </Button>
             <Button
-              onClick={() => setDeleteConfirmOpen(true)} // Öffne Dialog für Löschen
+              onClick={() => setDeleteConfirmOpen(true)}
               variant="contained"
               color="error"
               startIcon={<DeleteIcon />}
@@ -235,7 +233,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
               Löschen
             </Button>
             <Button
-              onClick={() => setExtensionConfirmOpen(true)} // Öffne Dialog für Verlängerung
+              onClick={() => setExtensionConfirmOpen(true)}
               variant="contained"
               color="success"
               sx={{ marginLeft: 1 }}
@@ -261,7 +259,6 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
             )}
           </Box>
         )}
-        {/* Dialog für Bestätigung des Löschens */}
         <Dialog
           open={deleteConfirmOpen}
           onClose={() => setDeleteConfirmOpen(false)}
@@ -282,7 +279,6 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
             </Button>
           </DialogActions>
         </Dialog>
-        {/* Dialog für Bestätigung der Verlängerung */}
         <Dialog
           open={extensionConfirmOpen}
           onClose={() => setExtensionConfirmOpen(false)}
@@ -312,6 +308,8 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   const [openCreateEntryDialog, setOpenCreateEntryDialog] = useState(false);
   const [openManualEntryDialog, setOpenManualEntryDialog] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState(""); // Neuer Filter für Status
+  const [paymentFilter, setPaymentFilter] = useState(""); // Neuer Filter für Zahlungsstatus
   const [selectedUser, setSelectedUser] = useState("");
   const [newEntry, setNewEntry] = useState({
     username: "",
@@ -340,12 +338,10 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  // Funktion zur Zählung der Einträge des Benutzers
   const countEntriesByOwner = (owner) => {
     return entries.filter((entry) => entry.owner === owner).length;
   };
 
-  // Motivationsnachricht basierend auf der Anzahl der Einträge
   const entryCount = countEntriesByOwner(loggedInUser);
   let motivationMessage = "";
   if (entryCount >= 10 && entryCount < 15) {
@@ -460,8 +456,11 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
         [entry.username, entry.aliasNotes].some((field) =>
           field?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
         )
-      );
-  }, [entries, role, selectedUser, loggedInUser, debouncedSearchTerm]);
+      )
+      .filter((entry) => (statusFilter ? entry.status === statusFilter : true))
+      .filter((entry) => (paymentFilter ? entry.paymentStatus === paymentFilter : true))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sortiere von neu nach alt
+  }, [entries, role, selectedUser, loggedInUser, debouncedSearchTerm, statusFilter, paymentFilter]);
 
   const uniqueOwners = [...new Set(entries.map((entry) => entry.owner))];
 
@@ -476,11 +475,9 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           marginBottom: 3,
         }}
       >
-        {/* Motivationsnachricht anzeigen */}
         <Typography variant="body1" sx={{ fontStyle: "italic", color: "green" }}>
           {motivationMessage}
         </Typography>
-
         <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
           <Button
             onClick={handleOpenCreateEntryDialog}
@@ -522,14 +519,39 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           </Box>
         </Box>
       )}
-      <TextField
-        label="🔍 Suchen nach Benutzername oder Spitzname"
-        variant="outlined"
-        fullWidth
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        sx={{ marginBottom: 3, padding: 2 }}
-      />
+      <Box sx={{ marginBottom: 3, padding: 2, display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
+        <TextField
+          label="🔍 Suchen nach Benutzername oder Spitzname"
+          variant="outlined"
+          fullWidth
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <Select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          displayEmpty
+          fullWidth
+          variant="outlined"
+          sx={{ minWidth: 120 }}
+        >
+          <MenuItem value="">Alle Status</MenuItem>
+          <MenuItem value="Aktiv">Aktiv</MenuItem>
+          <MenuItem value="Inaktiv">Inaktiv</MenuItem>
+        </Select>
+        <Select
+          value={paymentFilter}
+          onChange={(e) => setPaymentFilter(e.target.value)}
+          displayEmpty
+          fullWidth
+          variant="outlined"
+          sx={{ minWidth: 120 }}
+        >
+          <MenuItem value="">Alle Zahlungen</MenuItem>
+          <MenuItem value="Gezahlt">Gezahlt</MenuItem>
+          <MenuItem value="Nicht gezahlt">Nicht gezahlt</MenuItem>
+        </Select>
+      </Box>
       <Box sx={{ maxHeight: "60vh", overflowY: "auto", padding: 2 }}>
         {filterEntries.length > 0 ? (
           filterEntries.map((entry) => (
