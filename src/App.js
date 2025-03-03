@@ -84,9 +84,6 @@ const App = () => {
   const [guidesAnchorEl, setGuidesAnchorEl] = useState(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [chatExpanded, setChatExpanded] = useState(false);
-  const [updateDialogOpen, setUpdateDialogOpen] = useState(false); // Für das Neuerungen-Popup
-  const [adminUpdateMessage, setAdminUpdateMessage] = useState(""); // Nachricht vom Admin
-  const [newUpdateMessage, setNewUpdateMessage] = useState(""); // Eingabefeld für Admin
 
   const { messages, unreadCount, markAsRead } = useMessages(loggedInUser, selectedUser);
 
@@ -96,7 +93,7 @@ const App = () => {
     setSnackbarOpen(true);
   };
 
-  const handleLogin = async (username, password) => {
+  const handleLogin = (username, password) => {
     const users = {
       Admin: "Admino25!",
       Scholli: "Scholli25",
@@ -104,26 +101,11 @@ const App = () => {
     };
     if (users[username] === password) {
       setLoggedInUser(username);
-      const userRole = username === "Admin" ? "Admin" : "Friend";
-      setRole(userRole);
+      setRole(username === "Admin" ? "Admin" : "Friend");
       localStorage.setItem("loggedInUser", username);
-      localStorage.setItem("role", userRole);
+      localStorage.setItem("role", username === "Admin" ? "Admin" : "Friend");
       setSelectedUser(username === "Admin" ? "Scholli" : "Admin");
       showSnackbar(`✅ Willkommen, ${username}!`);
-
-      // Prüfe, ob Neuerungen angezeigt werden sollen
-      if (userRole !== "Admin") {
-        const hasSeenUpdate = localStorage.getItem("hasSeenUpdate");
-        if (!hasSeenUpdate) {
-          const { data, error } = await supabase.from("updates").select("message").order("created_at", { ascending: false }).limit(1);
-          if (error) {
-            console.error("Fehler beim Abrufen der Neuerungen:", error);
-          } else if (data && data.length > 0) {
-            setAdminUpdateMessage(data[0].message);
-            setUpdateDialogOpen(true);
-          }
-        }
-      }
     } else {
       showSnackbar("❌ Ungültige Zugangsdaten", "error");
     }
@@ -210,30 +192,6 @@ const App = () => {
       }
     };
     reader.readAsText(file);
-  };
-
-  const saveAdminUpdate = async () => {
-    if (!newUpdateMessage.trim()) {
-      showSnackbar("Bitte eine Nachricht eingeben.", "error");
-      return;
-    }
-    try {
-      const { error } = await supabase
-        .from("updates")
-        .insert([{ message: newUpdateMessage, created_at: new Date().toISOString() }]);
-      if (error) throw error;
-      setNewUpdateMessage("");
-      showSnackbar("Neuerungen erfolgreich gespeichert!");
-      // Setze den "gesehen"-Status zurück, damit alle Benutzer die neue Nachricht sehen
-      localStorage.removeItem("hasSeenUpdate");
-    } catch (error) {
-      handleError(error, setSnackbarMessage, setSnackbarOpen);
-    }
-  };
-
-  const handleUpdateDialogClose = () => {
-    setUpdateDialogOpen(false);
-    localStorage.setItem("hasSeenUpdate", "true"); // Markiere als gesehen
   };
 
   const handleMenuClick = (event) => {
@@ -379,28 +337,6 @@ const App = () => {
             </Grid>
           ) : (
             <>
-              {role === "Admin" && (
-                <Box sx={{ padding: 2, marginBottom: 2, backgroundColor: "background.paper", borderRadius: 2 }}>
-                  <Typography variant="h6">Neuerungen für Ersteller</Typography>
-                  <TextField
-                    label="Neuerungen eingeben"
-                    multiline
-                    rows={4}
-                    fullWidth
-                    value={newUpdateMessage}
-                    onChange={(e) => setNewUpdateMessage(e.target.value)}
-                    sx={{ marginTop: 1 }}
-                  />
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={saveAdminUpdate}
-                    sx={{ marginTop: 2 }}
-                  >
-                    Neuerungen speichern
-                  </Button>
-                </Box>
-              )}
               <Accordion expanded={chatExpanded} onChange={() => setChatExpanded(!chatExpanded)} sx={{ mb: 2 }}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Typography variant="h6">Chat mit {selectedUser}</Typography>
@@ -499,17 +435,6 @@ const App = () => {
             </Button>
             <Button onClick={importBackup} color="primary" disabled={!file}>
               Importieren
-            </Button>
-          </DialogActions>
-        </Dialog>
-        <Dialog open={updateDialogOpen} onClose={handleUpdateDialogClose}>
-          <DialogTitle>Neuigkeiten</DialogTitle>
-          <DialogContent>
-            <Typography>{adminUpdateMessage}</Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleUpdateDialogClose} color="primary">
-              Verstanden
             </Button>
           </DialogActions>
         </Dialog>
