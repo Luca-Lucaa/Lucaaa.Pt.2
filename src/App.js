@@ -25,9 +25,9 @@ import {
   useTheme,
 } from "@mui/material";
 import BackupIcon from "@mui/icons-material/Backup";
-import DescriptionIcon from "@mui/icons-material/Description"; // Icon für Anleitungen
-import MenuIcon from "@mui/icons-material/Menu"; // Icon für mobiles Menü
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore"; // Icon für Accordion
+import DescriptionIcon from "@mui/icons-material/Description";
+import MenuIcon from "@mui/icons-material/Menu";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
 import { supabase } from "./supabaseClient";
 import ChatMessage from "./ChatMessage";
@@ -80,10 +80,13 @@ const App = () => {
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
   const [entries, setEntries] = useState([]);
   const [file, setFile] = useState(null);
-  const [menuAnchorEl, setMenuAnchorEl] = useState(null); // Einheitliches Menü für mobile Geräte
-  const [guidesAnchorEl, setGuidesAnchorEl] = useState(null); // Für Anleitungen-Menü (Desktop und Mobile)
+  const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+  const [guidesAnchorEl, setGuidesAnchorEl] = useState(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [chatExpanded, setChatExpanded] = useState(false); // Zustand für den Accordion des Chats
+  const [chatExpanded, setChatExpanded] = useState(false);
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false); // Für das Neuerungen-Popup
+  const [adminUpdateMessage, setAdminUpdateMessage] = useState(""); // Nachricht vom Admin
+  const [newUpdateMessage, setNewUpdateMessage] = useState(""); // Eingabefeld für Admin
 
   const { messages, unreadCount, markAsRead } = useMessages(loggedInUser, selectedUser);
 
@@ -93,7 +96,7 @@ const App = () => {
     setSnackbarOpen(true);
   };
 
-  const handleLogin = (username, password) => {
+  const handleLogin = async (username, password) => {
     const users = {
       Admin: "Admino25!",
       Scholli: "Scholli25",
@@ -101,11 +104,26 @@ const App = () => {
     };
     if (users[username] === password) {
       setLoggedInUser(username);
-      setRole(username === "Admin" ? "Admin" : "Friend");
+      const userRole = username === "Admin" ? "Admin" : "Friend";
+      setRole(userRole);
       localStorage.setItem("loggedInUser", username);
-      localStorage.setItem("role", username === "Admin" ? "Admin" : "Friend");
+      localStorage.setItem("role", userRole);
       setSelectedUser(username === "Admin" ? "Scholli" : "Admin");
       showSnackbar(`✅ Willkommen, ${username}!`);
+
+      // Prüfe, ob Neuerungen angezeigt werden sollen
+      if (userRole !== "Admin") {
+        const hasSeenUpdate = localStorage.getItem("hasSeenUpdate");
+        if (!hasSeenUpdate) {
+          const { data, error } = await supabase.from("updates").select("message").order("created_at", { ascending: false }).limit(1);
+          if (error) {
+            console.error("Fehler beim Abrufen der Neuerungen:", error);
+          } else if (data && data.length > 0) {
+            setAdminUpdateMessage(data[0].message);
+            setUpdateDialogOpen(true);
+          }
+        }
+      }
     } else {
       showSnackbar("❌ Ungültige Zugangsdaten", "error");
     }
@@ -194,13 +212,37 @@ const App = () => {
     reader.readAsText(file);
   };
 
+  const saveAdminUpdate = async () => {
+    if (!newUpdateMessage.trim()) {
+      showSnackbar("Bitte eine Nachricht eingeben.", "error");
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from("updates")
+        .insert([{ message: newUpdateMessage, created_at: new Date().toISOString() }]);
+      if (error) throw error;
+      setNewUpdateMessage("");
+      showSnackbar("Neuerungen erfolgreich gespeichert!");
+      // Setze den "gesehen"-Status zurück, damit alle Benutzer die neue Nachricht sehen
+      localStorage.removeItem("hasSeenUpdate");
+    } catch (error) {
+      handleError(error, setSnackbarMessage, setSnackbarOpen);
+    }
+  };
+
+  const handleUpdateDialogClose = () => {
+    setUpdateDialogOpen(false);
+    localStorage.setItem("hasSeenUpdate", "true"); // Markiere als gesehen
+  };
+
   const handleMenuClick = (event) => {
     setMenuAnchorEl(event.currentTarget);
   };
 
   const handleMenuClose = () => {
     setMenuAnchorEl(null);
-    setGuidesAnchorEl(null); // Schließe auch das Anleitungen-Menü, falls offen
+    setGuidesAnchorEl(null);
   };
 
   const handleImportOpen = () => {
@@ -209,27 +251,26 @@ const App = () => {
   };
 
   const handleGuidesClick = (event) => {
-    setGuidesAnchorEl(event.currentTarget || menuAnchorEl); // Unterstützt sowohl Desktop als auch Mobile
+    setGuidesAnchorEl(event.currentTarget || menuAnchorEl);
   };
 
   const handleGuidesClose = () => {
     setGuidesAnchorEl(null);
   };
 
-  // Liste der verfügbaren Anleitungen (statisch definiert)
   const guides = [
     { name: "Anleitung PlockTV", path: "/guides/PlockTV.pdf" },
     { name: "Anleitung 2", path: "/guides/guide2.pdf" },
   ];
 
   const handleGuideDownload = (path) => {
-    window.open(path, "_blank"); // Öffnet die PDF in einem neuen Tab
+    window.open(path, "_blank");
     setGuidesAnchorEl(null);
-    setMenuAnchorEl(null); // Schließe beide Menüs
+    setMenuAnchorEl(null);
   };
 
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm")); // Bildschirmgröße < 600px
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   useEffect(() => {
     if (selectedUser && messages.length > 0) {
@@ -254,17 +295,10 @@ const App = () => {
             {loggedInUser && (
               <Box sx={{ marginRight: 2 }}>
                 {isMobile ? (
-                  // Mobiles Menü (Hamburger-Icon mit Dropdown)
-                  <IconButton
-                    variant="contained"
-                    color="secondary"
-                    onClick={handleMenuClick}
-                    sx={{ p: 0.5 }}
-                  >
+                  <IconButton variant="contained" color="secondary" onClick={handleMenuClick} sx={{ p: 0.5 }}>
                     <MenuIcon />
                   </IconButton>
                 ) : (
-                  // Desktop-Ansicht: Separate Buttons
                   <>
                     {role === "Admin" && (
                       <Button
@@ -288,31 +322,25 @@ const App = () => {
                   </>
                 )}
                 {isMobile ? (
-                  <Menu
-                    anchorEl={menuAnchorEl}
-                    open={Boolean(menuAnchorEl)}
-                    onClose={handleMenuClose}
-                  >
+                  <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={handleMenuClose}>
                     {role === "Admin" && (
                       <>
                         <MenuItem onClick={exportEntries}>Backup erstellen</MenuItem>
                         <MenuItem onClick={handleImportOpen}>Backup importieren</MenuItem>
                       </>
                     )}
-                    <MenuItem onClick={() => {
-                      handleGuidesClick({ currentTarget: menuAnchorEl });
-                      setMenuAnchorEl(null);
-                    }}>
+                    <MenuItem
+                      onClick={() => {
+                        handleGuidesClick({ currentTarget: menuAnchorEl });
+                        setMenuAnchorEl(null);
+                      }}
+                    >
                       Anleitungen
                     </MenuItem>
                   </Menu>
                 ) : (
                   <>
-                    <Menu
-                      anchorEl={menuAnchorEl}
-                      open={Boolean(menuAnchorEl)}
-                      onClose={handleMenuClose}
-                    >
+                    <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={handleMenuClose}>
                       {role === "Admin" && (
                         <>
                           <MenuItem onClick={exportEntries}>Backup erstellen</MenuItem>
@@ -320,11 +348,7 @@ const App = () => {
                         </>
                       )}
                     </Menu>
-                    <Menu
-                      anchorEl={guidesAnchorEl}
-                      open={Boolean(guidesAnchorEl)}
-                      onClose={handleGuidesClose}
-                    >
+                    <Menu anchorEl={guidesAnchorEl} open={Boolean(guidesAnchorEl)} onClose={handleGuidesClose}>
                       {guides.map((guide) => (
                         <MenuItem key={guide.name} onClick={() => handleGuideDownload(guide.path)}>
                           {guide.name}
@@ -355,17 +379,39 @@ const App = () => {
             </Grid>
           ) : (
             <>
+              {role === "Admin" && (
+                <Box sx={{ padding: 2, marginBottom: 2, backgroundColor: "background.paper", borderRadius: 2 }}>
+                  <Typography variant="h6">Neuerungen für Ersteller</Typography>
+                  <TextField
+                    label="Neuerungen eingeben"
+                    multiline
+                    rows={4}
+                    fullWidth
+                    value={newUpdateMessage}
+                    onChange={(e) => setNewUpdateMessage(e.target.value)}
+                    sx={{ marginTop: 1 }}
+                  />
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={saveAdminUpdate}
+                    sx={{ marginTop: 2 }}
+                  >
+                    Neuerungen speichern
+                  </Button>
+                </Box>
+              )}
               <Accordion expanded={chatExpanded} onChange={() => setChatExpanded(!chatExpanded)} sx={{ mb: 2 }}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography variant="h6">Chatverlauf mit {selectedUser}</Typography>
-                  {role === "Admin" && ( // Nur für Admin sichtbar
+                  <Typography variant="h6">Chat mit {selectedUser}</Typography>
+                  {role === "Admin" && (
                     <Box sx={{ display: "flex", gap: 1, ml: 2 }}>
                       <Badge badgeContent={unreadCount["Scholli"] || 0} color="error">
                         <Button
                           variant={selectedUser === "Scholli" ? "contained" : "outlined"}
                           color="primary"
                           onClick={(e) => {
-                            e.stopPropagation(); // Verhindert, dass der Accordion toggled wird
+                            e.stopPropagation();
                             setSelectedUser("Scholli");
                           }}
                           sx={{ minWidth: 0, p: 0.5 }}
@@ -378,7 +424,7 @@ const App = () => {
                           variant={selectedUser === "Jamaica05" ? "contained" : "outlined"}
                           color="primary"
                           onClick={(e) => {
-                            e.stopPropagation(); // Verhindert, dass der Accordion toggled wird
+                            e.stopPropagation();
                             setSelectedUser("Jamaica05");
                           }}
                           sx={{ minWidth: 0, p: 0.5 }}
@@ -453,6 +499,17 @@ const App = () => {
             </Button>
             <Button onClick={importBackup} color="primary" disabled={!file}>
               Importieren
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <Dialog open={updateDialogOpen} onClose={handleUpdateDialogClose}>
+          <DialogTitle>Neuigkeiten</DialogTitle>
+          <DialogContent>
+            <Typography>{adminUpdateMessage}</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleUpdateDialogClose} color="primary">
+              Verstanden
             </Button>
           </DialogActions>
         </Dialog>
