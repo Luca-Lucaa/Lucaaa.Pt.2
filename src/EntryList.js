@@ -16,6 +16,7 @@ import {
   MenuItem,
   Snackbar,
   Alert,
+  Chip,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddIcon from "@mui/icons-material/Add";
@@ -142,50 +143,64 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
   const isBeforeOctober = today < octoberFirst;
 
   return (
-    <Accordion sx={{ marginBottom: 2 }}>
+    <Accordion sx={{ marginBottom: 2, borderRadius: 2, boxShadow: 1 }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, width: "100%" }}>
           <Box
             sx={{
-              width: 10,
-              height: 10,
+              width: 12,
+              height: 12,
               borderRadius: "50%",
               backgroundColor: getStatusColor(entry.status),
             }}
           />
-          <Typography>
-            <strong>Erstellt von:</strong> {entry.owner} <br />
-            <strong>Benutzername:</strong> {entry.username} | <strong>Passwort:</strong> {entry.password} |{" "}
-            <strong>Spitzname:</strong> {entry.aliasNotes}
-            {entry.note && <span style={{ color: "red" }}> ({entry.note})</span>}
+          <Typography sx={{ flexGrow: 1 }}>
+            <strong>{entry.aliasNotes}</strong> ({entry.username})
           </Typography>
+          <Chip
+            label={entry.status}
+            size="small"
+            sx={{ backgroundColor: getStatusColor(entry.status), color: "white" }}
+          />
+          <Chip
+            label={entry.paymentStatus}
+            size="small"
+            sx={{ backgroundColor: getPaymentStatusColor(entry.paymentStatus), color: "white" }}
+          />
         </Box>
       </AccordionSummary>
       <AccordionDetails>
-        <Typography style={{ color: "black" }}>
-          <strong>Typ:</strong> {entry.type}
-        </Typography>
-        <Typography style={{ color: "black" }}>
-          <strong>Bouget-Liste:</strong> {entry.bougetList}
-        </Typography>
-        <Typography style={{ color: getStatusColor(entry.status) }}>
-          <strong>Status:</strong> {entry.status}
-        </Typography>
-        <Typography style={{ color: getPaymentStatusColor(entry.paymentStatus) }}>
-          <strong>Zahlung:</strong> {entry.paymentStatus}
-        </Typography>
-        <Typography style={{ color: "black" }}>
-          <strong>Erstellt am:</strong> {formatDate(entry.createdAt)}
-        </Typography>
-        <Typography style={{ color: "black" }}>
-          <strong>Gültig bis:</strong> {formatDate(entry.validUntil)}
-          {entry.extensionRequest?.pending && (
-            <span style={{ color: "orange" }}> (Anfrage beim Admin gestellt)</span>
+        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+          <Typography>
+            <strong>Erstellt von:</strong> {entry.owner}
+          </Typography>
+          <Typography>
+            <strong>Typ:</strong> {entry.type}
+          </Typography>
+          <Typography>
+            <strong>Passwort:</strong> {entry.password}
+          </Typography>
+          <Typography>
+            <strong>Bouget-Liste:</strong> {entry.bougetList || "Nicht angegeben"}
+          </Typography>
+          <Typography>
+            <strong>Erstellt am:</strong> {formatDate(entry.createdAt)}
+          </Typography>
+          <Typography>
+            <strong>Gültig bis:</strong> {formatDate(entry.validUntil)}
+            {entry.extensionRequest?.pending && (
+              <span style={{ color: "orange" }}> (Verlängerung angefragt)</span>
+            )}
+            {entry.extensionRequest?.approved && (
+              <span style={{ color: "green" }}> (Verlängert)</span>
+            )}
+          </Typography>
+          {entry.note && (
+            <Typography sx={{ gridColumn: "span 2", color: "red" }}>
+              <strong>Notiz:</strong> {entry.note}
+            </Typography>
           )}
-          {entry.extensionRequest?.approved && (
-            <span style={{ color: "green" }}> (Verlängerung genehmigt)</span>
-          )}
-        </Typography>
+        </Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, marginTop: 2 }}>
           {isBeforeOctober && (
             <Typography variant="caption" sx={{ color: "gray", fontStyle: "italic" }}>
@@ -194,22 +209,23 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
           )}
           <Button
             onClick={() => requestExtension(entry.id)}
-            variant="contained"
+            variant="outlined"
             color="primary"
             disabled={isBeforeOctober}
+            size="small"
           >
             +1 Jahr verlängern
           </Button>
         </Box>
         {role === "Admin" && (
-          <Box sx={{ marginTop: 2 }}>
+          <Box sx={{ marginTop: 2, display: "flex", gap: 1, flexWrap: "wrap" }}>
             <Button
               onClick={() => changeStatus(entry.id, entry.status === "Aktiv" ? "Inaktiv" : "Aktiv")}
               variant="contained"
               color="secondary"
-              sx={{ marginRight: 1 }}
+              size="small"
             >
-              {entry.status === "Aktiv" ? "Setze Inaktiv" : "Setze Aktiv"}
+              {entry.status === "Aktiv" ? "Inaktiv setzen" : "Aktiv setzen"}
             </Button>
             <Button
               onClick={() =>
@@ -220,15 +236,16 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
               }
               variant="contained"
               color="secondary"
-              sx={{ marginRight: 1 }}
+              size="small"
             >
-              {entry.paymentStatus === "Gezahlt" ? "Setze Nicht gezahlt" : "Setze Gezahlt"}
+              {entry.paymentStatus === "Gezahlt" ? "Nicht gezahlt setzen" : "Gezahlt setzen"}
             </Button>
             <Button
               onClick={() => setDeleteConfirmOpen(true)}
               variant="contained"
               color="error"
               startIcon={<DeleteIcon />}
+              size="small"
             >
               Löschen
             </Button>
@@ -236,39 +253,28 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
               onClick={() => setExtensionConfirmOpen(true)}
               variant="contained"
               color="success"
-              sx={{ marginLeft: 1 }}
+              size="small"
             >
               Verlängerung genehmigen
             </Button>
           </Box>
         )}
-        {role === "Admin" && (
+        {role === "Admin" && entry.extensionHistory?.length > 0 && (
           <Box sx={{ marginTop: 2 }}>
-            <Typography variant="body2">
-              <strong>Verlängerungshistorie:</strong>
+            <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+              Verlängerungshistorie:
             </Typography>
-            {entry.extensionHistory?.length > 0 ? (
-              entry.extensionHistory.map((extension, idx) => (
-                <Typography key={idx} variant="body2">
-                  Verlängerung genehmigt am: {formatDate(extension.approvalDate)} | Gültig bis:{" "}
-                  {formatDate(extension.validUntil)}
-                </Typography>
-              ))
-            ) : (
-              <Typography variant="body2">Keine Verlängerungen vorhanden.</Typography>
-            )}
+            {entry.extensionHistory.map((extension, idx) => (
+              <Typography key={idx} variant="body2">
+                Genehmigt: {formatDate(extension.approvalDate)} | Gültig bis: {formatDate(extension.validUntil)}
+              </Typography>
+            ))}
           </Box>
         )}
-        <Dialog
-          open={deleteConfirmOpen}
-          onClose={() => setDeleteConfirmOpen(false)}
-          aria-labelledby="delete-confirm-dialog"
-        >
-          <DialogTitle id="delete-confirm-dialog">Eintrag löschen</DialogTitle>
+        <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
+          <DialogTitle>Eintrag löschen</DialogTitle>
           <DialogContent>
-            <Typography>
-              Möchtest du den Eintrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
-            </Typography>
+            <Typography>Möchtest du den Eintrag wirklich löschen? Dies kann nicht rückgängig gemacht werden.</Typography>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setDeleteConfirmOpen(false)} color="secondary">
@@ -279,16 +285,10 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
             </Button>
           </DialogActions>
         </Dialog>
-        <Dialog
-          open={extensionConfirmOpen}
-          onClose={() => setExtensionConfirmOpen(false)}
-          aria-labelledby="extension-confirm-dialog"
-        >
-          <DialogTitle id="extension-confirm-dialog">Verlängerung genehmigen</DialogTitle>
+        <Dialog open={extensionConfirmOpen} onClose={() => setExtensionConfirmOpen(false)}>
+          <DialogTitle>Verlängerung genehmigen</DialogTitle>
           <DialogContent>
-            <Typography>
-              Möchtest du die Verlängerung wirklich genehmigen? Dies verlängert die Gültigkeit um ein Jahr.
-            </Typography>
+            <Typography>Möchtest du die Verlängerung um ein Jahr genehmigen?</Typography>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setExtensionConfirmOpen(false)} color="secondary">
@@ -308,8 +308,8 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   const [openCreateEntryDialog, setOpenCreateEntryDialog] = useState(false);
   const [openManualEntryDialog, setOpenManualEntryDialog] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState(""); // Neuer Filter für Status
-  const [paymentFilter, setPaymentFilter] = useState(""); // Neuer Filter für Zahlungsstatus
+  const [statusFilter, setStatusFilter] = useState("");
+  const [paymentFilter, setPaymentFilter] = useState("");
   const [selectedUser, setSelectedUser] = useState("");
   const [newEntry, setNewEntry] = useState({
     username: "",
@@ -459,22 +459,14 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       )
       .filter((entry) => (statusFilter ? entry.status === statusFilter : true))
       .filter((entry) => (paymentFilter ? entry.paymentStatus === paymentFilter : true))
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sortiere von neu nach alt
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }, [entries, role, selectedUser, loggedInUser, debouncedSearchTerm, statusFilter, paymentFilter]);
 
   const uniqueOwners = [...new Set(entries.map((entry) => entry.owner))];
 
   return (
     <div>
-      <Box
-        sx={{
-          padding: 2,
-          display: "flex",
-          flexDirection: "column",
-          gap: 2,
-          marginBottom: 3,
-        }}
-      >
+      <Box sx={{ padding: 2, display: "flex", flexDirection: "column", gap: 2, marginBottom: 3 }}>
         <Typography variant="body1" sx={{ fontStyle: "italic", color: "green" }}>
           {motivationMessage}
         </Typography>
