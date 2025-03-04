@@ -174,7 +174,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
           validUntil: adminEditedEntry.validUntil,
           bougetList: adminEditedEntry.bougetList,
           note: adminEditedEntry.note,
-          admin_fee: adminEditedEntry.adminFee, // Angepasst auf admin_fee
+          admin_fee: adminEditedEntry.adminFee, // admin_fee wird verwendet
         })
         .eq("id", entry.id);
       if (error) throw error;
@@ -264,8 +264,8 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
               <span style={{ color: "green" }}> (Verlängert)</span>
             )}
           </Typography>
-          {/* Direkt bearbeitbares Feld für Admin-Gebühr */}
-          {role === "Admin" && (
+          {/* Admin-Gebühr: Unterschiedliche Anzeige für Admin und Ersteller */}
+          {role === "Admin" ? (
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Typography><strong>Admin-Gebühr:</strong></Typography>
               <TextField
@@ -283,7 +283,11 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
               />
               <Typography>$</Typography>
             </Box>
-          )}
+          ) : isOwner ? (
+            <Typography>
+              <strong>Admin-Gebühr:</strong> {entry.adminFee ? `${entry.adminFee}$` : "Nicht gesetzt"}
+            </Typography>
+          ) : null}
           {entry.note && (
             <Typography sx={{ gridColumn: "span 2", color: "red" }}>
               <strong>Notiz:</strong> {entry.note}
