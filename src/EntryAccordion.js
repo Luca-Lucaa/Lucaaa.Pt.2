@@ -21,8 +21,9 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { supabase } from "./supabaseClient";
 import { formatDate, handleError } from "./utils";
+import { useSnackbar } from "./useSnackbar"; // Neuer Import
 
-const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMessage, setSnackbarOpen }) => {
+const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [extensionConfirmOpen, setExtensionConfirmOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -30,6 +31,8 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
   const [editedAliasNotes, setEditedAliasNotes] = useState(entry.aliasNotes);
   const [adminEditedEntry, setAdminEditedEntry] = useState({ ...entry });
   const [isLoading, setIsLoading] = useState(false);
+
+  const { showSnackbar } = useSnackbar(); // Verwende Hook
 
   const changePaymentStatus = useCallback(async (entryId, paymentStatus) => {
     setIsLoading(true);
@@ -40,11 +43,11 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
         prev.map((e) => (e.id === entryId ? { ...e, paymentStatus } : e))
       );
     } catch (error) {
-      handleError(error, setSnackbarMessage, setSnackbarOpen);
+      handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
     }
-  }, [setEntries, setSnackbarMessage, setSnackbarOpen]);
+  }, [setEntries, showSnackbar]);
 
   const changeStatus = useCallback(async (entryId, newStatus) => {
     setIsLoading(true);
@@ -54,14 +57,13 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
       setEntries((prev) =>
         prev.map((e) => (e.id === entryId ? { ...e, status: newStatus } : e))
       );
-      setSnackbarMessage(`Status erfolgreich auf "${newStatus}" geändert.`);
-      setSnackbarOpen(true);
+      showSnackbar(`Status erfolgreich auf "${newStatus}" geändert.`);
     } catch (error) {
-      handleError(error, setSnackbarMessage, setSnackbarOpen);
+      handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
     }
-  }, [setEntries, setSnackbarMessage, setSnackbarOpen]);
+  }, [setEntries, showSnackbar]);
 
   const deleteEntry = useCallback(async (entryId) => {
     setIsLoading(true);
@@ -70,14 +72,13 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
       if (error) throw error;
       setEntries((prev) => prev.filter((e) => e.id !== entryId));
       setDeleteConfirmOpen(false);
-      setSnackbarMessage("Eintrag erfolgreich gelöscht.");
-      setSnackbarOpen(true);
+      showSnackbar("Eintrag erfolgreich gelöscht.");
     } catch (error) {
-      handleError(error, setSnackbarMessage, setSnackbarOpen);
+      handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
     }
-  }, [setEntries, setSnackbarMessage, setSnackbarOpen]);
+  }, [setEntries, showSnackbar]);
 
   const requestExtension = useCallback(async (entryId) => {
     const today = new Date();
@@ -85,8 +86,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
     const octoberFirst = new Date(currentYear, 9, 1);
 
     if (today < octoberFirst) {
-      setSnackbarMessage("Die Verlängerung ist erst ab dem 01.10. aktiviert.");
-      setSnackbarOpen(true);
+      showSnackbar("Die Verlängerung ist erst ab dem 01.10. aktiviert.", "error");
       return;
     }
 
@@ -102,14 +102,13 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
           e.id === entryId ? { ...e, extensionRequest: { pending: true, approved: false } } : e
         )
       );
-      setSnackbarMessage("Anfrage zur Verlängerung gesendet.");
-      setSnackbarOpen(true);
+      showSnackbar("Anfrage zur Verlängerung gesendet.");
     } catch (error) {
-      handleError(error, setSnackbarMessage, setSnackbarOpen);
+      handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
     }
-  }, [setEntries, setSnackbarMessage, setSnackbarOpen]);
+  }, [setEntries, showSnackbar]);
 
   const approveExtension = useCallback(async (entryId) => {
     const currentEntry = entry;
@@ -139,19 +138,17 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
         prev.map((e) => (e.id === entryId ? { ...e, ...data } : e))
       );
       setExtensionConfirmOpen(false);
-      setSnackbarMessage("Verlängerung genehmigt.");
-      setSnackbarOpen(true);
+      showSnackbar("Verlängerung genehmigt.");
     } catch (error) {
-      handleError(error, setSnackbarMessage, setSnackbarOpen);
+      handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
     }
-  }, [entry, setEntries, setSnackbarMessage, setSnackbarOpen]);
+  }, [entry, setEntries, showSnackbar]);
 
   const updateAliasNotes = useCallback(async () => {
     if (!editedAliasNotes.trim()) {
-      setSnackbarMessage("Spitzname darf nicht leer sein.");
-      setSnackbarOpen(true);
+      showSnackbar("Spitzname darf nicht leer sein.", "error");
       return;
     }
     setIsLoading(true);
@@ -165,14 +162,13 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
         prev.map((e) => (e.id === entry.id ? { ...e, aliasNotes: editedAliasNotes } : e))
       );
       setEditDialogOpen(false);
-      setSnackbarMessage("Spitzname erfolgreich aktualisiert.");
-      setSnackbarOpen(true);
+      showSnackbar("Spitzname erfolgreich aktualisiert.");
     } catch (error) {
-      handleError(error, setSnackbarMessage, setSnackbarOpen);
+      handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
     }
-  }, [entry.id, editedAliasNotes, setEntries, setSnackbarMessage, setSnackbarOpen]);
+  }, [entry.id, editedAliasNotes, setEntries, showSnackbar]);
 
   const updateEntryByAdmin = useCallback(async () => {
     setIsLoading(true);
@@ -199,14 +195,13 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
         prev.map((e) => (e.id === entry.id ? { ...e, ...data } : e))
       );
       setAdminEditDialogOpen(false);
-      setSnackbarMessage("Eintrag erfolgreich aktualisiert.");
-      setSnackbarOpen(true);
+      showSnackbar("Eintrag erfolgreich aktualisiert.");
     } catch (error) {
-      handleError(error, setSnackbarMessage, setSnackbarOpen);
+      handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
     }
-  }, [entry.id, adminEditedEntry, setEntries, setSnackbarMessage, setSnackbarOpen]);
+  }, [entry.id, adminEditedEntry, setEntries, showSnackbar]);
 
   const getStatusColor = (status) =>
     status === "Aktiv" ? "green" : status === "Inaktiv" ? "red" : "black";
