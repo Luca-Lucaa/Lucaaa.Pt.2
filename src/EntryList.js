@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   Typography,
   TextField,
@@ -25,488 +25,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { supabase } from "./supabaseClient";
 import { formatDate, generateUsername, useDebounce, handleError } from "./utils";
-
-// Unterkomponente: Eintrag
-const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMessage, setSnackbarOpen }) => {
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [extensionConfirmOpen, setExtensionConfirmOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false); // Für Bearbeitung durch Ersteller
-  const [adminEditDialogOpen, setAdminEditDialogOpen] = useState(false); // Für Bearbeitung durch Admin
-  const [editedAliasNotes, setEditedAliasNotes] = useState(entry.aliasNotes); // Für Ersteller
-  const [adminEditedEntry, setAdminEditedEntry] = useState({ ...entry }); // Für Admin
-
-  const changePaymentStatus = async (entryId, paymentStatus) => {
-    try {
-      const { error } = await supabase.from("entries").update({ paymentStatus }).eq("id", entryId);
-      if (error) throw error;
-      setEntries((prev) =>
-        prev.map((e) => (e.id === entryId ? { ...e, paymentStatus } : e))
-      );
-    } catch (error) {
-      handleError(error, setSnackbarMessage, setSnackbarOpen);
-    }
-  };
-
-  const changeStatus = async (entryId, newStatus) => {
-    try {
-      const { error } = await supabase.from("entries").update({ status: newStatus }).eq("id", entryId);
-      if (error) throw error;
-      setEntries((prev) =>
-        prev.map((e) => (e.id === entryId ? { ...e, status: newStatus } : e))
-      );
-      setSnackbarMessage(`Status erfolgreich auf "${newStatus}" geändert.`);
-      setSnackbarOpen(true);
-    } catch (error) {
-      handleError(error, setSnackbarMessage, setSnackbarOpen);
-    }
-  };
-
-  const deleteEntry = async (entryId) => {
-    try {
-      const { error } = await supabase.from("entries").delete().eq("id", entryId);
-      if (error) throw error;
-      setEntries((prev) => prev.filter((e) => e.id !== entryId));
-      setDeleteConfirmOpen(false);
-      setSnackbarMessage("Eintrag erfolgreich gelöscht.");
-      setSnackbarOpen(true);
-    } catch (error) {
-      handleError(error, setSnackbarMessage, setSnackbarOpen);
-    }
-  };
-
-  const requestExtension = async (entryId) => {
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const octoberFirst = new Date(currentYear, 9, 1);
-
-    if (today < octoberFirst) {
-      setSnackbarMessage("Die Verlängerung ist erst ab dem 01.10. aktiviert.");
-      setSnackbarOpen(true);
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from("entries")
-        .update({ extensionRequest: { pending: true, approved: false } })
-        .eq("id", entryId);
-      if (error) throw error;
-      setEntries((prev) =>
-        prev.map((e) =>
-          e.id === entryId ? { ...e, extensionRequest: { pending: true, approved: false } } : e
-        )
-      );
-      setSnackbarMessage("Anfrage zur Verlängerung gesendet.");
-      setSnackbarOpen(true);
-    } catch (error) {
-      handleError(error, setSnackbarMessage, setSnackbarOpen);
-    }
-  };
-
-  const approveExtension = async (entryId) => {
-    const currentEntry = entry;
-    const newValidUntil = new Date(currentEntry.validUntil);
-    newValidUntil.setFullYear(newValidUntil.getFullYear() + 1);
-
-    const updatedEntry = {
-      validUntil: newValidUntil.toISOString(),
-      extensionRequest: { pending: false, approved: true, approvalDate: new Date().toISOString() },
-      extensionHistory: [
-        ...(currentEntry.extensionHistory || []),
-        { approvalDate: new Date().toISOString(), validUntil: newValidUntil.toISOString() },
-      ],
-    };
-
-    try {
-      const { data, error } = await supabase
-        .from("entries")
-        .update(updatedEntry)
-        .eq("id", entryId)
-        .select()
-        .single();
-      if (error) throw error;
-
-      setEntries((prev) =>
-        prev.map((e) => (e.id === entryId ? { ...e, ...data } : e))
-      );
-      setExtensionConfirmOpen(false);
-      setSnackbarMessage("Verlängerung genehmigt.");
-      setSnackbarOpen(true);
-    } catch (error) {
-      handleError(error, setSnackbarMessage, setSnackbarOpen);
-    }
-  };
-
-  const updateAliasNotes = async () => {
-    if (!editedAliasNotes.trim()) {
-      setSnackbarMessage("Spitzname darf nicht leer sein.");
-      setSnackbarOpen(true);
-      return;
-    }
-    try {
-      const { error } = await supabase
-        .from("entries")
-        .update({ aliasNotes: editedAliasNotes })
-        .eq("id", entry.id);
-      if (error) throw error;
-      setEntries((prev) =>
-        prev.map((e) => (e.id === entry.id ? { ...e, aliasNotes: editedAliasNotes } : e))
-      );
-      setEditDialogOpen(false);
-      setSnackbarMessage("Spitzname erfolgreich aktualisiert.");
-      setSnackbarOpen(true);
-    } catch (error) {
-      handleError(error, setSnackbarMessage, setSnackbarOpen);
-    }
-  };
-
-  const updateEntryByAdmin = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("entries")
-        .update({
-          username: adminEditedEntry.username,
-          password: adminEditedEntry.password,
-          aliasNotes: adminEditedEntry.aliasNotes,
-          type: adminEditedEntry.type,
-          status: adminEditedEntry.status,
-          paymentStatus: adminEditedEntry.paymentStatus,
-          validUntil: adminEditedEntry.validUntil,
-          bougetList: adminEditedEntry.bougetList,
-          note: adminEditedEntry.note,
-          admin_fee: adminEditedEntry.adminFee, // admin_fee wird korrekt gesetzt
-        })
-        .eq("id", entry.id)
-        .select()
-        .single(); // Rückgabe des aktualisierten Eintrags
-      if (error) throw error;
-      setEntries((prev) =>
-        prev.map((e) => (e.id === entry.id ? { ...e, ...data } : e)) // Aktualisiere den Eintrag
-      );
-      setAdminEditDialogOpen(false);
-      setSnackbarMessage("Eintrag erfolgreich aktualisiert.");
-      setSnackbarOpen(true);
-    } catch (error) {
-      handleError(error, setSnackbarMessage, setSnackbarOpen);
-    }
-  };
-
-  const getStatusColor = (status) =>
-    status === "Aktiv" ? "green" : status === "Inaktiv" ? "red" : "black";
-  const getPaymentStatusColor = (paymentStatus) =>
-    paymentStatus === "Gezahlt" ? "green" : paymentStatus === "Nicht gezahlt" ? "red" : "black";
-
-  const today = new Date();
-  const currentYear = today.getFullYear();
-  const octoberFirst = new Date(currentYear, 9, 1);
-  const isBeforeOctober = today < octoberFirst;
-  const isOwner = entry.owner === loggedInUser;
-
-  return (
-    <Accordion sx={{ marginBottom: 2, borderRadius: 2, boxShadow: 1 }}>
-      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, width: "100%" }}>
-          <Typography sx={{ flexGrow: 1 }}>
-            <strong>{entry.aliasNotes}</strong> ({entry.username})
-          </Typography>
-          <Chip
-            label={entry.status}
-            size="small"
-            sx={{ backgroundColor: getStatusColor(entry.status), color: "white" }}
-          />
-          <Chip
-            label={entry.paymentStatus}
-            size="small"
-            sx={{ backgroundColor: getPaymentStatusColor(entry.paymentStatus), color: "white" }}
-          />
-        </Box>
-      </AccordionSummary>
-      <AccordionDetails>
-        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
-          <Typography>
-            <strong>Erstellt von:</strong> {entry.owner}
-          </Typography>
-          <Typography>
-            <strong>Typ:</strong> {entry.type}
-          </Typography>
-          <Typography>
-            <strong>Benutzername:</strong> {entry.username}
-          </Typography>
-          <Typography>
-            <strong>Passwort:</strong> {entry.password}
-          </Typography>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography>
-              <strong>Spitzname:</strong> {entry.aliasNotes}
-            </Typography>
-            {isOwner && (
-              <IconButton size="small" onClick={() => setEditDialogOpen(true)}>
-                <EditIcon />
-              </IconButton>
-            )}
-          </Box>
-          <Typography>
-            <strong>Bouget-Liste:</strong> {entry.bougetList || "Nicht angegeben"}
-          </Typography>
-          <Typography sx={{ color: getStatusColor(entry.status) }}>
-            <strong>Status:</strong> {entry.status}
-          </Typography>
-          <Typography sx={{ color: getPaymentStatusColor(entry.paymentStatus) }}>
-            <strong>Zahlung:</strong> {entry.paymentStatus}
-          </Typography>
-          <Typography>
-            <strong>Erstellt am:</strong> {formatDate(entry.createdAt)}
-          </Typography>
-          <Typography>
-            <strong>Gültig bis:</strong> {formatDate(entry.validUntil)}
-            {entry.extensionRequest?.pending && (
-              <span style={{ color: "orange" }}> (Verlängerung angefragt)</span>
-            )}
-            {entry.extensionRequest?.approved && (
-              <span style={{ color: "green" }}> (Verlängert)</span>
-            )}
-          </Typography>
-          {/* Admin-Gebühr: Nur Anzeige in Detailansicht */}
-          {(role === "Admin" || isOwner) && (
-            <Typography>
-              <strong>Admin-Gebühr:</strong> {entry.admin_fee ? `${entry.admin_fee}$` : "Nicht gesetzt"}
-            </Typography>
-          )}
-          {entry.note && (
-            <Typography sx={{ gridColumn: "span 2", color: "red" }}>
-              <strong>Notiz:</strong> {entry.note}
-            </Typography>
-          )}
-        </Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, marginTop: 2 }}>
-          {isBeforeOctober && (
-            <Typography variant="caption" sx={{ color: "gray", fontStyle: "italic" }}>
-              Ab 01.10 anwählbar
-            </Typography>
-          )}
-          <Button
-            onClick={() => requestExtension(entry.id)}
-            variant="outlined"
-            color="primary"
-            disabled={isBeforeOctober}
-            size="small"
-          >
-            +1 Jahr verlängern
-          </Button>
-        </Box>
-        {role === "Admin" && (
-          <Box sx={{ marginTop: 2, display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Button
-              onClick={() => changeStatus(entry.id, entry.status === "Aktiv" ? "Inaktiv" : "Aktiv")}
-              variant="contained"
-              color="secondary"
-              size="small"
-            >
-              {entry.status === "Aktiv" ? "Inaktiv setzen" : "Aktiv setzen"}
-            </Button>
-            <Button
-              onClick={() =>
-                changePaymentStatus(
-                  entry.id,
-                  entry.paymentStatus === "Gezahlt" ? "Nicht gezahlt" : "Gezahlt"
-                )
-              }
-              variant="contained"
-              color="secondary"
-              size="small"
-            >
-              {entry.paymentStatus === "Gezahlt" ? "Nicht gezahlt setzen" : "Gezahlt setzen"}
-            </Button>
-            <Button
-              onClick={() => setDeleteConfirmOpen(true)}
-              variant="contained"
-              color="error"
-              startIcon={<DeleteIcon />}
-              size="small"
-            >
-              Löschen
-            </Button>
-            <Button
-              onClick={() => setExtensionConfirmOpen(true)}
-              variant="contained"
-              color="success"
-              size="small"
-            >
-              Verlängerung genehmigen
-            </Button>
-            <Button
-              onClick={() => setAdminEditDialogOpen(true)}
-              variant="contained"
-              color="primary"
-              startIcon={<EditIcon />}
-              size="small"
-            >
-              Bearbeiten
-            </Button>
-          </Box>
-        )}
-        {role === "Admin" && entry.extensionHistory?.length > 0 && (
-          <Box sx={{ marginTop: 2 }}>
-            <Typography variant="body2" sx={{ fontWeight: "bold" }}>
-              Verlängerungshistorie:
-            </Typography>
-            {entry.extensionHistory.map((extension, idx) => (
-              <Typography key={idx} variant="body2">
-                Genehmigt: {formatDate(extension.approvalDate)} | Gültig bis: {formatDate(extension.validUntil)}
-              </Typography>
-            ))}
-          </Box>
-        )}
-        <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
-          <DialogTitle>Eintrag löschen</DialogTitle>
-          <DialogContent>
-            <Typography>Möchtest du den Eintrag wirklich löschen? Dies kann nicht rückgängig gemacht werden.</Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setDeleteConfirmOpen(false)} color="secondary">
-              Abbrechen
-            </Button>
-            <Button onClick={() => deleteEntry(entry.id)} color="error">
-              Löschen
-            </Button>
-          </DialogActions>
-        </Dialog>
-        <Dialog open={extensionConfirmOpen} onClose={() => setExtensionConfirmOpen(false)}>
-          <DialogTitle>Verlängerung genehmigen</DialogTitle>
-          <DialogContent>
-            <Typography>Möchtest du die Verlängerung um ein Jahr genehmigen?</Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setExtensionConfirmOpen(false)} color="secondary">
-              Abbrechen
-            </Button>
-            <Button onClick={() => approveExtension(entry.id)} color="success">
-              Genehmigen
-            </Button>
-          </DialogActions>
-        </Dialog>
-        <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)}>
-          <DialogTitle>Spitzname bearbeiten</DialogTitle>
-          <DialogContent>
-            <TextField
-              label="Spitzname, Notizen etc."
-              fullWidth
-              margin="normal"
-              value={editedAliasNotes}
-              onChange={(e) => setEditedAliasNotes(e.target.value)}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setEditDialogOpen(false)} color="secondary">
-              Abbrechen
-            </Button>
-            <Button onClick={updateAliasNotes} color="primary">
-              Speichern
-            </Button>
-          </DialogActions>
-        </Dialog>
-        <Dialog open={adminEditDialogOpen} onClose={() => setAdminEditDialogOpen(false)} fullWidth maxWidth="sm">
-          <DialogTitle>Eintrag bearbeiten (Admin)</DialogTitle>
-          <DialogContent>
-            <TextField
-              label="Benutzername"
-              fullWidth
-              margin="normal"
-              value={adminEditedEntry.username}
-              onChange={(e) => setAdminEditedEntry({ ...adminEditedEntry, username: e.target.value })}
-            />
-            <TextField
-              label="Passwort"
-              fullWidth
-              margin="normal"
-              type="password"
-              value={adminEditedEntry.password}
-              onChange={(e) => setAdminEditedEntry({ ...adminEditedEntry, password: e.target.value })}
-            />
-            <TextField
-              label="Spitzname, Notizen etc."
-              fullWidth
-              margin="normal"
-              value={adminEditedEntry.aliasNotes}
-              onChange={(e) => setAdminEditedEntry({ ...adminEditedEntry, aliasNotes: e.target.value })}
-            />
-            <TextField
-              label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
-              fullWidth
-              margin="normal"
-              value={adminEditedEntry.bougetList || ""}
-              onChange={(e) => setAdminEditedEntry({ ...adminEditedEntry, bougetList: e.target.value })}
-            />
-            <Select
-              fullWidth
-              margin="normal"
-              value={adminEditedEntry.type}
-              onChange={(e) => setAdminEditedEntry({ ...adminEditedEntry, type: e.target.value })}
-            >
-              <MenuItem value="Premium">Premium</MenuItem>
-              <MenuItem value="Basic">Basic</MenuItem>
-            </Select>
-            <Select
-              fullWidth
-              margin="normal"
-              value={adminEditedEntry.status}
-              onChange={(e) => setAdminEditedEntry({ ...adminEditedEntry, status: e.target.value })}
-            >
-              <MenuItem value="Aktiv">Aktiv</MenuItem>
-              <MenuItem value="Inaktiv">Inaktiv</MenuItem>
-            </Select>
-            <Select
-              fullWidth
-              margin="normal"
-              value={adminEditedEntry.paymentStatus}
-              onChange={(e) => setAdminEditedEntry({ ...adminEditedEntry, paymentStatus: e.target.value })}
-            >
-              <MenuItem value="Gezahlt">Gezahlt</MenuItem>
-              <MenuItem value="Nicht gezahlt">Nicht gezahlt</MenuItem>
-            </Select>
-            <TextField
-              label="Gültig bis"
-              fullWidth
-              margin="normal"
-              type="date"
-              value={adminEditedEntry.validUntil ? new Date(adminEditedEntry.validUntil).toISOString().split("T")[0] : ""}
-              onChange={(e) => setAdminEditedEntry({ ...adminEditedEntry, validUntil: new Date(e.target.value).toISOString() })}
-            />
-            {/* Admin-Gebühr ohne Pfeile */}
-            <TextField
-              label="Admin-Gebühr ($)"
-              fullWidth
-              margin="normal"
-              value={adminEditedEntry.adminFee || ""}
-              onChange={(e) => {
-                const value = e.target.value.replace(/[^0-9]/g, ""); // Nur Zahlen erlauben
-                const numValue = value ? parseInt(value) : null;
-                if (numValue > 999) return; // Begrenzung auf 999
-                setAdminEditedEntry({ ...adminEditedEntry, adminFee: numValue });
-              }}
-              inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }} // Keine Pfeile, nur Zahlen
-            />
-            <TextField
-              label="Notiz"
-              fullWidth
-              margin="normal"
-              value={adminEditedEntry.note || ""}
-              onChange={(e) => setAdminEditedEntry({ ...adminEditedEntry, note: e.target.value })}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setAdminEditDialogOpen(false)} color="secondary">
-              Abbrechen
-            </Button>
-            <Button onClick={updateEntryByAdmin} color="primary">
-              Speichern
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </AccordionDetails>
-    </Accordion>
-  );
-};
+import EntryAccordion from "./EntryAccordion";
 
 const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   const [openCreateEntryDialog, setOpenCreateEntryDialog] = useState(false);
@@ -540,34 +59,30 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   });
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false); // Neuer Ladezustand
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  const countEntriesByOwner = (owner) => {
+  const countEntriesByOwner = useCallback((owner) => {
     return entries.filter((entry) => entry.owner === owner).length;
-  };
+  }, [entries]);
 
   const entryCount = countEntriesByOwner(loggedInUser);
   let motivationMessage = "";
   if (entryCount >= 10 && entryCount < 15) {
-    motivationMessage =
-      "🎉 Super! Du hast bereits 10 Einträge erreicht! Mach weiter so, du bist auf dem besten Weg zu 15!";
+    motivationMessage = "🎉 Super! Du hast bereits 10 Einträge erreicht! Mach weiter so, du bist auf dem besten Weg zu 15!";
   } else if (entryCount >= 15 && entryCount < 20) {
-    motivationMessage =
-      "🎉 Fantastisch! 15 Einträge sind erreicht! Nur noch 5 bis zu 20! Lass uns das schaffen!";
+    motivationMessage = "🎉 Fantastisch! 15 Einträge sind erreicht! Nur noch 5 bis zu 20! Lass uns das schaffen!";
   } else if (entryCount >= 20 && entryCount < 25) {
-    motivationMessage =
-      "🎉 Großartig! Du hast 20 Einträge! Nur noch 5 bis zu 25! Weiter so!";
+    motivationMessage = "🎉 Großartig! Du hast 20 Einträge! Nur noch 5 bis zu 25! Weiter so!";
   } else if (entryCount >= 25) {
-    motivationMessage =
-      "🎉 Wow! Du hast 25 Einträge erreicht! Deine Kreativität kennt keine Grenzen! Mach weiter so!";
+    motivationMessage = "🎉 Wow! Du hast 25 Einträge erreicht! Deine Kreativität kennt keine Grenzen! Mach weiter so!";
   } else if (entryCount > 0) {
     motivationMessage = `🎉 Du hast ${entryCount} Einträge erstellt! Weiter so, der nächste Meilenstein ist 5!`;
   } else {
-    motivationMessage =
-      "🎉 Du hast noch keine Einträge erstellt. Lass uns mit dem ersten Eintrag beginnen!";
+    motivationMessage = "🎉 Du hast noch keine Einträge erstellt. Lass uns mit dem ersten Eintrag beginnen!";
   }
 
-  const handleOpenCreateEntryDialog = () => {
+  const handleOpenCreateEntryDialog = useCallback(() => {
     const username = generateUsername(loggedInUser);
     const randomPassword = Math.random().toString(36).slice(-8);
     setNewEntry({
@@ -584,9 +99,9 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       bougetList: "",
     });
     setOpenCreateEntryDialog(true);
-  };
+  }, [loggedInUser]);
 
-  const handleOpenManualEntryDialog = () => {
+  const handleOpenManualEntryDialog = useCallback(() => {
     setManualEntry({
       username: "",
       password: "",
@@ -598,14 +113,15 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       bougetList: "",
     });
     setOpenManualEntryDialog(true);
-  };
+  }, [loggedInUser]);
 
-  const createEntry = async () => {
+  const createEntry = useCallback(async () => {
     if (!newEntry.aliasNotes.trim() || !newEntry.username.trim()) {
       setSnackbarMessage("Bitte Spitzname und Benutzername eingeben.");
       setSnackbarOpen(true);
       return;
     }
+    setIsLoading(true);
     try {
       const { data, error } = await supabase.from("entries").insert([newEntry]).select();
       if (error) throw error;
@@ -615,15 +131,18 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       setSnackbarOpen(true);
     } catch (error) {
       handleError(error, setSnackbarMessage, setSnackbarOpen);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [newEntry, setEntries]);
 
-  const handleAddManualEntry = async () => {
+  const handleAddManualEntry = useCallback(async () => {
     if (!manualEntry.username || !manualEntry.password || !manualEntry.aliasNotes) {
       setSnackbarMessage("Bitte füllen Sie alle Felder aus.");
       setSnackbarOpen(true);
       return;
     }
+    setIsLoading(true);
     const validUntilDate = new Date(manualEntry.validUntil);
     const newManualEntry = {
       username: manualEntry.username,
@@ -648,8 +167,10 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       setSnackbarOpen(true);
     } catch (error) {
       handleError(error, setSnackbarMessage, setSnackbarOpen);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [manualEntry, loggedInUser, setEntries]);
 
   const filterEntries = useMemo(() => {
     return entries
@@ -666,7 +187,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }, [entries, role, selectedUser, loggedInUser, debouncedSearchTerm, statusFilter, paymentFilter]);
 
-  const uniqueOwners = [...new Set(entries.map((entry) => entry.owner))];
+  const uniqueOwners = useMemo(() => [...new Set(entries.map((entry) => entry.owner))], [entries]);
 
   return (
     <div>
@@ -681,6 +202,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             color="success"
             startIcon={<AddIcon />}
             fullWidth
+            disabled={isLoading}
           >
             Abonnent anlegen
           </Button>
@@ -690,6 +212,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             color="primary"
             startIcon={<EditIcon />}
             fullWidth
+            disabled={isLoading}
           >
             Bestehenden Abonnenten einpflegen
           </Button>
@@ -722,6 +245,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           fullWidth
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          disabled={isLoading}
         />
         <Select
           value={statusFilter}
@@ -730,6 +254,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           fullWidth
           variant="outlined"
           sx={{ minWidth: 120 }}
+          disabled={isLoading}
         >
           <MenuItem value="">Alle Status</MenuItem>
           <MenuItem value="Aktiv">Aktiv</MenuItem>
@@ -742,6 +267,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           fullWidth
           variant="outlined"
           sx={{ minWidth: 120 }}
+          disabled={isLoading}
         >
           <MenuItem value="">Alle Zahlungen</MenuItem>
           <MenuItem value="Gezahlt">Gezahlt</MenuItem>
@@ -749,6 +275,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
         </Select>
       </Box>
       <Box sx={{ maxHeight: "60vh", overflowY: "auto", padding: 2 }}>
+        {isLoading && <Typography>🔄 Lade Einträge...</Typography>}
         {filterEntries.length > 0 ? (
           filterEntries.map((entry) => (
             <EntryAccordion
@@ -779,6 +306,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             margin="normal"
             value={newEntry.aliasNotes}
             onChange={(e) => setNewEntry({ ...newEntry, aliasNotes: e.target.value })}
+            disabled={isLoading}
           />
           <TextField
             label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
@@ -786,12 +314,14 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             margin="normal"
             value={newEntry.bougetList}
             onChange={(e) => setNewEntry({ ...newEntry, bougetList: e.target.value })}
+            disabled={isLoading}
           />
           <Select
             fullWidth
             margin="normal"
             value={newEntry.type}
             onChange={(e) => setNewEntry({ ...newEntry, type: e.target.value })}
+            disabled={isLoading}
           >
             <MenuItem value="Premium">Premium</MenuItem>
             <MenuItem value="Basic">Basic</MenuItem>
@@ -804,13 +334,14 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           <Typography variant="body1">
             <strong>Gültig bis:</strong> {formatDate(newEntry.validUntil)}
           </Typography>
+          {isLoading && <Typography>🔄 Speichere...</Typography>}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenCreateEntryDialog(false)} color="secondary">
+          <Button onClick={() => setOpenCreateEntryDialog(false)} color="secondary" disabled={isLoading}>
             Abbrechen
           </Button>
-          <Button onClick={createEntry} color="primary">
-            Hinzufügen
+          <Button onClick={createEntry} color="primary" disabled={isLoading}>
+            {isLoading ? "Speichere..." : "Hinzufügen"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -823,6 +354,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             margin="normal"
             value={manualEntry.username}
             onChange={(e) => setManualEntry({ ...manualEntry, username: e.target.value })}
+            disabled={isLoading}
           />
           <TextField
             label="Passwort"
@@ -831,6 +363,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             type="password"
             value={manualEntry.password}
             onChange={(e) => setManualEntry({ ...manualEntry, password: e.target.value })}
+            disabled={isLoading}
           />
           <TextField
             label="Spitzname, Notizen etc."
@@ -838,6 +371,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             margin="normal"
             value={manualEntry.aliasNotes}
             onChange={(e) => setManualEntry({ ...manualEntry, aliasNotes: e.target.value })}
+            disabled={isLoading}
           />
           <TextField
             label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
@@ -845,12 +379,14 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             margin="normal"
             value={manualEntry.bougetList}
             onChange={(e) => setManualEntry({ ...manualEntry, bougetList: e.target.value })}
+            disabled={isLoading}
           />
           <Select
             fullWidth
             margin="normal"
             value={manualEntry.type}
             onChange={(e) => setManualEntry({ ...manualEntry, type: e.target.value })}
+            disabled={isLoading}
           >
             <MenuItem value="Premium">Premium</MenuItem>
             <MenuItem value="Basic">Basic</MenuItem>
@@ -862,6 +398,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             type="date"
             value={manualEntry.validUntil.toISOString().split("T")[0]}
             onChange={(e) => setManualEntry({ ...manualEntry, validUntil: new Date(e.target.value) })}
+            disabled={isLoading}
           />
           <Typography variant="body1">
             <strong>Aktuelles Datum:</strong> {formatDate(new Date())}
@@ -869,13 +406,14 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           <Typography variant="body1">
             <strong>Gültig bis:</strong> {formatDate(manualEntry.validUntil)}
           </Typography>
+          {isLoading && <Typography>🔄 Speichere...</Typography>}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenManualEntryDialog(false)} color="secondary">
+          <Button onClick={() => setOpenManualEntryDialog(false)} color="secondary" disabled={isLoading}>
             Abbrechen
           </Button>
-          <Button onClick={handleAddManualEntry} color="primary">
-            Hinzufügen
+          <Button onClick={handleAddManualEntry} color="primary" disabled={isLoading}>
+            {isLoading ? "Speichere..." : "Hinzufügen"}
           </Button>
         </DialogActions>
       </Dialog>
