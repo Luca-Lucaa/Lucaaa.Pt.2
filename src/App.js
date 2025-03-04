@@ -32,6 +32,7 @@ import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
 import { supabase } from "./supabaseClient";
 import ChatMessage from "./ChatMessage";
 import { useMessages, handleError } from "./utils";
+import { USER_CREDENTIALS, USER_EMOJIS, THEME_CONFIG, GUIDES } from "./config"; // Import aus config.js
 
 const LoginForm = lazy(() => import("./LoginForm"));
 const EntryList = lazy(() => import("./EntryList"));
@@ -47,20 +48,7 @@ const StyledAppBar = styled(AppBar)(({ theme }) => ({
   backgroundColor: theme.palette.primary.main,
 }));
 
-const userEmojis = {
-  Admin: "👑",
-  Scholli: "🚀",
-  Jamaica05: "🎩",
-};
-
-const theme = createTheme({
-  palette: {
-    primary: { main: "#3b82f6" },
-    secondary: { main: "#dc004e" },
-    background: { default: "#e0e7ff", paper: "#ffffff" },
-    text: { primary: "#333" },
-  },
-});
+const theme = createTheme(THEME_CONFIG); // Verwende THEME_CONFIG
 
 const CustomSnackbar = ({ open, message, onClose, severity = "success" }) => (
   <Snackbar open={open} autoHideDuration={4000} onClose={onClose}>
@@ -84,7 +72,7 @@ const App = () => {
   const [guidesAnchorEl, setGuidesAnchorEl] = useState(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [chatExpanded, setChatExpanded] = useState(false);
-  const [isLoading, setIsLoading] = useState(false); // Neuer Ladezustand
+  const [isLoading, setIsLoading] = useState(false);
 
   const { messages, unreadCount, markAsRead } = useMessages(loggedInUser, selectedUser);
 
@@ -95,12 +83,7 @@ const App = () => {
   }, []);
 
   const handleLogin = useCallback((username, password) => {
-    const users = {
-      Admin: "Admino25!",
-      Scholli: "Scholli25",
-      Jamaica05: "Werwer55",
-    };
-    if (users[username] === password) {
+    if (USER_CREDENTIALS[username] === password) { // Verwende USER_CREDENTIALS
       setLoggedInUser(username);
       setRole(username === "Admin" ? "Admin" : "Friend");
       localStorage.setItem("loggedInUser", username);
@@ -226,11 +209,6 @@ const App = () => {
     setGuidesAnchorEl(null);
   }, []);
 
-  const guides = [
-    { name: "Anleitung PlockTV", path: "/guides/PlockTV.pdf" },
-    { name: "Anleitung 2", path: "/guides/guide2.pdf" },
-  ];
-
   const handleGuideDownload = useCallback((path) => {
     window.open(path, "_blank");
     setGuidesAnchorEl(null);
@@ -257,7 +235,7 @@ const App = () => {
                 variant="h6"
                 sx={{ marginLeft: "auto", marginRight: 2, fontSize: { xs: "14px", sm: "16px" } }}
               >
-                {userEmojis[loggedInUser]} {loggedInUser}
+                {USER_EMOJIS[loggedInUser]} {loggedInUser} {/* Verwende USER_EMOJIS */}
               </Typography>
             )}
             {loggedInUser && (
@@ -317,7 +295,7 @@ const App = () => {
                       )}
                     </Menu>
                     <Menu anchorEl={guidesAnchorEl} open={Boolean(guidesAnchorEl)} onClose={handleGuidesClose}>
-                      {guides.map((guide) => (
+                      {GUIDES.map((guide) => ( // Verwende GUIDES
                         <MenuItem key={guide.name} onClick={() => handleGuideDownload(guide.path)}>
                           {guide.name}
                         </MenuItem>
@@ -363,7 +341,7 @@ const App = () => {
                           }}
                           sx={{ minWidth: 0, p: 0.5 }}
                         >
-                          Scholli {userEmojis["Scholli"]}
+                          Scholli {USER_EMOJIS["Scholli"]} {/* Verwende USER_EMOJIS */}
                         </Button>
                       </Badge>
                       <Badge badgeContent={unreadCount["Jamaica05"] || 0} color="error">
@@ -376,7 +354,7 @@ const App = () => {
                           }}
                           sx={{ minWidth: 0, p: 0.5 }}
                         >
-                          Jamaica05 {userEmojis["Jamaica05"]}
+                          Jamaica05 {USER_EMOJIS["Jamaica05"]} {/* Verwende USER_EMOJIS */}
                         </Button>
                       </Badge>
                     </Box>
