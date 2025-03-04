@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 
-export const handleError = (error, setSnackbarMessage, setSnackbarOpen) => {
+// Angepasste handleError-Funktion für useSnackbar
+export const handleError = (error, showSnackbar) => {
   console.error("Fehler:", error);
-  if (setSnackbarMessage && setSnackbarOpen) {
-    setSnackbarMessage(error.message || "Ein Fehler ist aufgetreten.");
-    setSnackbarOpen(true);
+  if (showSnackbar) {
+    const message = error.message || "Ein Fehler ist aufgetreten.";
+    showSnackbar(message, "error");
   }
 };
 
@@ -32,7 +33,7 @@ export const useMessages = (loggedInUser, selectedUser, withRealtime = true) => 
       ).length;
       setUnreadCount((prev) => ({ ...prev, [selectedUser]: unread }));
     } catch (error) {
-      handleError(error);
+      handleError(error); // Ohne showSnackbar bleibt es bei console.error
     }
   };
 
@@ -78,7 +79,6 @@ export const useMessages = (loggedInUser, selectedUser, withRealtime = true) => 
     return () => supabase.removeChannel(subscription);
   }, [loggedInUser, selectedUser]);
 
-  // Markiere Nachrichten als gelesen, wenn der Benutzer den Chat öffnet
   const markAsRead = async () => {
     try {
       const { error } = await supabase
@@ -97,7 +97,7 @@ export const useMessages = (loggedInUser, selectedUser, withRealtime = true) => 
         )
       );
     } catch (error) {
-      handleError(error);
+      handleError(error); // Ohne showSnackbar bleibt es bei console.error
     }
   };
 
