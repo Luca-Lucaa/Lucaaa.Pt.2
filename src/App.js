@@ -32,8 +32,7 @@ import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
 import { supabase } from "./supabaseClient";
 import ChatMessage from "./ChatMessage";
 import { useMessages, handleError } from "./utils";
-import { USER_CREDENTIALS, USER_EMOJIS, THEME_CONFIG, GUIDES } from "./config";
-import { useSnackbar } from "./useSnackbar"; // Neuer Import
+import { USER_CREDENTIALS, USER_EMOJIS, THEME_CONFIG, GUIDES } from "./config"; // Import aus config.js
 
 const LoginForm = lazy(() => import("./LoginForm"));
 const EntryList = lazy(() => import("./EntryList"));
@@ -49,7 +48,7 @@ const StyledAppBar = styled(AppBar)(({ theme }) => ({
   backgroundColor: theme.palette.primary.main,
 }));
 
-const theme = createTheme(THEME_CONFIG);
+const theme = createTheme(THEME_CONFIG); // Verwende THEME_CONFIG
 
 const CustomSnackbar = ({ open, message, onClose, severity = "success" }) => (
   <Snackbar open={open} autoHideDuration={4000} onClose={onClose}>
@@ -64,6 +63,9 @@ const App = () => {
   const [role, setRole] = useState(() => localStorage.getItem("role") || null);
   const [selectedUser, setSelectedUser] = useState(role === "Admin" ? "Scholli" : "Admin");
   const [newMessage, setNewMessage] = useState("");
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState("success");
   const [entries, setEntries] = useState([]);
   const [file, setFile] = useState(null);
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
@@ -73,10 +75,15 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const { messages, unreadCount, markAsRead } = useMessages(loggedInUser, selectedUser);
-  const { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, hideSnackbar } = useSnackbar(); // Verwende Hook
+
+  const showSnackbar = useCallback((message, severity = "success") => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  }, []);
 
   const handleLogin = useCallback((username, password) => {
-    if (USER_CREDENTIALS[username] === password) {
+    if (USER_CREDENTIALS[username] === password) { // Verwende USER_CREDENTIALS
       setLoggedInUser(username);
       setRole(username === "Admin" ? "Admin" : "Friend");
       localStorage.setItem("loggedInUser", username);
@@ -109,7 +116,7 @@ const App = () => {
       if (error) throw error;
       setNewMessage("");
     } catch (error) {
-      handleError(error, showSnackbar); // Anpassung: Direkt showSnackbar nutzen
+      handleError(error, setSnackbarMessage, setSnackbarOpen);
     } finally {
       setIsLoading(false);
     }
@@ -122,11 +129,11 @@ const App = () => {
       if (error) throw error;
       setEntries(data);
     } catch (error) {
-      handleError(error, showSnackbar); // Anpassung: Direkt showSnackbar nutzen
+      handleError(error, setSnackbarMessage, setSnackbarOpen);
     } finally {
       setIsLoading(false);
     }
-  }, [showSnackbar]);
+  }, []);
 
   useEffect(() => {
     if (loggedInUser) {
@@ -172,7 +179,7 @@ const App = () => {
         setFile(null);
         setImportDialogOpen(false);
       } catch (error) {
-        handleError(error, showSnackbar); // Anpassung: Direkt showSnackbar nutzen
+        handleError(error, setSnackbarMessage, setSnackbarOpen);
       } finally {
         setIsLoading(false);
       }
@@ -228,7 +235,7 @@ const App = () => {
                 variant="h6"
                 sx={{ marginLeft: "auto", marginRight: 2, fontSize: { xs: "14px", sm: "16px" } }}
               >
-                {USER_EMOJIS[loggedInUser]} {loggedInUser}
+                {USER_EMOJIS[loggedInUser]} {loggedInUser} {/* Verwende USER_EMOJIS */}
               </Typography>
             )}
             {loggedInUser && (
@@ -288,7 +295,7 @@ const App = () => {
                       )}
                     </Menu>
                     <Menu anchorEl={guidesAnchorEl} open={Boolean(guidesAnchorEl)} onClose={handleGuidesClose}>
-                      {GUIDES.map((guide) => (
+                      {GUIDES.map((guide) => ( // Verwende GUIDES
                         <MenuItem key={guide.name} onClick={() => handleGuideDownload(guide.path)}>
                           {guide.name}
                         </MenuItem>
@@ -334,7 +341,7 @@ const App = () => {
                           }}
                           sx={{ minWidth: 0, p: 0.5 }}
                         >
-                          Scholli {USER_EMOJIS["Scholli"]}
+                          Scholli {USER_EMOJIS["Scholli"]} {/* Verwende USER_EMOJIS */}
                         </Button>
                       </Badge>
                       <Badge badgeContent={unreadCount["Jamaica05"] || 0} color="error">
@@ -347,7 +354,7 @@ const App = () => {
                           }}
                           sx={{ minWidth: 0, p: 0.5 }}
                         >
-                          Jamaica05 {USER_EMOJIS["Jamaica05"]}
+                          Jamaica05 {USER_EMOJIS["Jamaica05"]} {/* Verwende USER_EMOJIS */}
                         </Button>
                       </Badge>
                     </Box>
@@ -399,7 +406,7 @@ const App = () => {
         <CustomSnackbar
           open={snackbarOpen}
           message={snackbarMessage}
-          onClose={hideSnackbar} // Verwende hideSnackbar
+          onClose={() => setSnackbarOpen(false)}
           severity={snackbarSeverity}
         />
         <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)}>
