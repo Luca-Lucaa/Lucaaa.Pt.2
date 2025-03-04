@@ -227,6 +227,25 @@ const App = () => {
     setMenuAnchorEl(null);
   };
 
+  // Berechnung der Admin-Gebühren-Summen
+  const calculateFees = () => {
+    const feesByOwner = {};
+    let totalFees = 0;
+
+    entries.forEach((entry) => {
+      const fee = entry.admin_fee || 0;
+      totalFees += fee;
+      if (!feesByOwner[entry.owner]) {
+        feesByOwner[entry.owner] = 0;
+      }
+      feesByOwner[entry.owner] += fee;
+    });
+
+    return { totalFees, feesByOwner };
+  };
+
+  const { totalFees, feesByOwner } = calculateFees();
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -249,6 +268,20 @@ const App = () => {
               >
                 {userEmojis[loggedInUser]} {loggedInUser}
               </Typography>
+            )}
+            {/* Anzeige der Gebühren in der Toolbar */}
+            {loggedInUser && (
+              <Box sx={{ marginRight: 2, display: "flex", alignItems: "center", gap: 1 }}>
+                {role === "Admin" ? (
+                  <Typography sx={{ fontSize: { xs: "12px", sm: "16px" } }}>
+                    Gesamtgebühren: {totalFees}$
+                  </Typography>
+                ) : (
+                  <Typography sx={{ fontSize: { xs: "12px", sm: "16px" } }}>
+                    Deine Gebühren: {feesByOwner[loggedInUser] || 0}$
+                  </Typography>
+                )}
+              </Box>
             )}
             {loggedInUser && (
               <Box sx={{ marginRight: 2 }}>
@@ -390,57 +423,3 @@ const App = () => {
                       fullWidth
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          sendMessage();
-                        }
-                      }}
-                    />
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={sendMessage}
-                      sx={{ width: { xs: "100%", sm: "auto" } }}
-                      disabled={!newMessage.trim()}
-                    >
-                      Senden
-                    </Button>
-                  </Box>
-                </AccordionDetails>
-              </Accordion>
-              <EntryList role={role} loggedInUser={loggedInUser} entries={entries} setEntries={setEntries} />
-            </>
-          )}
-        </Suspense>
-        <CustomSnackbar
-          open={snackbarOpen}
-          message={snackbarMessage}
-          onClose={() => setSnackbarOpen(false)}
-          severity={snackbarSeverity}
-        />
-        <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)}>
-          <DialogTitle>Backup importieren</DialogTitle>
-          <DialogContent>
-            <input type="file" accept=".json" onChange={handleFileChange} />
-            {file && (
-              <Typography sx={{ mt: 2 }}>
-                Ausgewählte Datei: {file.name}
-              </Typography>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setImportDialogOpen(false)} color="secondary">
-              Abbrechen
-            </Button>
-            <Button onClick={importBackup} color="primary" disabled={!file}>
-              Importieren
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </StyledContainer>
-    </ThemeProvider>
-  );
-};
-
-export default App;
