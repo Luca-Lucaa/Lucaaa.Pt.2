@@ -181,7 +181,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
         .single(); // Rückgabe des aktualisierten Eintrags
       if (error) throw error;
       setEntries((prev) =>
-        prev.map((e) => (e.id === entry.id ? { ...e, ...data } : e)) // Aktualisiere den Eintrag mit den zurückgegebenen Daten
+        prev.map((e) => (e.id === entry.id ? { ...e, ...data } : e)) // Aktualisiere den Eintrag
       );
       setAdminEditDialogOpen(false);
       setSnackbarMessage("Eintrag erfolgreich aktualisiert.");
@@ -266,38 +266,12 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
               <span style={{ color: "green" }}> (Verlängert)</span>
             )}
           </Typography>
-          {/* Admin-Gebühr: Unterschiedliche Anzeige für Admin und Ersteller */}
-          {role === "Admin" ? (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Typography><strong>Admin-Gebühr:</strong></Typography>
-              <TextField
-                size="small"
-                type="number"
-                inputProps={{ min: 0, max: 999 }}
-                value={adminEditedEntry.adminFee || ""}
-                onChange={(e) => {
-                  const value = e.target.value ? parseInt(e.target.value) : null;
-                  if (value > 999) return;
-                  setAdminEditedEntry({ ...adminEditedEntry, adminFee: value });
-                }}
-                sx={{ width: "80px" }}
-              />
-              <Typography>$</Typography>
-              <Button
-                variant="contained"
-                color="primary"
-                size="small"
-                onClick={updateEntryByAdmin}
-                disabled={adminEditedEntry.adminFee === entry.adminFee} // Button deaktiviert, wenn kein neuer Wert
-              >
-                Speichern
-              </Button>
-            </Box>
-          ) : isOwner ? (
+          {/* Admin-Gebühr: Nur Anzeige in Detailansicht */}
+          {(role === "Admin" || isOwner) && (
             <Typography>
               <strong>Admin-Gebühr:</strong> {entry.admin_fee ? `${entry.admin_fee}$` : "Nicht gesetzt"}
             </Typography>
-          ) : null}
+          )}
           {entry.note && (
             <Typography sx={{ gridColumn: "span 2", color: "red" }}>
               <strong>Notiz:</strong> {entry.note}
@@ -498,18 +472,19 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
               value={adminEditedEntry.validUntil ? new Date(adminEditedEntry.validUntil).toISOString().split("T")[0] : ""}
               onChange={(e) => setAdminEditedEntry({ ...adminEditedEntry, validUntil: new Date(e.target.value).toISOString() })}
             />
+            {/* Admin-Gebühr ohne Pfeile */}
             <TextField
               label="Admin-Gebühr ($)"
               fullWidth
               margin="normal"
-              type="number"
-              inputProps={{ min: 0, max: 999 }}
               value={adminEditedEntry.adminFee || ""}
               onChange={(e) => {
-                const value = e.target.value ? parseInt(e.target.value) : null;
-                if (value > 999) return;
-                setAdminEditedEntry({ ...adminEditedEntry, adminFee: value });
+                const value = e.target.value.replace(/[^0-9]/g, ""); // Nur Zahlen erlauben
+                const numValue = value ? parseInt(value) : null;
+                if (numValue > 999) return; // Begrenzung auf 999
+                setAdminEditedEntry({ ...adminEditedEntry, adminFee: numValue });
               }}
+              inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }} // Keine Pfeile, nur Zahlen
             />
             <TextField
               label="Notiz"
