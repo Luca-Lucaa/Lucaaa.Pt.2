@@ -53,7 +53,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   const [isLoading, setIsLoading] = useState(false);
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  const { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, hideSnackbar } = useSnackbar(); // Verwende Hook
+  const { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, closeSnackbar } = useSnackbar(); // Verwende Hook
 
   const countEntriesByOwner = useCallback((owner) => {
     return entries.filter((entry) => entry.owner === owner).length;
@@ -121,7 +121,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       setOpenCreateEntryDialog(false);
       showSnackbar("Neuer Abonnent erfolgreich angelegt!");
     } catch (error) {
-      handleError(error, showSnackbar); // Anpassung: Direkt showSnackbar nutzen
+      handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
     }
@@ -155,7 +155,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       setOpenManualEntryDialog(false);
       showSnackbar("Bestehender Abonnent erfolgreich eingepflegt!");
     } catch (error) {
-      handleError(error, showSnackbar); // Anpassung: Direkt showSnackbar nutzen
+      handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
     }
@@ -273,20 +273,16 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
               role={role}
               loggedInUser={loggedInUser}
               setEntries={setEntries}
-              setSnackbarMessage={setSnackbarMessage} // Wird später entfernt
-              setSnackbarOpen={setSnackbarOpen}       // Wird später entfernt
+              setSnackbarMessage={setSnackbarMessage} // Entferne diese Prop später
+              setSnackbarOpen={setSnackbarOpen} // Entferne diese Prop später
             />
           ))
         ) : (
           <Typography>🚀 Keine passenden Einträge gefunden.</Typography>
         )}
       </Box>
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={6000}
-        onClose={hideSnackbar} // Verwende hideSnackbar
-      >
-        <Alert onClose={hideSnackbar} severity={snackbarSeverity} sx={{ width: "100%" }}>
+      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={closeSnackbar}>
+        <Alert onClose={closeSnackbar} severity={snackbarSeverity} sx={{ width: "100%" }}>
           {snackbarMessage}
         </Alert>
       </Snackbar>
