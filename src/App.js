@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from "react";
+import React, { useState, useEffect, Suspense, lazy, useCallback } from "react";
 import {
   Container,
   Typography,
@@ -84,16 +84,17 @@ const App = () => {
   const [guidesAnchorEl, setGuidesAnchorEl] = useState(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [chatExpanded, setChatExpanded] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // Neuer Ladezustand
 
   const { messages, unreadCount, markAsRead } = useMessages(loggedInUser, selectedUser);
 
-  const showSnackbar = (message, severity = "success") => {
+  const showSnackbar = useCallback((message, severity = "success") => {
     setSnackbarMessage(message);
     setSnackbarSeverity(severity);
     setSnackbarOpen(true);
-  };
+  }, []);
 
-  const handleLogin = (username, password) => {
+  const handleLogin = useCallback((username, password) => {
     const users = {
       Admin: "Admino25!",
       Scholli: "Scholli25",
@@ -109,21 +110,22 @@ const App = () => {
     } else {
       showSnackbar("❌ Ungültige Zugangsdaten", "error");
     }
-  };
+  }, [showSnackbar]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     setLoggedInUser(null);
     setRole(null);
     localStorage.removeItem("loggedInUser");
     localStorage.removeItem("role");
     showSnackbar("🔓 Erfolgreich abgemeldet!");
-  };
+  }, [showSnackbar]);
 
-  const sendMessage = async () => {
+  const sendMessage = useCallback(async () => {
     if (!newMessage.trim()) {
       showSnackbar("❌ Nachricht darf nicht leer sein", "error");
       return;
     }
+    setIsLoading(true);
     try {
       const { error } = await supabase
         .from("messages")
@@ -132,26 +134,31 @@ const App = () => {
       setNewMessage("");
     } catch (error) {
       handleError(error, setSnackbarMessage, setSnackbarOpen);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [newMessage, loggedInUser, selectedUser, showSnackbar]);
 
-  const fetchEntries = async () => {
+  const fetchEntries = useCallback(async () => {
+    setIsLoading(true);
     try {
       const { data, error } = await supabase.from("entries").select("*");
       if (error) throw error;
       setEntries(data);
     } catch (error) {
       handleError(error, setSnackbarMessage, setSnackbarOpen);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (loggedInUser) {
       fetchEntries();
     }
-  }, [loggedInUser]);
+  }, [loggedInUser, fetchEntries]);
 
-  const exportEntries = () => {
+  const exportEntries = useCallback(() => {
     const dataStr = JSON.stringify(entries, null, 2);
     const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -164,17 +171,18 @@ const App = () => {
     URL.revokeObjectURL(url);
     showSnackbar("Backup erfolgreich erstellt!");
     setMenuAnchorEl(null);
-  };
+  }, [entries, showSnackbar]);
 
-  const handleFileChange = (event) => {
+  const handleFileChange = useCallback((event) => {
     setFile(event.target.files[0]);
-  };
+  }, []);
 
-  const importBackup = async () => {
+  const importBackup = useCallback(async () => {
     if (!file) {
       showSnackbar("Bitte wählen Sie eine Datei aus.", "error");
       return;
     }
+    setIsLoading(true);
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
@@ -189,46 +197,48 @@ const App = () => {
         setImportDialogOpen(false);
       } catch (error) {
         handleError(error, setSnackbarMessage, setSnackbarOpen);
+      } finally {
+        setIsLoading(false);
       }
     };
     reader.readAsText(file);
-  };
+  }, [file, showSnackbar]);
 
-  const handleMenuClick = (event) => {
+  const handleMenuClick = useCallback((event) => {
     setMenuAnchorEl(event.currentTarget);
-  };
+  }, []);
 
-  const handleMenuClose = () => {
+  const handleMenuClose = useCallback(() => {
     setMenuAnchorEl(null);
     setGuidesAnchorEl(null);
-  };
+  }, []);
 
-  const handleImportOpen = () => {
+  const handleImportOpen = useCallback(() => {
     setImportDialogOpen(true);
     setMenuAnchorEl(null);
-  };
+  }, []);
 
-  const handleGuidesClick = (event) => {
+  const handleGuidesClick = useCallback((event) => {
     setGuidesAnchorEl(event.currentTarget || menuAnchorEl);
-  };
+  }, [menuAnchorEl]);
 
-  const handleGuidesClose = () => {
+  const handleGuidesClose = useCallback(() => {
     setGuidesAnchorEl(null);
-  };
+  }, []);
 
   const guides = [
     { name: "Anleitung PlockTV", path: "/guides/PlockTV.pdf" },
     { name: "Anleitung 2", path: "/guides/guide2.pdf" },
   ];
 
-  const handleGuideDownload = (path) => {
+  const handleGuideDownload = useCallback((path) => {
     window.open(path, "_blank");
     setGuidesAnchorEl(null);
     setMenuAnchorEl(null);
-  };
+  }, []);
 
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const themeInstance = useTheme();
+  const isMobile = useMediaQuery(themeInstance.breakpoints.down("sm"));
 
   useEffect(() => {
     if (selectedUser && messages.length > 0) {
@@ -329,6 +339,7 @@ const App = () => {
           </Toolbar>
         </StyledAppBar>
         <Suspense fallback={<div>🔄 Lade...</div>}>
+          {isLoading && <Typography>🔄 Lade Daten...</Typography>}
           {!loggedInUser ? (
             <Grid container justifyContent="center" style={{ marginTop: "20px" }}>
               <Grid item xs={12} sm={6} md={4}>
@@ -396,15 +407,16 @@ const App = () => {
                           sendMessage();
                         }
                       }}
+                      disabled={isLoading}
                     />
                     <Button
                       variant="contained"
                       color="primary"
                       onClick={sendMessage}
                       sx={{ width: { xs: "100%", sm: "auto" } }}
-                      disabled={!newMessage.trim()}
+                      disabled={isLoading || !newMessage.trim()}
                     >
-                      Senden
+                      {isLoading ? "Sende..." : "Senden"}
                     </Button>
                   </Box>
                 </AccordionDetails>
@@ -422,19 +434,20 @@ const App = () => {
         <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)}>
           <DialogTitle>Backup importieren</DialogTitle>
           <DialogContent>
-            <input type="file" accept=".json" onChange={handleFileChange} />
+            <input type="file" accept=".json" onChange={handleFileChange} disabled={isLoading} />
             {file && (
               <Typography sx={{ mt: 2 }}>
                 Ausgewählte Datei: {file.name}
               </Typography>
             )}
+            {isLoading && <Typography>🔄 Importiere...</Typography>}
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setImportDialogOpen(false)} color="secondary">
+            <Button onClick={() => setImportDialogOpen(false)} color="secondary" disabled={isLoading}>
               Abbrechen
             </Button>
-            <Button onClick={importBackup} color="primary" disabled={!file}>
-              Importieren
+            <Button onClick={importBackup} color="primary" disabled={isLoading || !file}>
+              {isLoading ? "Importiere..." : "Importieren"}
             </Button>
           </DialogActions>
         </Dialog>
