@@ -30,8 +30,10 @@ import { formatDate, generateUsername, useDebounce, handleError } from "./utils"
 const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMessage, setSnackbarOpen }) => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [extensionConfirmOpen, setExtensionConfirmOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false); // Für das Bearbeitungs-Dialogfeld
-  const [editedAliasNotes, setEditedAliasNotes] = useState(entry.aliasNotes); // Zustand für den bearbeiteten Spitzname
+  const [editDialogOpen, setEditDialogOpen] = useState(false); // Für Bearbeitung durch Ersteller
+  const [adminEditDialogOpen, setAdminEditDialogOpen] = useState(false); // Für Bearbeitung durch Admin
+  const [editedAliasNotes, setEditedAliasNotes] = useState(entry.aliasNotes); // Für Ersteller
+  const [adminEditedEntry, setAdminEditedEntry] = useState({ ...entry }); // Für Admin
 
   const changePaymentStatus = async (entryId, paymentStatus) => {
     try {
@@ -158,6 +160,34 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
     }
   };
 
+  const updateEntryByAdmin = async () => {
+    try {
+      const { error } = await supabase
+        .from("entries")
+        .update({
+          username: adminEditedEntry.username,
+          password: adminEditedEntry.password,
+          aliasNotes: adminEditedEntry.aliasNotes,
+          type: adminEditedEntry.type,
+          status: adminEditedEntry.status,
+          paymentStatus: adminEditedEntry.paymentStatus,
+          validUntil: adminEditedEntry.validUntil,
+          bougetList: adminEditedEntry.bougetList,
+          note: adminEditedEntry.note,
+        })
+        .eq("id", entry.id);
+      if (error) throw error;
+      setEntries((prev) =>
+        prev.map((e) => (e.id === entry.id ? { ...e, ...adminEditedEntry } : e))
+      );
+      setAdminEditDialogOpen(false);
+      setSnackbarMessage("Eintrag erfolgreich aktualisiert.");
+      setSnackbarOpen(true);
+    } catch (error) {
+      handleError(error, setSnackbarMessage, setSnackbarOpen);
+    }
+  };
+
   const getStatusColor = (status) =>
     status === "Aktiv" ? "green" : status === "Inaktiv" ? "red" : "black";
   const getPaymentStatusColor = (paymentStatus) =>
@@ -167,7 +197,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
   const currentYear = today.getFullYear();
   const octoberFirst = new Date(currentYear, 9, 1);
   const isBeforeOctober = today < octoberFirst;
-  const isOwner = entry.owner === loggedInUser; // Prüft, ob der eingeloggte Benutzer der Ersteller ist
+  const isOwner = entry.owner === loggedInUser;
 
   return (
     <Accordion sx={{ marginBottom: 2, borderRadius: 2, boxShadow: 1 }}>
@@ -295,6 +325,15 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
             >
               Verlängerung genehmigen
             </Button>
+            <Button
+              onClick={() => setAdminEditDialogOpen(true)}
+              variant="contained"
+              color="primary"
+              startIcon={<EditIcon />}
+              size="small"
+            >
+              Bearbeiten
+            </Button>
           </Box>
         )}
         {role === "Admin" && entry.extensionHistory?.length > 0 && (
@@ -353,6 +392,90 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
               Abbrechen
             </Button>
             <Button onClick={updateAliasNotes} color="primary">
+              Speichern
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <Dialog open={adminEditDialogOpen} onClose={() => setAdminEditDialogOpen(false)} fullWidth maxWidth="sm">
+          <DialogTitle>Eintrag bearbeiten (Admin)</DialogTitle>
+          <DialogContent>
+            <TextField
+              label="Benutzername"
+              fullWidth
+              margin="normal"
+              value={adminEditedEntry.username}
+              onChange={(e) => setAdminEditedEntry({ ...adminEditedEntry, username: e.target.value })}
+            />
+            <TextField
+              label="Passwort"
+              fullWidth
+              margin="normal"
+              type="password"
+              value={adminEditedEntry.password}
+              onChange={(e) => setAdminEditedEntry({ ...adminEditedEntry, password: e.target.value })}
+            />
+            <TextField
+              label="Spitzname, Notizen etc."
+              fullWidth
+              margin="normal"
+              value={adminEditedEntry.aliasNotes}
+              onChange={(e) => setAdminEditedEntry({ ...adminEditedEntry, aliasNotes: e.target.value })}
+            />
+            <TextField
+              label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
+              fullWidth
+              margin="normal"
+              value={adminEditedEntry.bougetList || ""}
+              onChange={(e) => setAdminEditedEntry({ ...adminEditedEntry, bougetList: e.target.value })}
+            />
+            <Select
+              fullWidth
+              margin="normal"
+              value={adminEditedEntry.type}
+              onChange={(e) => setAdminEditedEntry({ ...adminEditedEntry, type: e.target.value })}
+            >
+              <MenuItem value="Premium">Premium</MenuItem>
+              <MenuItem value="Basic">Basic</MenuItem>
+            </Select>
+            <Select
+              fullWidth
+              margin="normal"
+              value={adminEditedEntry.status}
+              onChange={(e) => setAdminEditedEntry({ ...adminEditedEntry, status: e.target.value })}
+            >
+              <MenuItem value="Aktiv">Aktiv</MenuItem>
+              <MenuItem value="Inaktiv">Inaktiv</MenuItem>
+            </Select>
+            <Select
+              fullWidth
+              margin="normal"
+              value={adminEditedEntry.paymentStatus}
+              onChange={(e) => setAdminEditedEntry({ ...adminEditedEntry, paymentStatus: e.target.value })}
+            >
+              <MenuItem value="Gezahlt">Gezahlt</MenuItem>
+              <MenuItem value="Nicht gezahlt">Nicht gezahlt</MenuItem>
+            </Select>
+            <TextField
+              label="Gültig bis"
+              fullWidth
+              margin="normal"
+              type="date"
+              value={adminEditedEntry.validUntil ? new Date(adminEditedEntry.validUntil).toISOString().split("T")[0] : ""}
+              onChange={(e) => setAdminEditedEntry({ ...adminEditedEntry, validUntil: new Date(e.target.value).toISOString() })}
+            />
+            <TextField
+              label="Notiz"
+              fullWidth
+              margin="normal"
+              value={adminEditedEntry.note || ""}
+              onChange={(e) => setAdminEditedEntry({ ...adminEditedEntry, note: e.target.value })}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setAdminEditDialogOpen(false)} color="secondary">
+              Abbrechen
+            </Button>
+            <Button onClick={updateEntryByAdmin} color="primary">
               Speichern
             </Button>
           </DialogActions>
