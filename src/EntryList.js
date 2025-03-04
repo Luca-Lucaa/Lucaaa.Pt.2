@@ -162,7 +162,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
 
   const updateEntryByAdmin = async () => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("entries")
         .update({
           username: adminEditedEntry.username,
@@ -174,12 +174,14 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
           validUntil: adminEditedEntry.validUntil,
           bougetList: adminEditedEntry.bougetList,
           note: adminEditedEntry.note,
-          admin_fee: adminEditedEntry.adminFee, // admin_fee wird verwendet
+          admin_fee: adminEditedEntry.adminFee, // admin_fee wird korrekt gesetzt
         })
-        .eq("id", entry.id);
+        .eq("id", entry.id)
+        .select()
+        .single(); // Rückgabe des aktualisierten Eintrags
       if (error) throw error;
       setEntries((prev) =>
-        prev.map((e) => (e.id === entry.id ? { ...e, ...adminEditedEntry, adminFee: adminEditedEntry.adminFee } : e))
+        prev.map((e) => (e.id === entry.id ? { ...e, ...data } : e)) // Aktualisiere den Eintrag mit den zurückgegebenen Daten
       );
       setAdminEditDialogOpen(false);
       setSnackbarMessage("Eintrag erfolgreich aktualisiert.");
@@ -278,14 +280,22 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
                   if (value > 999) return;
                   setAdminEditedEntry({ ...adminEditedEntry, adminFee: value });
                 }}
-                onBlur={updateEntryByAdmin} // Speichert sofort bei Verlassen des Feldes
                 sx={{ width: "80px" }}
               />
               <Typography>$</Typography>
+              <Button
+                variant="contained"
+                color="primary"
+                size="small"
+                onClick={updateEntryByAdmin}
+                disabled={adminEditedEntry.adminFee === entry.adminFee} // Button deaktiviert, wenn kein neuer Wert
+              >
+                Speichern
+              </Button>
             </Box>
           ) : isOwner ? (
             <Typography>
-              <strong>Admin-Gebühr:</strong> {entry.adminFee ? `${entry.adminFee}$` : "Nicht gesetzt"}
+              <strong>Admin-Gebühr:</strong> {entry.admin_fee ? `${entry.admin_fee}$` : "Nicht gesetzt"}
             </Typography>
           ) : null}
           {entry.note && (
