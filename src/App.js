@@ -383,7 +383,42 @@ const App = () => {
                         if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault();
                           sendMessage();
-
+                        }
+                      }}
+                      disabled={isLoading}
+                    />
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={sendMessage}
+                      sx={{ width: { xs: "100%", sm: "auto" } }}
+                      disabled={isLoading || !newMessage.trim()}
+                    >
+                      {isLoading ? "Sende..." : "Senden"}
+                    </Button>
+                  </Box>
+                </AccordionDetails>
+              </Accordion>
+              <EntryList role={role} loggedInUser={loggedInUser} entries={entries} setEntries={setEntries} />
+            </>
+          )}
+        </Suspense>
+        <CustomSnackbar
+          open={snackbarOpen}
+          message={snackbarMessage}
+          onClose={() => setSnackbarOpen(false)}
+          severity={snackbarSeverity}
+        />
+        <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)}>
+          <DialogTitle>Backup importieren</DialogTitle>
+          <DialogContent>
+            <input type="file" accept=".json" onChange={handleFileChange} disabled={isLoading} />
+            {file && (
+              <Typography sx={{ mt: 2 }}>
+                Ausgewählte Datei: {file.name}
+              </Typography>
+            )}
+            {isLoading && <Typography>🔄 Importiere...</Typography>}
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setImportDialogOpen(false)} color="secondary" disabled={isLoading}>
