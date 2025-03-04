@@ -3,10 +3,6 @@ import {
   Typography,
   TextField,
   Button,
-  Divider,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -16,16 +12,13 @@ import {
   MenuItem,
   Snackbar,
   Alert,
-  Chip,
-  IconButton,
 } from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
 import { supabase } from "./supabaseClient";
 import { formatDate, generateUsername, useDebounce, handleError } from "./utils";
 import EntryAccordion from "./EntryAccordion";
+import { useSnackbar } from "./useSnackbar"; // Neuer Import
 
 const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   const [openCreateEntryDialog, setOpenCreateEntryDialog] = useState(false);
@@ -57,10 +50,10 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
     extensionHistory: [],
     bougetList: "",
   });
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(false); // Neuer Ladezustand
+  const [isLoading, setIsLoading] = useState(false);
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
+  const { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, hideSnackbar } = useSnackbar(); // Verwende Hook
 
   const countEntriesByOwner = useCallback((owner) => {
     return entries.filter((entry) => entry.owner === owner).length;
@@ -117,8 +110,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
 
   const createEntry = useCallback(async () => {
     if (!newEntry.aliasNotes.trim() || !newEntry.username.trim()) {
-      setSnackbarMessage("Bitte Spitzname und Benutzername eingeben.");
-      setSnackbarOpen(true);
+      showSnackbar("Bitte Spitzname und Benutzername eingeben.", "error");
       return;
     }
     setIsLoading(true);
@@ -127,19 +119,17 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       if (error) throw error;
       setEntries((prev) => [data[0], ...prev]);
       setOpenCreateEntryDialog(false);
-      setSnackbarMessage("Neuer Abonnent erfolgreich angelegt!");
-      setSnackbarOpen(true);
+      showSnackbar("Neuer Abonnent erfolgreich angelegt!");
     } catch (error) {
-      handleError(error, setSnackbarMessage, setSnackbarOpen);
+      handleError(error, showSnackbar); // Anpassung: Direkt showSnackbar nutzen
     } finally {
       setIsLoading(false);
     }
-  }, [newEntry, setEntries]);
+  }, [newEntry, setEntries, showSnackbar]);
 
   const handleAddManualEntry = useCallback(async () => {
     if (!manualEntry.username || !manualEntry.password || !manualEntry.aliasNotes) {
-      setSnackbarMessage("Bitte füllen Sie alle Felder aus.");
-      setSnackbarOpen(true);
+      showSnackbar("Bitte füllen Sie alle Felder aus.", "error");
       return;
     }
     setIsLoading(true);
@@ -163,14 +153,13 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       if (error) throw error;
       setEntries((prev) => [data[0], ...prev]);
       setOpenManualEntryDialog(false);
-      setSnackbarMessage("Bestehender Abonnent erfolgreich eingepflegt!");
-      setSnackbarOpen(true);
+      showSnackbar("Bestehender Abonnent erfolgreich eingepflegt!");
     } catch (error) {
-      handleError(error, setSnackbarMessage, setSnackbarOpen);
+      handleError(error, showSnackbar); // Anpassung: Direkt showSnackbar nutzen
     } finally {
       setIsLoading(false);
     }
-  }, [manualEntry, loggedInUser, setEntries]);
+  }, [manualEntry, loggedInUser, setEntries, showSnackbar]);
 
   const filterEntries = useMemo(() => {
     return entries
@@ -284,16 +273,20 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
               role={role}
               loggedInUser={loggedInUser}
               setEntries={setEntries}
-              setSnackbarMessage={setSnackbarMessage}
-              setSnackbarOpen={setSnackbarOpen}
+              setSnackbarMessage={setSnackbarMessage} // Wird später entfernt
+              setSnackbarOpen={setSnackbarOpen}       // Wird später entfernt
             />
           ))
         ) : (
           <Typography>🚀 Keine passenden Einträge gefunden.</Typography>
         )}
       </Box>
-      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={() => setSnackbarOpen(false)}>
-        <Alert onClose={() => setSnackbarOpen(false)} severity="success" sx={{ width: "100%" }}>
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={hideSnackbar} // Verwende hideSnackbar
+      >
+        <Alert onClose={hideSnackbar} severity={snackbarSeverity} sx={{ width: "100%" }}>
           {snackbarMessage}
         </Alert>
       </Snackbar>
