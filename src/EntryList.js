@@ -174,6 +174,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
           validUntil: adminEditedEntry.validUntil,
           bougetList: adminEditedEntry.bougetList,
           note: adminEditedEntry.note,
+          adminFee: adminEditedEntry.adminFee, // Neues Feld hinzufügen
         })
         .eq("id", entry.id);
       if (error) throw error;
@@ -263,6 +264,11 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
               <span style={{ color: "green" }}> (Verlängert)</span>
             )}
           </Typography>
+          {role === "Admin" && (
+            <Typography>
+              <strong>Admin-Gebühr:</strong> {entry.adminFee ? `${entry.adminFee}$` : "Nicht gesetzt"}
+            </Typography>
+          )}
           {entry.note && (
             <Typography sx={{ gridColumn: "span 2", color: "red" }}>
               <strong>Notiz:</strong> {entry.note}
@@ -462,6 +468,19 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
               type="date"
               value={adminEditedEntry.validUntil ? new Date(adminEditedEntry.validUntil).toISOString().split("T")[0] : ""}
               onChange={(e) => setAdminEditedEntry({ ...adminEditedEntry, validUntil: new Date(e.target.value).toISOString() })}
+            />
+            <TextField
+              label="Admin-Gebühr ($)"
+              fullWidth
+              margin="normal"
+              type="number"
+              inputProps={{ min: 0, max: 999 }}
+              value={adminEditedEntry.adminFee || ""}
+              onChange={(e) => {
+                const value = e.target.value ? parseInt(e.target.value) : null;
+                if (value > 999) return; // Begrenzung auf 999
+                setAdminEditedEntry({ ...adminEditedEntry, adminFee: value });
+              }}
             />
             <TextField
               label="Notiz"
