@@ -174,7 +174,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
           validUntil: adminEditedEntry.validUntil,
           bougetList: adminEditedEntry.bougetList,
           note: adminEditedEntry.note,
-          adminFee: adminEditedEntry.adminFee, // Neues Feld hinzufügen
+          adminFee: adminEditedEntry.adminFee, // Neues Feld wird hier aktualisiert
         })
         .eq("id", entry.id);
       if (error) throw error;
@@ -264,10 +264,25 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
               <span style={{ color: "green" }}> (Verlängert)</span>
             )}
           </Typography>
+          {/* Neues direkt bearbeitbares Feld für Admin-Gebühr */}
           {role === "Admin" && (
-            <Typography>
-              <strong>Admin-Gebühr:</strong> {entry.adminFee ? `${entry.adminFee}$` : "Nicht gesetzt"}
-            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography><strong>Admin-Gebühr:</strong></Typography>
+              <TextField
+                size="small"
+                type="number"
+                inputProps={{ min: 0, max: 999 }}
+                value={adminEditedEntry.adminFee || ""}
+                onChange={(e) => {
+                  const value = e.target.value ? parseInt(e.target.value) : null;
+                  if (value > 999) return;
+                  setAdminEditedEntry({ ...adminEditedEntry, adminFee: value });
+                }}
+                onBlur={updateEntryByAdmin} // Speichert sofort bei Verlassen des Feldes
+                sx={{ width: "80px" }}
+              />
+              <Typography>$</Typography>
+            </Box>
           )}
           {entry.note && (
             <Typography sx={{ gridColumn: "span 2", color: "red" }}>
@@ -478,7 +493,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, setSnackbarMess
               value={adminEditedEntry.adminFee || ""}
               onChange={(e) => {
                 const value = e.target.value ? parseInt(e.target.value) : null;
-                if (value > 999) return; // Begrenzung auf 999
+                if (value > 999) return;
                 setAdminEditedEntry({ ...adminEditedEntry, adminFee: value });
               }}
             />
