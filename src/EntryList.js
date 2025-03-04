@@ -273,8 +273,6 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
               role={role}
               loggedInUser={loggedInUser}
               setEntries={setEntries}
-              setSnackbarMessage={setSnackbarMessage} // Entferne diese Prop später
-              setSnackbarOpen={setSnackbarOpen} // Entferne diese Prop später
             />
           ))
         ) : (
