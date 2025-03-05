@@ -21,7 +21,8 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { supabase } from "./supabaseClient";
 import { formatDate, handleError } from "./utils";
-import { useSnackbar } from "./useSnackbar"; // Neuer Import
+import { useSnackbar } from "./useSnackbar";
+import { OWNER_COLORS } from "./config"; // Import der Farben
 
 const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -32,7 +33,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const [adminEditedEntry, setAdminEditedEntry] = useState({ ...entry });
   const [isLoading, setIsLoading] = useState(false);
 
-  const { showSnackbar } = useSnackbar(); // Verwende Hook
+  const { showSnackbar } = useSnackbar();
 
   const changePaymentStatus = useCallback(async (entryId, paymentStatus) => {
     setIsLoading(true);
@@ -215,7 +216,14 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const isOwner = entry.owner === loggedInUser;
 
   return (
-    <Accordion sx={{ marginBottom: 2, borderRadius: 2, boxShadow: 1 }}>
+    <Accordion
+      sx={{
+        marginBottom: 2,
+        borderRadius: 2,
+        boxShadow: 1,
+        backgroundColor: role === "Admin" ? OWNER_COLORS[entry.owner] || "#ffffff" : "#ffffff", // Farbe nur für Admin
+      }}
+    >
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, width: "100%" }}>
           <Typography sx={{ flexGrow: 1 }}>
