@@ -24,3 +24,11 @@ export const GUIDES = [
   { name: "Anleitung PlockTV", path: "/guides/PlockTV.pdf" },
   { name: "Anleitung 2", path: "/guides/guide2.pdf" },
 ];
+
+// Neue Zuordnung von Ersteller zu Hintergrundfarben (leichte Pastelltöne)
+export const OWNER_COLORS = {
+  Admin: "#f0f7ff",    // Hellblau
+  Scholli: "#f9f0ff",   // Helllila
+  Jamaica05: "#f5fff0", // Hellgrün
+  // Füge hier weitere Ersteller hinzu, falls nötig, mit passenden Farben
+};
