@@ -18,7 +18,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import { supabase } from "./supabaseClient";
 import { formatDate, generateUsername, useDebounce, handleError } from "./utils";
 import EntryAccordion from "./EntryAccordion";
-import { useSnackbar } from "./useSnackbar"; // Neuer Import
+import { useSnackbar } from "./useSnackbar";
 
 const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   const [openCreateEntryDialog, setOpenCreateEntryDialog] = useState(false);
@@ -39,6 +39,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
     owner: loggedInUser,
     extensionHistory: [],
     bougetList: "",
+    admin_fee: null, // Standardwert für Admin-Gebühr
   });
   const [manualEntry, setManualEntry] = useState({
     username: "",
@@ -49,11 +50,18 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
     owner: loggedInUser,
     extensionHistory: [],
     bougetList: "",
+    admin_fee: null, // Standardwert für Admin-Gebühr
   });
   const [isLoading, setIsLoading] = useState(false);
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  const { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, closeSnackbar } = useSnackbar(); // Verwende Hook
+  const { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, closeSnackbar } = useSnackbar();
+
+  // Berechne Gesamtkosten für einen bestimmten Ersteller
+  const calculateTotalFeesForOwner = useCallback((owner) => {
+    const ownerEntries = entries.filter((entry) => entry.owner === owner);
+    return ownerEntries.reduce((total, entry) => total + (entry.admin_fee || 0), 0);
+  }, [entries]);
 
   const countEntriesByOwner = useCallback((owner) => {
     return entries.filter((entry) => entry.owner === owner).length;
@@ -90,6 +98,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       owner: loggedInUser,
       extensionHistory: [],
       bougetList: "",
+      admin_fee: null, // Standardwert für Admin-Gebühr
     });
     setOpenCreateEntryDialog(true);
   }, [loggedInUser]);
@@ -104,6 +113,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       owner: loggedInUser,
       extensionHistory: [],
       bougetList: "",
+      admin_fee: null, // Standardwert für Admin-Gebühr
     });
     setOpenManualEntryDialog(true);
   }, [loggedInUser]);
@@ -147,6 +157,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       note: "Dieser Abonnent besteht bereits",
       extensionHistory: [],
       bougetList: manualEntry.bougetList,
+      admin_fee: manualEntry.admin_fee, // Inkludiere admin_fee
     };
     try {
       const { data, error } = await supabase.from("entries").insert([newManualEntry]).select();
@@ -180,6 +191,15 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
 
   return (
     <div>
+      {/* Gesamtkosten für den aktuellen Ersteller (für Nicht-Admins und Admins für sich selbst) */}
+      {(role !== "Admin" || loggedInUser === selectedUser) && (
+        <Box sx={{ padding: 2, backgroundColor: "#f5f5f5", borderRadius: 2, marginBottom: 2 }}>
+          <Typography variant="h6" sx={{ color: "green" }}>
+            Gesamtkosten deiner Einträge: {calculateTotalFeesForOwner(loggedInUser)}$ €
+          </Typography>
+        </Box>
+      )}
+
       <Box sx={{ padding: 2, display: "flex", flexDirection: "column", gap: 2, marginBottom: 3 }}>
         <Typography variant="body1" sx={{ fontStyle: "italic", color: "green" }}>
           {motivationMessage}
@@ -207,6 +227,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           </Button>
         </Box>
       </Box>
+
       {role === "Admin" && (
         <Box sx={{ marginBottom: 3, padding: 2 }}>
           <Typography variant="h6">Ersteller filtern:</Typography>
@@ -218,7 +239,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
                 onClick={() => setSelectedUser(owner)}
                 color={selectedUser === owner ? "primary" : "default"}
               >
-                {owner} ({entries.filter((e) => e.owner === owner).length})
+                {owner} ({countEntriesByOwner(owner)}) - Gesamtkosten: {calculateTotalFeesForOwner(owner)}$ €
               </Button>
             ))}
             <Button variant="outlined" onClick={() => setSelectedUser("")} fullWidth>
@@ -227,6 +248,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           </Box>
         </Box>
       )}
+
       <Box sx={{ marginBottom: 3, padding: 2, display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
         <TextField
           label="🔍 Suchen nach Benutzername oder Spitzname"
@@ -315,6 +337,21 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           </Select>
           <TextField label="Benutzername" fullWidth margin="normal" value={newEntry.username} disabled />
           <TextField label="Passwort" fullWidth margin="normal" type="password" value={newEntry.password} disabled />
+          <TextField
+            label="Admin-Gebühr ($)"
+            fullWidth
+            margin="normal"
+            type="number"
+            value={newEntry.admin_fee || ""}
+            onChange={(e) => {
+              const value = e.target.value.replace(/[^0-9]/g, "");
+              const numValue = value ? parseInt(value) : null;
+              if (numValue > 999) return;
+              setNewEntry({ ...newEntry, admin_fee: numValue });
+            }}
+            inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+            disabled={isLoading}
+          />
           <Typography variant="body1">
             <strong>Aktuelles Datum:</strong> {formatDate(new Date())}
           </Typography>
@@ -385,6 +422,21 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             type="date"
             value={manualEntry.validUntil.toISOString().split("T")[0]}
             onChange={(e) => setManualEntry({ ...manualEntry, validUntil: new Date(e.target.value) })}
+            disabled={isLoading}
+          />
+          <TextField
+            label="Admin-Gebühr ($)"
+            fullWidth
+            margin="normal"
+            type="number"
+            value={manualEntry.admin_fee || ""}
+            onChange={(e) => {
+              const value = e.target.value.replace(/[^0-9]/g, "");
+              const numValue = value ? parseInt(value) : null;
+              if (numValue > 999) return;
+              setManualEntry({ ...manualEntry, admin_fee: numValue });
+            }}
+            inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
             disabled={isLoading}
           />
           <Typography variant="body1">
