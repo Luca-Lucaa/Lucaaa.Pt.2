@@ -19,6 +19,7 @@ import { supabase } from "./supabaseClient";
 import { formatDate, generateUsername, useDebounce, handleError } from "./utils";
 import EntryAccordion from "./EntryAccordion";
 import { useSnackbar } from "./useSnackbar";
+import { OWNER_COLORS } from "./config"; // Import der Farben
 
 const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   const [openCreateEntryDialog, setOpenCreateEntryDialog] = useState(false);
@@ -255,6 +256,12 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
                 variant="outlined"
                 onClick={() => setSelectedUser(owner)}
                 color={selectedUser === owner ? "primary" : "default"}
+                sx={{
+                  backgroundColor: OWNER_COLORS[owner] || "#ffffff", // Farbe nur für Admin
+                  "&:hover": {
+                    backgroundColor: OWNER_COLORS[owner] || "#ffffff", // Hover-Effekt behält die Farbe
+                  },
+                }}
               >
                 {owner} ({countEntriesByOwner(owner)}) - Gesamtkosten: {calculateTotalFeesForOwner(owner)}$ €
               </Button>
