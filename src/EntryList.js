@@ -69,16 +69,34 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
 
   const entryCount = countEntriesByOwner(loggedInUser);
   let motivationMessage = "";
-  if (entryCount >= 10 && entryCount < 15) {
-    motivationMessage = "🎉 Super! Du hast bereits 10 Einträge erreicht! Mach weiter so, du bist auf dem besten Weg zu 15!";
-  } else if (entryCount >= 15 && entryCount < 20) {
-    motivationMessage = "🎉 Fantastisch! 15 Einträge sind erreicht! Nur noch 5 bis zu 20! Lass uns das schaffen!";
-  } else if (entryCount >= 20 && entryCount < 25) {
-    motivationMessage = "🎉 Großartig! Du hast 20 Einträge! Nur noch 5 bis zu 25! Weiter so!";
+  if (entryCount >= 100) {
+    motivationMessage = "🎉 Unglaublich! Du hast 100 Einträge erreicht! Du bist ein absoluter Champion!";
+  } else if (entryCount >= 90) {
+    motivationMessage = "🎉 Beeindruckend! Du hast 90 Einträge! Nur noch 10 bis zu 100! Weiter so!";
+  } else if (entryCount >= 80) {
+    motivationMessage = "🎉 Fantastisch! 80 Einträge sind erreicht! Nur noch 20 bis zu 100! Bleib dran!";
+  } else if (entryCount >= 70) {
+    motivationMessage = "🎉 Großartig! Du hast 70 Einträge! Nur noch 30 bis zu 100! Mach weiter!";
+  } else if (entryCount >= 60) {
+    motivationMessage = "🎉 Hervorragend! 60 Einträge sind erreicht! Nur noch 40 bis zu 100! Weiter so!";
+  } else if (entryCount >= 50) {
+    motivationMessage = "🎉 Wow! Du hast 50 Einträge! Nur noch 50 bis zu 100! Du rockst das!";
+  } else if (entryCount >= 40) {
+    motivationMessage = "🎉 Super! 40 Einträge sind erreicht! Nur noch 60 bis zu 100! Bleib motiviert!";
+  } else if (entryCount >= 30) {
+    motivationMessage = "🎉 Toll! Du hast 30 Einträge! Nur noch 70 bis zu 100! Weiter so!";
   } else if (entryCount >= 25) {
     motivationMessage = "🎉 Wow! Du hast 25 Einträge erreicht! Deine Kreativität kennt keine Grenzen! Mach weiter so!";
+  } else if (entryCount >= 20) {
+    motivationMessage = "🎉 Großartig! Du hast 20 Einträge! Nur noch 5 bis zu 25! Weiter so!";
+  } else if (entryCount >= 15) {
+    motivationMessage = "🎉 Fantastisch! 15 Einträge sind erreicht! Nur noch 5 bis zu 20! Lass uns das schaffen!";
+  } else if (entryCount >= 10) {
+    motivationMessage = "🎉 Super! Du hast bereits 10 Einträge erreicht! Mach weiter so, du bist auf dem besten Weg zu 15!";
+  } else if (entryCount >= 5) {
+    motivationMessage = "🎉 Gut gemacht! Du hast 5 Einträge erreicht! Nur noch 5 bis zu 10! Weiter so!";
   } else if (entryCount > 0) {
-    motivationMessage = `🎉 Du hast ${entryCount} Einträge erstellt! Weiter so, der nächste Meilenstein ist 5!`;
+    motivationMessage = `🎉 Du hast ${entryCount} Einträge erstellt! Der nächste Meilenstein ist 5!`;
   } else {
     motivationMessage = "🎉 Du hast noch keine Einträge erstellt. Lass uns mit dem ersten Eintrag beginnen!";
   }
@@ -191,7 +209,6 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
 
   return (
     <div>
-      {/* Gesamtkosten für den aktuellen Ersteller (für Nicht-Admins und Admins für sich selbst) */}
       {(role !== "Admin" || loggedInUser === selectedUser) && (
         <Box sx={{ padding: 2, backgroundColor: "#f5f5f5", borderRadius: 2, marginBottom: 2 }}>
           <Typography variant="h6" sx={{ color: "green" }}>
