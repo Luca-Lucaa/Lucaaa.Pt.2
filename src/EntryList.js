@@ -12,12 +12,9 @@ import {
   MenuItem,
   Snackbar,
   Alert,
-  Card,
-  CardContent,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
-import AttachMoneyIcon from "@mui/icons-material/AttachMoney"; // Icon für den Betrag
 import { supabase } from "./supabaseClient";
 import { formatDate, generateUsername, useDebounce, handleError } from "./utils";
 import EntryAccordion from "./EntryAccordion";
@@ -213,26 +210,10 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
 
   return (
     <div>
-      {/* Verkleinerte Gesamtkosten-Anzeige */}
       {(role !== "Admin" || loggedInUser === selectedUser) && (
-        <Box sx={{ padding: 0.5, backgroundColor: "#f5f5f5", borderRadius: 1, marginBottom: 0.5 }}>
-          <Typography variant="caption" color="textSecondary" align="center">
-            Gesamtkosten
-          </Typography>
-          <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 0.25 }}>
-            <AttachMoneyIcon sx={{ fontSize: "1rem", color: calculateTotalFeesForOwner(loggedInUser) > 500 ? "#d32f2f" : "#4caf50" }} />
-            <Typography
-              variant="body2"
-              sx={{
-                fontWeight: "bold",
-                color: calculateTotalFeesForOwner(loggedInUser) > 500 ? "#d32f2f" : "#4caf50",
-              }}
-            >
-              {calculateTotalFeesForOwner(loggedInUser).toLocaleString()}
-            </Typography>
-          </Box>
-          <Typography variant="caption" color="textSecondary" align="center" sx={{ fontSize: "0.6rem" }}>
-            (basierend auf {countEntriesByOwner(loggedInUser)} Einträgen)
+        <Box sx={{ padding: 2, backgroundColor: "#f5f5f5", borderRadius: 2, marginBottom: 2 }}>
+          <Typography variant="h6" sx={{ color: "green" }}>
+            Gesamtkosten deiner Einträge: {calculateTotalFeesForOwner(loggedInUser)}$ €
           </Typography>
         </Box>
       )}
@@ -273,30 +254,19 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
               <Button
                 key={owner}
                 variant="outlined"
-                size="small"
                 onClick={() => setSelectedUser(owner)}
                 color={selectedUser === owner ? "primary" : "default"}
                 sx={{
-                  backgroundColor: OWNER_COLORS[owner] || "#ffffff",
+                  backgroundColor: OWNER_COLORS[owner] || "#ffffff", // Farbe nur für Admin
                   "&:hover": {
-                    backgroundColor: OWNER_COLORS[owner] || "#ffffff",
+                    backgroundColor: OWNER_COLORS[owner] || "#ffffff", // Hover-Effekt behält die Farbe
                   },
-                  fontSize: "0.75rem",
-                  padding: "4px 8px",
                 }}
               >
-                {owner} ({countEntriesByOwner(owner)}) -{" "}
-                <AttachMoneyIcon sx={{ fontSize: "1rem", marginRight: 0.5 }} />{" "}
-                {calculateTotalFeesForOwner(owner).toLocaleString()}
+                {owner} ({countEntriesByOwner(owner)}) - Gesamtkosten: {calculateTotalFeesForOwner(owner)}$ €
               </Button>
             ))}
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => setSelectedUser("")}
-              sx={{ fontSize: "0.75rem", padding: "4px 8px" }}
-              fullWidth
-            >
+            <Button variant="outlined" onClick={() => setSelectedUser("")} fullWidth>
               Alle anzeigen
             </Button>
           </Box>
@@ -392,7 +362,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           <TextField label="Benutzername" fullWidth margin="normal" value={newEntry.username} disabled />
           <TextField label="Passwort" fullWidth margin="normal" type="password" value={newEntry.password} disabled />
           <TextField
-            label="Admin-Gebühr"
+            label="Admin-Gebühr ($)"
             fullWidth
             margin="normal"
             type="number"
@@ -479,7 +449,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             disabled={isLoading}
           />
           <TextField
-            label="Admin-Gebühr"
+            label="Admin-Gebühr ($)"
             fullWidth
             margin="normal"
             type="number"
