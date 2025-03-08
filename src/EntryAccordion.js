@@ -7,6 +7,7 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney"; // Icon für den Betrag
+import { formatDate } from "./utils"; // Import der formatDate-Funktion
 
 const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const [expanded, setExpanded] = useState(false);
