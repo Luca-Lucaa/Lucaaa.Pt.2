@@ -12,6 +12,8 @@ import {
   MenuItem,
   Snackbar,
   Alert,
+  Card,
+  CardContent,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -211,11 +213,25 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   return (
     <div>
       {(role !== "Admin" || loggedInUser === selectedUser) && (
-        <Box sx={{ padding: 2, backgroundColor: "#f5f5f5", borderRadius: 2, marginBottom: 2 }}>
-          <Typography variant="h6" sx={{ color: "green" }}>
-            Gesamtkosten deiner Einträge: {calculateTotalFeesForOwner(loggedInUser)}$ €
-          </Typography>
-        </Box>
+        <Card sx={{ padding: 2, marginBottom: 2, backgroundColor: "#f5f5f5", borderRadius: 2 }}>
+          <CardContent sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <Typography variant="h6" color="textSecondary" gutterBottom>
+              Gesamtkosten
+            </Typography>
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: "bold",
+                color: calculateTotalFeesForOwner(loggedInUser) > 500 ? "#d32f2f" : "#4caf50", // Rot > 500, sonst Grün
+              }}
+            >
+              {calculateTotalFeesForOwner(loggedInUser).toLocaleString()} {/* Ohne Währungszeichen */}
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              (basierend auf {countEntriesByOwner(loggedInUser)} Einträgen)
+            </Typography>
+          </CardContent>
+        </Card>
       )}
 
       <Box sx={{ padding: 2, display: "flex", flexDirection: "column", gap: 2, marginBottom: 3 }}>
@@ -263,7 +279,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
                   },
                 }}
               >
-                {owner} ({countEntriesByOwner(owner)}) - Gesamtkosten: {calculateTotalFeesForOwner(owner)}$ €
+                {owner} ({countEntriesByOwner(owner)}) - Gesamtkosten: {calculateTotalFeesForOwner(owner).toLocaleString()} {/* Ohne Währungszeichen */}
               </Button>
             ))}
             <Button variant="outlined" onClick={() => setSelectedUser("")} fullWidth>
@@ -362,7 +378,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           <TextField label="Benutzername" fullWidth margin="normal" value={newEntry.username} disabled />
           <TextField label="Passwort" fullWidth margin="normal" type="password" value={newEntry.password} disabled />
           <TextField
-            label="Admin-Gebühr ($)"
+            label="Admin-Gebühr" // Entferne "$" aus dem Label
             fullWidth
             margin="normal"
             type="number"
@@ -449,7 +465,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             disabled={isLoading}
           />
           <TextField
-            label="Admin-Gebühr ($)"
+            label="Admin-Gebühr" // Entferne "$" aus dem Label
             fullWidth
             margin="normal"
             type="number"
