@@ -17,6 +17,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney"; // Icon für den Betrag
 import { supabase } from "./supabaseClient";
 import { formatDate, generateUsername, useDebounce, handleError } from "./utils";
 import EntryAccordion from "./EntryAccordion";
@@ -225,7 +226,8 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
                 color: calculateTotalFeesForOwner(loggedInUser) > 500 ? "#d32f2f" : "#4caf50", // Rot > 500, sonst Grün
               }}
             >
-              {calculateTotalFeesForOwner(loggedInUser).toLocaleString()} {/* Ohne Währungszeichen */}
+              <AttachMoneyIcon sx={{ verticalAlign: "middle", marginRight: 0.5 }} />
+              {calculateTotalFeesForOwner(loggedInUser).toLocaleString()} {/* Icon vor dem Betrag */}
             </Typography>
             <Typography variant="body2" color="textSecondary">
               (basierend auf {countEntriesByOwner(loggedInUser)} Einträgen)
@@ -270,6 +272,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
               <Button
                 key={owner}
                 variant="outlined"
+                size="small" // Kleinere Buttons
                 onClick={() => setSelectedUser(owner)}
                 color={selectedUser === owner ? "primary" : "default"}
                 sx={{
@@ -277,12 +280,22 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
                   "&:hover": {
                     backgroundColor: OWNER_COLORS[owner] || "#ffffff", // Hover-Effekt behält die Farbe
                   },
+                  fontSize: "0.75rem", // Kleinere Schriftgröße
+                  padding: "4px 8px", // Weniger Padding
                 }}
               >
-                {owner} ({countEntriesByOwner(owner)}) - Gesamtkosten: {calculateTotalFeesForOwner(owner).toLocaleString()} {/* Ohne Währungszeichen */}
+                {owner} ({countEntriesByOwner(owner)}) -{" "}
+                <AttachMoneyIcon sx={{ fontSize: "1rem", marginRight: 0.5 }} />{" "}
+                {calculateTotalFeesForOwner(owner).toLocaleString()} {/* Kompakte Darstellung mit Icon */}
               </Button>
             ))}
-            <Button variant="outlined" onClick={() => setSelectedUser("")} fullWidth>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setSelectedUser("")}
+              sx={{ fontSize: "0.75rem", padding: "4px 8px" }}
+              fullWidth
+            >
               Alle anzeigen
             </Button>
           </Box>
@@ -378,7 +391,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           <TextField label="Benutzername" fullWidth margin="normal" value={newEntry.username} disabled />
           <TextField label="Passwort" fullWidth margin="normal" type="password" value={newEntry.password} disabled />
           <TextField
-            label="Admin-Gebühr" // Entferne "$" aus dem Label
+            label="Admin-Gebühr"
             fullWidth
             margin="normal"
             type="number"
@@ -465,7 +478,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             disabled={isLoading}
           />
           <TextField
-            label="Admin-Gebühr" // Entferne "$" aus dem Label
+            label="Admin-Gebühr"
             fullWidth
             margin="normal"
             type="number"
