@@ -169,7 +169,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [setEntries, showSnackbar]); // Entferne newEntry aus Abhängigkeiten
+  }, [setEntries, showSnackbar]);
 
   const handleAddManualEntry = useCallback(async () => {
     if (!manualEntry.username || !manualEntry.password || !manualEntry.aliasNotes) {
@@ -224,7 +224,11 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   const uniqueOwners = useMemo(() => [...new Set(entries.map((entry) => entry.owner))], [entries]);
 
   useEffect(() => {
-    fetchMessages();
+    if (selectedUser) {
+      fetchMessages();
+    } else {
+      setMessages([]);
+    }
     // Realtime-Listener vorübergehend auskommentiert
     /*
     const subscription = supabase
@@ -233,7 +237,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
-          if (payload.new.receiver === selectedUser || payload.new.sender === loggedInUser) {
+          if (selectedUser && (payload.new.receiver === selectedUser || payload.new.sender === loggedInUser)) {
             setMessages((prev) => [...prev, payload.new]);
           }
         }
@@ -264,7 +268,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !selectedUser) return;
     setIsLoading(true);
     try {
       const { error } = await supabase.from("messages").insert({
@@ -418,78 +422,80 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
         </Box>
       </Box>
 
-      {/* Chat-Seitenleiste */}
-      <Box
-        sx={{
-          width: "300px",
-          borderLeft: "1px solid #ccc",
-          padding: 2,
-          backgroundColor: "#f9f9f9",
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <Typography variant="h6" gutterBottom>
-          Chat mit {selectedUser || "Alle"}
-        </Typography>
-        <List sx={{ flexGrow: 1, overflowY: "auto", paddingRight: 1 }}>
-          {messages.map((msg) => (
-            <ListItem
-              key={msg.id}
-              sx={{
-                backgroundColor: OWNER_COLORS[msg.sender] || "#ffffff",
-                marginBottom: 1,
-                borderRadius: 4,
-                padding: 1,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: msg.sender === loggedInUser ? "flex-end" : "flex-start",
-              }}
-            >
-              <ListItemText
-                primary={msg.message}
-                secondary={`${msg.sender} - ${formatDate(msg.created_at)}`}
+      {/* Chat-Seitenleiste nur anzeigen, wenn selectedUser vorhanden ist */}
+      {selectedUser && (
+        <Box
+          sx={{
+            width: "300px",
+            borderLeft: "1px solid #ccc",
+            padding: 2,
+            backgroundColor: "#f9f9f9",
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <Typography variant="h6" gutterBottom>
+            Chat mit {selectedUser}
+          </Typography>
+          <List sx={{ flexGrow: 1, overflowY: "auto", paddingRight: 1 }}>
+            {messages.map((msg) => (
+              <ListItem
+                key={msg.id}
                 sx={{
-                  "& .MuiListItemText-primary": {
-                    backgroundColor: msg.sender === loggedInUser ? "#1976d2" : "#e0e0e0",
-                    color: msg.sender === loggedInUser ? "white" : "black",
-                    padding: "4px 8px",
-                    borderRadius: 2,
-                    display: "inline-block",
-                  },
-                  "& .MuiListItemText-secondary": {
-                    fontSize: "0.75rem",
-                    color: "#666",
-                  },
+                  backgroundColor: OWNER_COLORS[msg.sender] || "#ffffff",
+                  marginBottom: 1,
+                  borderRadius: 4,
+                  padding: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: msg.sender === loggedInUser ? "flex-end" : "flex-start",
                 }}
-              />
-            </ListItem>
-          ))}
-          <div ref={messagesEndRef} />
-        </List>
-        <Box sx={{ display: "flex", gap: 1, marginTop: 2 }}>
-          <TextField
-            label="Nachricht"
-            variant="outlined"
-            fullWidth
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && sendMessage()}
-            disabled={isLoading || !selectedUser}
-            size="small"
-          />
-          <Button
-            onClick={sendMessage}
-            variant="contained"
-            color="primary"
-            disabled={isLoading || !newMessage.trim() || !selectedUser}
-            sx={{ padding: "8px 16px" }}
-          >
-            Senden
-          </Button>
+              >
+                <ListItemText
+                  primary={msg.message}
+                  secondary={`${msg.sender} - ${formatDate(msg.created_at)}`}
+                  sx={{
+                    "& .MuiListItemText-primary": {
+                      backgroundColor: msg.sender === loggedInUser ? "#1976d2" : "#e0e0e0",
+                      color: msg.sender === loggedInUser ? "white" : "black",
+                      padding: "4px 8px",
+                      borderRadius: 2,
+                      display: "inline-block",
+                    },
+                    "& .MuiListItemText-secondary": {
+                      fontSize: "0.75rem",
+                      color: "#666",
+                    },
+                  }}
+                />
+              </ListItem>
+            ))}
+            <div ref={messagesEndRef} />
+          </List>
+          <Box sx={{ display: "flex", gap: 1, marginTop: 2 }}>
+            <TextField
+              label="Nachricht"
+              variant="outlined"
+              fullWidth
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+              disabled={isLoading || !selectedUser}
+              size="small"
+            />
+            <Button
+              onClick={sendMessage}
+              variant="contained"
+              color="primary"
+              disabled={isLoading || !newMessage.trim() || !selectedUser}
+              sx={{ padding: "8px 16px" }}
+            >
+              Senden
+            </Button>
+          </Box>
         </Box>
-      </Box>
+      )}
 
       <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={closeSnackbar}>
         <Alert onClose={closeSnackbar} severity={snackbarSeverity} sx={{ width: "100%" }}>
