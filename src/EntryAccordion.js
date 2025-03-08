@@ -19,8 +19,9 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney"; // Icon für den Betrag
 import { supabase } from "./supabaseClient";
-import { formatDate, handleError } from "./utils";
+import { formatDate, handleError } from "./utils"; // Import der formatDate-Funktion
 import { useSnackbar } from "./useSnackbar";
 import { OWNER_COLORS } from "./config";
 
@@ -192,7 +193,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
           validUntil: adminEditedEntry.validUntil,
           bougetList: adminEditedEntry.bougetList,
           note: adminEditedEntry.note,
-          admin_fee: adminEditedEntry.adminFee,
+          admin_fee: adminEditedEntry.adminFee, // Korrigierter Schlüssel
         })
         .eq("id", entry.id)
         .select()
@@ -294,7 +295,15 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
           </Typography>
           {(role === "Admin" || isOwner) && (
             <Typography>
-              <strong>Admin-Gebühr:</strong> {entry.admin_fee ? `${entry.admin_fee}$` : "Nicht gesetzt"}
+              <strong>Admin-Gebühr:</strong>{" "}
+              {entry.admin_fee ? (
+                <>
+                  <AttachMoneyIcon sx={{ fontSize: "1rem", verticalAlign: "middle", marginRight: 0.5 }} />
+                  {entry.admin_fee.toLocaleString()}
+                </>
+              ) : (
+                "Nicht gesetzt"
+              )}
             </Typography>
           )}
           {entry.note && (
@@ -513,7 +522,12 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
               disabled={isLoading}
             />
             <TextField
-              label="Admin-Gebühr ($)"
+              label={
+                <>
+                  <AttachMoneyIcon sx={{ fontSize: "1rem", verticalAlign: "middle", marginRight: 0.5 }} />
+                  Admin-Gebühr
+                </>
+              }
               fullWidth
               margin="normal"
               value={adminEditedEntry.adminFee || ""}
