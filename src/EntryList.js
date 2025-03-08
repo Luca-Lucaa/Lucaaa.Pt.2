@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   Typography,
   TextField,
@@ -12,11 +12,6 @@ import {
   MenuItem,
   Snackbar,
   Alert,
-  List,
-  ListItem,
-  ListItemText,
-  Card,
-  CardContent,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -24,7 +19,7 @@ import { supabase } from "./supabaseClient";
 import { formatDate, generateUsername, useDebounce, handleError } from "./utils";
 import EntryAccordion from "./EntryAccordion";
 import { useSnackbar } from "./useSnackbar";
-import { OWNER_COLORS } from "./config";
+import { OWNER_COLORS } from "./config"; // Import der Farben
 
 const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   const [openCreateEntryDialog, setOpenCreateEntryDialog] = useState(false);
@@ -45,7 +40,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
     owner: loggedInUser,
     extensionHistory: [],
     bougetList: "",
-    admin_fee: null,
+    admin_fee: null, // Standardwert für Admin-Gebühr
   });
   const [manualEntry, setManualEntry] = useState({
     username: "",
@@ -56,24 +51,14 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
     owner: loggedInUser,
     extensionHistory: [],
     bougetList: "",
-    admin_fee: null,
+    admin_fee: null, // Standardwert für Admin-Gebühr
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  const messagesEndRef = useRef(null);
 
   const { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, closeSnackbar } = useSnackbar();
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
+  // Berechne Gesamtkosten für einen bestimmten Ersteller
   const calculateTotalFeesForOwner = useCallback((owner) => {
     const ownerEntries = entries.filter((entry) => entry.owner === owner);
     return ownerEntries.reduce((total, entry) => total + (entry.admin_fee || 0), 0);
@@ -132,7 +117,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       owner: loggedInUser,
       extensionHistory: [],
       bougetList: "",
-      admin_fee: null,
+      admin_fee: null, // Standardwert für Admin-Gebühr
     });
     setOpenCreateEntryDialog(true);
   }, [loggedInUser]);
@@ -147,7 +132,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       owner: loggedInUser,
       extensionHistory: [],
       bougetList: "",
-      admin_fee: null,
+      admin_fee: null, // Standardwert für Admin-Gebühr
     });
     setOpenManualEntryDialog(true);
   }, [loggedInUser]);
@@ -169,7 +154,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [setEntries, showSnackbar]);
+  }, [newEntry, setEntries, showSnackbar]);
 
   const handleAddManualEntry = useCallback(async () => {
     if (!manualEntry.username || !manualEntry.password || !manualEntry.aliasNotes) {
@@ -191,7 +176,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       note: "Dieser Abonnent besteht bereits",
       extensionHistory: [],
       bougetList: manualEntry.bougetList,
-      admin_fee: manualEntry.admin_fee,
+      admin_fee: manualEntry.admin_fee, // Inkludiere admin_fee
     };
     try {
       const { data, error } = await supabase.from("entries").insert([newManualEntry]).select();
@@ -223,280 +208,123 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
 
   const uniqueOwners = useMemo(() => [...new Set(entries.map((entry) => entry.owner))], [entries]);
 
-  useEffect(() => {
-    if (selectedUser) {
-      fetchMessages();
-    } else {
-      setMessages([]);
-    }
-    // Realtime-Listener vorübergehend auskommentiert
-    /*
-    const subscription = supabase
-      .channel("messages")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages" },
-        (payload) => {
-          if (selectedUser && (payload.new.receiver === selectedUser || payload.new.sender === loggedInUser)) {
-            setMessages((prev) => [...prev, payload.new]);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(subscription);
-    };
-    */
-  }, [selectedUser, loggedInUser]);
-
-  const fetchMessages = async () => {
-    if (!selectedUser) {
-      setMessages([]);
-      return;
-    }
-    const { data, error } = await supabase
-      .from("messages")
-      .select("*")
-      .or(`sender.eq.${selectedUser},receiver.eq.${selectedUser}`)
-      .order("created_at", { ascending: true });
-    if (error) {
-      handleError(error, showSnackbar);
-    } else {
-      setMessages(data);
-    }
-  };
-
-  const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedUser) return;
-    setIsLoading(true);
-    try {
-      const { error } = await supabase.from("messages").insert({
-        sender: loggedInUser,
-        receiver: selectedUser,
-        message: newMessage,
-        created_at: new Date().toISOString(),
-      });
-      if (error) throw error;
-      setNewMessage("");
-      showSnackbar("Nachricht gesendet!");
-    } catch (error) {
-      handleError(error, showSnackbar);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
-    <Box sx={{ display: "flex", height: "80vh" }}>
-      {/* Hauptinhalt (Eintragsliste) */}
-      <Box sx={{ flexGrow: 1, padding: 2 }}>
-        {(role !== "Admin" || loggedInUser === selectedUser) && (
-          <Card sx={{ padding: 2, marginBottom: 2, backgroundColor: "#f5f5f5", borderRadius: 2 }}>
-            <CardContent sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <Typography variant="h6" color="textSecondary" gutterBottom>
-                Gesamtkosten
-              </Typography>
-              <Typography
-                variant="h4"
-                sx={{
-                  fontWeight: "bold",
-                  color: calculateTotalFeesForOwner(loggedInUser) > 500 ? "#d32f2f" : "#4caf50",
-                }}
-              >
-                {calculateTotalFeesForOwner(loggedInUser).toLocaleString()}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                (basierend auf {countEntriesByOwner(loggedInUser)} Einträgen)
-              </Typography>
-            </CardContent>
-          </Card>
-        )}
-
-        <Box sx={{ padding: 2, display: "flex", flexDirection: "column", gap: 2, marginBottom: 3 }}>
-          <Typography variant="body1" sx={{ fontStyle: "italic", color: "green" }}>
-            {motivationMessage}
+    <div>
+      {(role !== "Admin" || loggedInUser === selectedUser) && (
+        <Box sx={{ padding: 2, backgroundColor: "#f5f5f5", borderRadius: 2, marginBottom: 2 }}>
+          <Typography variant="h6" sx={{ color: "green" }}>
+            Gesamtkosten deiner Einträge: {calculateTotalFeesForOwner(loggedInUser)}$ €
           </Typography>
-          <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
-            <Button
-              onClick={handleOpenCreateEntryDialog}
-              variant="contained"
-              color="success"
-              startIcon={<AddIcon />}
-              fullWidth
-              disabled={isLoading}
-            >
-              Abonnent anlegen
-            </Button>
-            <Button
-              onClick={handleOpenManualEntryDialog}
-              variant="contained"
-              color="primary"
-              startIcon={<EditIcon />}
-              fullWidth
-              disabled={isLoading}
-            >
-              Bestehenden Abonnenten einpflegen
-            </Button>
-          </Box>
         </Box>
+      )}
 
-        {role === "Admin" && (
-          <Box sx={{ marginBottom: 3, padding: 2 }}>
-            <Typography variant="h6">Ersteller filtern:</Typography>
-            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-              {uniqueOwners.map((owner) => (
-                <Button
-                  key={owner}
-                  variant="outlined"
-                  onClick={() => setSelectedUser(owner)}
-                  color={selectedUser === owner ? "primary" : "default"}
-                  sx={{
-                    backgroundColor: OWNER_COLORS[owner] || "#ffffff",
-                    "&:hover": {
-                      backgroundColor: OWNER_COLORS[owner] || "#ffffff",
-                    },
-                  }}
-                >
-                  {owner} ({countEntriesByOwner(owner)}) - Gesamtkosten: {calculateTotalFeesForOwner(owner).toLocaleString()}
-                </Button>
-              ))}
-              <Button variant="outlined" onClick={() => setSelectedUser("")} fullWidth>
-                Alle anzeigen
-              </Button>
-            </Box>
-          </Box>
-        )}
-
-        <Box sx={{ marginBottom: 3, padding: 2, display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
-          <TextField
-            label="🔍 Suchen nach Benutzername oder Spitzname"
-            variant="outlined"
+      <Box sx={{ padding: 2, display: "flex", flexDirection: "column", gap: 2, marginBottom: 3 }}>
+        <Typography variant="body1" sx={{ fontStyle: "italic", color: "green" }}>
+          {motivationMessage}
+        </Typography>
+        <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
+          <Button
+            onClick={handleOpenCreateEntryDialog}
+            variant="contained"
+            color="success"
+            startIcon={<AddIcon />}
             fullWidth
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            disabled={isLoading}
-          />
-          <Select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            displayEmpty
-            fullWidth
-            variant="outlined"
-            sx={{ minWidth: 120 }}
             disabled={isLoading}
           >
-            <MenuItem value="">Alle Status</MenuItem>
-            <MenuItem value="Aktiv">Aktiv</MenuItem>
-            <MenuItem value="Inaktiv">Inaktiv</MenuItem>
-          </Select>
-          <Select
-            value={paymentFilter}
-            onChange={(e) => setPaymentFilter(e.target.value)}
-            displayEmpty
+            Abonnent anlegen
+          </Button>
+          <Button
+            onClick={handleOpenManualEntryDialog}
+            variant="contained"
+            color="primary"
+            startIcon={<EditIcon />}
             fullWidth
-            variant="outlined"
-            sx={{ minWidth: 120 }}
             disabled={isLoading}
           >
-            <MenuItem value="">Alle Zahlungen</MenuItem>
-            <MenuItem value="Gezahlt">Gezahlt</MenuItem>
-            <MenuItem value="Nicht gezahlt">Nicht gezahlt</MenuItem>
-          </Select>
-        </Box>
-        <Box sx={{ maxHeight: "60vh", overflowY: "auto", padding: 2 }}>
-          {isLoading && <Typography>🔄 Lade Einträge...</Typography>}
-          {filterEntries.length > 0 ? (
-            filterEntries.map((entry) => (
-              <EntryAccordion
-                key={entry.id}
-                entry={entry}
-                role={role}
-                loggedInUser={loggedInUser}
-                setEntries={setEntries}
-              />
-            ))
-          ) : (
-            <Typography>🚀 Keine passenden Einträge gefunden.</Typography>
-          )}
+            Bestehenden Abonnenten einpflegen
+          </Button>
         </Box>
       </Box>
 
-      {/* Chat-Seitenleiste nur anzeigen, wenn selectedUser vorhanden ist */}
-      {selectedUser && (
-        <Box
-          sx={{
-            width: "300px",
-            borderLeft: "1px solid #ccc",
-            padding: 2,
-            backgroundColor: "#f9f9f9",
-            height: "100%",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          <Typography variant="h6" gutterBottom>
-            Chat mit {selectedUser}
-          </Typography>
-          <List sx={{ flexGrow: 1, overflowY: "auto", paddingRight: 1 }}>
-            {messages.map((msg) => (
-              <ListItem
-                key={msg.id}
+      {role === "Admin" && (
+        <Box sx={{ marginBottom: 3, padding: 2 }}>
+          <Typography variant="h6">Ersteller filtern:</Typography>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            {uniqueOwners.map((owner) => (
+              <Button
+                key={owner}
+                variant="outlined"
+                onClick={() => setSelectedUser(owner)}
+                color={selectedUser === owner ? "primary" : "default"}
                 sx={{
-                  backgroundColor: OWNER_COLORS[msg.sender] || "#ffffff",
-                  marginBottom: 1,
-                  borderRadius: 4,
-                  padding: 1,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: msg.sender === loggedInUser ? "flex-end" : "flex-start",
+                  backgroundColor: OWNER_COLORS[owner] || "#ffffff", // Farbe nur für Admin
+                  "&:hover": {
+                    backgroundColor: OWNER_COLORS[owner] || "#ffffff", // Hover-Effekt behält die Farbe
+                  },
                 }}
               >
-                <ListItemText
-                  primary={msg.message}
-                  secondary={`${msg.sender} - ${formatDate(msg.created_at)}`}
-                  sx={{
-                    "& .MuiListItemText-primary": {
-                      backgroundColor: msg.sender === loggedInUser ? "#1976d2" : "#e0e0e0",
-                      color: msg.sender === loggedInUser ? "white" : "black",
-                      padding: "4px 8px",
-                      borderRadius: 2,
-                      display: "inline-block",
-                    },
-                    "& .MuiListItemText-secondary": {
-                      fontSize: "0.75rem",
-                      color: "#666",
-                    },
-                  }}
-                />
-              </ListItem>
+                {owner} ({countEntriesByOwner(owner)}) - Gesamtkosten: {calculateTotalFeesForOwner(owner)}$ €
+              </Button>
             ))}
-            <div ref={messagesEndRef} />
-          </List>
-          <Box sx={{ display: "flex", gap: 1, marginTop: 2 }}>
-            <TextField
-              label="Nachricht"
-              variant="outlined"
-              fullWidth
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && sendMessage()}
-              disabled={isLoading || !selectedUser}
-              size="small"
-            />
-            <Button
-              onClick={sendMessage}
-              variant="contained"
-              color="primary"
-              disabled={isLoading || !newMessage.trim() || !selectedUser}
-              sx={{ padding: "8px 16px" }}
-            >
-              Senden
+            <Button variant="outlined" onClick={() => setSelectedUser("")} fullWidth>
+              Alle anzeigen
             </Button>
           </Box>
         </Box>
       )}
 
+      <Box sx={{ marginBottom: 3, padding: 2, display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
+        <TextField
+          label="🔍 Suchen nach Benutzername oder Spitzname"
+          variant="outlined"
+          fullWidth
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          disabled={isLoading}
+        />
+        <Select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          displayEmpty
+          fullWidth
+          variant="outlined"
+          sx={{ minWidth: 120 }}
+          disabled={isLoading}
+        >
+          <MenuItem value="">Alle Status</MenuItem>
+          <MenuItem value="Aktiv">Aktiv</MenuItem>
+          <MenuItem value="Inaktiv">Inaktiv</MenuItem>
+        </Select>
+        <Select
+          value={paymentFilter}
+          onChange={(e) => setPaymentFilter(e.target.value)}
+          displayEmpty
+          fullWidth
+          variant="outlined"
+          sx={{ minWidth: 120 }}
+          disabled={isLoading}
+        >
+          <MenuItem value="">Alle Zahlungen</MenuItem>
+          <MenuItem value="Gezahlt">Gezahlt</MenuItem>
+          <MenuItem value="Nicht gezahlt">Nicht gezahlt</MenuItem>
+        </Select>
+      </Box>
+      <Box sx={{ maxHeight: "60vh", overflowY: "auto", padding: 2 }}>
+        {isLoading && <Typography>🔄 Lade Einträge...</Typography>}
+        {filterEntries.length > 0 ? (
+          filterEntries.map((entry) => (
+            <EntryAccordion
+              key={entry.id}
+              entry={entry}
+              role={role}
+              loggedInUser={loggedInUser}
+              setEntries={setEntries}
+            />
+          ))
+        ) : (
+          <Typography>🚀 Keine passenden Einträge gefunden.</Typography>
+        )}
+      </Box>
       <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={closeSnackbar}>
         <Alert onClose={closeSnackbar} severity={snackbarSeverity} sx={{ width: "100%" }}>
           {snackbarMessage}
@@ -534,7 +362,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           <TextField label="Benutzername" fullWidth margin="normal" value={newEntry.username} disabled />
           <TextField label="Passwort" fullWidth margin="normal" type="password" value={newEntry.password} disabled />
           <TextField
-            label="Admin-Gebühr"
+            label="Admin-Gebühr ($)"
             fullWidth
             margin="normal"
             type="number"
@@ -621,7 +449,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             disabled={isLoading}
           />
           <TextField
-            label="Admin-Gebühr"
+            label="Admin-Gebühr ($)"
             fullWidth
             margin="normal"
             type="number"
@@ -652,7 +480,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </div>
   );
 };
 
