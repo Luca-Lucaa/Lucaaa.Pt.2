@@ -26,12 +26,54 @@ import EntryAccordion from "./EntryAccordion";
 import { useSnackbar } from "./useSnackbar";
 import { OWNER_COLORS } from "./config";
 
-// ... (andere Imports und useState-Deklarationen bleiben gleich)
-
 const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
-  // ... (bestehende useState, useMemo, useCallback, useEffect bleiben gleich)
+  const [openCreateEntryDialog, setOpenCreateEntryDialog] = useState(false);
+  const [openManualEntryDialog, setOpenManualEntryDialog] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [paymentFilter, setPaymentFilter] = useState("");
+  const [selectedUser, setSelectedUser] = useState("");
+  const [newEntry, setNewEntry] = useState({
+    username: "",
+    password: "",
+    aliasNotes: "",
+    type: "Premium",
+    status: "Inaktiv",
+    paymentStatus: "Nicht gezahlt",
+    createdAt: new Date(),
+    validUntil: new Date(new Date().getFullYear(), 11, 31),
+    owner: loggedInUser,
+    extensionHistory: [],
+    bougetList: "",
+    admin_fee: null,
+  });
+  const [manualEntry, setManualEntry] = useState({
+    username: "",
+    password: "",
+    aliasNotes: "",
+    type: "Premium",
+    validUntil: new Date(new Date().getFullYear(), 11, 31),
+    owner: loggedInUser,
+    extensionHistory: [],
+    bougetList: "",
+    admin_fee: null,
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const messagesEndRef = useRef(null);
 
-  // Berechne Gesamtkosten für einen bestimmten Ersteller
+  const { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, closeSnackbar } = useSnackbar();
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
   const calculateTotalFeesForOwner = useCallback((owner) => {
     const ownerEntries = entries.filter((entry) => entry.owner === owner);
     return ownerEntries.reduce((total, entry) => total + (entry.admin_fee || 0), 0);
@@ -127,7 +169,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [newEntry, setEntries, showSnackbar]);
+  }, [setEntries, showSnackbar]); // Entferne newEntry aus Abhängigkeiten
 
   const handleAddManualEntry = useCallback(async () => {
     if (!manualEntry.username || !manualEntry.password || !manualEntry.aliasNotes) {
@@ -181,7 +223,65 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
 
   const uniqueOwners = useMemo(() => [...new Set(entries.map((entry) => entry.owner))], [entries]);
 
-  // ... (Chat-Funktionen bleiben gleich)
+  useEffect(() => {
+    fetchMessages();
+    // Realtime-Listener vorübergehend auskommentiert
+    /*
+    const subscription = supabase
+      .channel("messages")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages" },
+        (payload) => {
+          if (payload.new.receiver === selectedUser || payload.new.sender === loggedInUser) {
+            setMessages((prev) => [...prev, payload.new]);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+    */
+  }, [selectedUser, loggedInUser]);
+
+  const fetchMessages = async () => {
+    if (!selectedUser) {
+      setMessages([]);
+      return;
+    }
+    const { data, error } = await supabase
+      .from("messages")
+      .select("*")
+      .or(`sender.eq.${selectedUser},receiver.eq.${selectedUser}`)
+      .order("created_at", { ascending: true });
+    if (error) {
+      handleError(error, showSnackbar);
+    } else {
+      setMessages(data);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!newMessage.trim()) return;
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.from("messages").insert({
+        sender: loggedInUser,
+        receiver: selectedUser,
+        message: newMessage,
+        created_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      setNewMessage("");
+      showSnackbar("Nachricht gesendet!");
+    } catch (error) {
+      handleError(error, showSnackbar);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <Box sx={{ display: "flex", height: "80vh" }}>
@@ -197,7 +297,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
                 variant="h4"
                 sx={{
                   fontWeight: "bold",
-                  color: calculateTotalFeesForOwner(loggedInUser) > 500 ? "#d32f2f" : "#4caf50", // Rot > 500, sonst Grün
+                  color: calculateTotalFeesForOwner(loggedInUser) > 500 ? "#d32f2f" : "#4caf50",
                 }}
               >
                 {calculateTotalFeesForOwner(loggedInUser).toLocaleString()}
@@ -254,7 +354,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
                     },
                   }}
                 >
-                  {owner} ({countEntriesByOwner(owner)}) - Gesamtkosten: {calculateTotalFeesForOwner(owner).toLocaleString()} €
+                  {owner} ({countEntriesByOwner(owner)}) - Gesamtkosten: {calculateTotalFeesForOwner(owner).toLocaleString()}
                 </Button>
               ))}
               <Button variant="outlined" onClick={() => setSelectedUser("")} fullWidth>
@@ -318,7 +418,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
         </Box>
       </Box>
 
-      {/* Chat-Seitenleiste bleibt unverändert */}
+      {/* Chat-Seitenleiste */}
       <Box
         sx={{
           width: "300px",
