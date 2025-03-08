@@ -14,6 +14,8 @@ import {
   Alert,
   Card,
   CardContent,
+  AppBar,
+  Toolbar,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -213,27 +215,28 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
 
   return (
     <div>
+      {/* Verschiebe die Gesamtkosten-Anzeige in eine kompakte Box oberhalb der Filter */}
       {(role !== "Admin" || loggedInUser === selectedUser) && (
-        <Card sx={{ padding: 2, marginBottom: 2, backgroundColor: "#f5f5f5", borderRadius: 2 }}>
-          <CardContent sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <Typography variant="h6" color="textSecondary" gutterBottom>
-              Gesamtkosten
-            </Typography>
+        <Box sx={{ padding: 1, backgroundColor: "#f5f5f5", borderRadius: 1, marginBottom: 1 }}>
+          <Typography variant="subtitle1" color="textSecondary" align="center">
+            Gesamtkosten
+          </Typography>
+          <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 0.5 }}>
+            <AttachMoneyIcon sx={{ fontSize: "1.5rem", color: calculateTotalFeesForOwner(loggedInUser) > 500 ? "#d32f2f" : "#4caf50" }} />
             <Typography
-              variant="h4"
+              variant="h6"
               sx={{
                 fontWeight: "bold",
-                color: calculateTotalFeesForOwner(loggedInUser) > 500 ? "#d32f2f" : "#4caf50", // Rot > 500, sonst Grün
+                color: calculateTotalFeesForOwner(loggedInUser) > 500 ? "#d32f2f" : "#4caf50",
               }}
             >
-              <AttachMoneyIcon sx={{ verticalAlign: "middle", marginRight: 0.5 }} />
-              {calculateTotalFeesForOwner(loggedInUser).toLocaleString()} {/* Icon vor dem Betrag */}
+              {calculateTotalFeesForOwner(loggedInUser).toLocaleString()}
             </Typography>
-            <Typography variant="body2" color="textSecondary">
-              (basierend auf {countEntriesByOwner(loggedInUser)} Einträgen)
-            </Typography>
-          </CardContent>
-        </Card>
+          </Box>
+          <Typography variant="caption" color="textSecondary" align="center">
+            (basierend auf {countEntriesByOwner(loggedInUser)} Einträgen)
+          </Typography>
+        </Box>
       )}
 
       <Box sx={{ padding: 2, display: "flex", flexDirection: "column", gap: 2, marginBottom: 3 }}>
@@ -272,21 +275,21 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
               <Button
                 key={owner}
                 variant="outlined"
-                size="small" // Kleinere Buttons
+                size="small"
                 onClick={() => setSelectedUser(owner)}
                 color={selectedUser === owner ? "primary" : "default"}
                 sx={{
-                  backgroundColor: OWNER_COLORS[owner] || "#ffffff", // Farbe nur für Admin
+                  backgroundColor: OWNER_COLORS[owner] || "#ffffff",
                   "&:hover": {
-                    backgroundColor: OWNER_COLORS[owner] || "#ffffff", // Hover-Effekt behält die Farbe
+                    backgroundColor: OWNER_COLORS[owner] || "#ffffff",
                   },
-                  fontSize: "0.75rem", // Kleinere Schriftgröße
-                  padding: "4px 8px", // Weniger Padding
+                  fontSize: "0.75rem",
+                  padding: "4px 8px",
                 }}
               >
                 {owner} ({countEntriesByOwner(owner)}) -{" "}
                 <AttachMoneyIcon sx={{ fontSize: "1rem", marginRight: 0.5 }} />{" "}
-                {calculateTotalFeesForOwner(owner).toLocaleString()} {/* Kompakte Darstellung mit Icon */}
+                {calculateTotalFeesForOwner(owner).toLocaleString()}
               </Button>
             ))}
             <Button
