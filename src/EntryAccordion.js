@@ -22,7 +22,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { supabase } from "./supabaseClient";
 import { formatDate, handleError } from "./utils";
 import { useSnackbar } from "./useSnackbar";
-import { OWNER_COLORS } from "./config"; // Import der Farben
+import { OWNER_COLORS } from "./config";
 
 const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -38,17 +38,23 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const changePaymentStatus = useCallback(async (entryId, paymentStatus) => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.from("entries").update({ paymentStatus }).eq("id", entryId);
+      const updateData = { paymentStatus };
+      // Wenn der Status auf "Gezahlt" gesetzt wird und der Benutzer Admin ist, setze admin_fee auf 0
+      if (role === "Admin" && paymentStatus === "Gezahlt") {
+        updateData.admin_fee = 0;
+      }
+      const { error } = await supabase.from("entries").update(updateData).eq("id", entryId);
       if (error) throw error;
       setEntries((prev) =>
-        prev.map((e) => (e.id === entryId ? { ...e, paymentStatus } : e))
+        prev.map((e) => (e.id === entryId ? { ...e, ...updateData } : e))
       );
+      showSnackbar(`Zahlungsstatus erfolgreich auf "${paymentStatus}" geändert.`);
     } catch (error) {
       handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
     }
-  }, [setEntries, showSnackbar]);
+  }, [role, setEntries, showSnackbar]);
 
   const changeStatus = useCallback(async (entryId, newStatus) => {
     setIsLoading(true);
@@ -221,7 +227,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
         marginBottom: 2,
         borderRadius: 2,
         boxShadow: 1,
-        backgroundColor: role === "Admin" ? OWNER_COLORS[entry.owner] || "#ffffff" : "#ffffff", // Farbe nur für Admin
+        backgroundColor: role === "Admin" ? OWNER_COLORS[entry.owner] || "#ffffff" : "#ffffff",
       }}
     >
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
