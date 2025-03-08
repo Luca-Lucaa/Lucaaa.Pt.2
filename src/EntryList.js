@@ -211,8 +211,8 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   return (
     <div>
       {(role !== "Admin" || loggedInUser === selectedUser) && (
-        <Box sx={{ padding: 2, backgroundColor: "#f5f5f5", borderRadius: 2, marginBottom: 2 }}>
-          <Typography variant="h6" sx={{ color: "green" }}>
+        <Box sx={{ padding: 0.5, backgroundColor: "#f5f5f5", borderRadius: 2, marginBottom: 0.5 }}>
+          <Typography variant="body2" sx={{ color: "green" }}>
             Gesamtkosten deiner Einträge: {calculateTotalFeesForOwner(loggedInUser)}$ €
           </Typography>
         </Box>
