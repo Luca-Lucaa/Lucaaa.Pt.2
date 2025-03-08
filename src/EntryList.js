@@ -14,8 +14,6 @@ import {
   Alert,
   Card,
   CardContent,
-  AppBar,
-  Toolbar,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -215,16 +213,16 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
 
   return (
     <div>
-      {/* Verschiebe die Gesamtkosten-Anzeige in eine kompakte Box oberhalb der Filter */}
+      {/* Verkleinerte Gesamtkosten-Anzeige */}
       {(role !== "Admin" || loggedInUser === selectedUser) && (
-        <Box sx={{ padding: 1, backgroundColor: "#f5f5f5", borderRadius: 1, marginBottom: 1 }}>
-          <Typography variant="subtitle1" color="textSecondary" align="center">
+        <Box sx={{ padding: 0.5, backgroundColor: "#f5f5f5", borderRadius: 1, marginBottom: 0.5 }}>
+          <Typography variant="caption" color="textSecondary" align="center">
             Gesamtkosten
           </Typography>
-          <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 0.5 }}>
-            <AttachMoneyIcon sx={{ fontSize: "1.5rem", color: calculateTotalFeesForOwner(loggedInUser) > 500 ? "#d32f2f" : "#4caf50" }} />
+          <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 0.25 }}>
+            <AttachMoneyIcon sx={{ fontSize: "1rem", color: calculateTotalFeesForOwner(loggedInUser) > 500 ? "#d32f2f" : "#4caf50" }} />
             <Typography
-              variant="h6"
+              variant="body2"
               sx={{
                 fontWeight: "bold",
                 color: calculateTotalFeesForOwner(loggedInUser) > 500 ? "#d32f2f" : "#4caf50",
@@ -233,7 +231,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
               {calculateTotalFeesForOwner(loggedInUser).toLocaleString()}
             </Typography>
           </Box>
-          <Typography variant="caption" color="textSecondary" align="center">
+          <Typography variant="caption" color="textSecondary" align="center" sx={{ fontSize: "0.6rem" }}>
             (basierend auf {countEntriesByOwner(loggedInUser)} Einträgen)
           </Typography>
         </Box>
