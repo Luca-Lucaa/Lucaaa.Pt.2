@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Typography, IconButton, Menu, MenuItem } from "@mui/material";
+import { Box, Typography, IconButton, Menu, MenuItem, Badge } from "@mui/material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 
 const ChatMessage = ({ message, sender, timestamp, isOwnMessage, reactions, onReact, onMenuOpen, parentMessage }) => {
@@ -21,6 +21,9 @@ const ChatMessage = ({ message, sender, timestamp, isOwnMessage, reactions, onRe
   const handleMenuClose = () => {
     setAnchorEl(null);
   };
+
+  // Sicherstellen, dass reactions ein Objekt ist
+  const safeReactions = reactions || {};
 
   return (
     <Box
@@ -61,9 +64,9 @@ const ChatMessage = ({ message, sender, timestamp, isOwnMessage, reactions, onRe
         <Typography variant="caption" sx={{ display: "block", textAlign: "right" }}>
           {sender} - {formattedTimestamp}
         </Typography>
-        {Object.entries(reactions).length > 0 && (
+        {Object.entries(safeReactions).length > 0 && (
           <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 0.5, mt: 0.5 }}>
-            {Object.entries(reactions).map(([emoji, count]) => (
+            {Object.entries(safeReactions).map(([emoji, count]) => (
               <Badge key={emoji} badgeContent={count} color="secondary">
                 <span role="img" aria-label={emoji}>
                   {emoji}
