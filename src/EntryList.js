@@ -360,7 +360,14 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             <MenuItem value="Basic">Basic</MenuItem>
           </Select>
           <TextField label="Benutzername" fullWidth margin="normal" value={newEntry.username} disabled />
-          <TextField label="Passwort" fullWidth margin="normal" type="password" value={newEntry.password} disabled />
+          <TextField
+            label="Passwort"
+            fullWidth
+            margin="normal"
+            type="text" // Geändert von "password" zu "text", um das Passwort sichtbar zu machen
+            value={newEntry.password}
+            disabled
+          />
           <TextField
             label="Admin-Gebühr ($)"
             fullWidth
@@ -408,7 +415,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             label="Passwort"
             fullWidth
             margin="normal"
-            type="password"
+            type="password" // Bleibt "password", da dies ein manuelles Feld ist
             value={manualEntry.password}
             onChange={(e) => setManualEntry({ ...manualEntry, password: e.target.value })}
             disabled={isLoading}
