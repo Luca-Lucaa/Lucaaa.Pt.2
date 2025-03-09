@@ -9,26 +9,76 @@ import {
   Box,
   TextField,
   IconButton,
+  Menu,
+  MenuItem,
+  Badge,
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
+import MoreVertIcon from "@mui/icons-material/MoreVert"; // Für das Kontextmenü
 import { supabase } from "./supabaseClient";
 import { handleError } from "./utils";
+import ChatMessage from "./ChatMessage"; // Importiere die angepasste ChatMessage-Komponente
 
 const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
   const [showAll, setShowAll] = useState(false);
   const [newMessage, setNewMessage] = useState("");
+  const [replyTo, setReplyTo] = useState(null); // Zustand für die Antwortnachricht
+  const [anchorEl, setAnchorEl] = useState(null); // Für das Kontextmenü
+  const [selectedMessageId, setSelectedMessageId] = useState(null); // Ausgewählte Nachricht für Reaktion/Antwort
 
   const sendMessage = async () => {
     if (!newMessage.trim()) return;
     try {
-      const { error } = await supabase
-        .from("messages")
-        .insert([{ sender: loggedInUser, receiver: "Admin", message: newMessage }]);
+      const { error } = await supabase.from("messages").insert([
+        {
+          sender: loggedInUser,
+          receiver: "Admin",
+          message: newMessage,
+          parent_message_id: replyTo ? replyTo.id : null, // Verknüpfung zur Antwort
+        },
+      ]);
       if (error) throw error;
       setNewMessage("");
+      setReplyTo(null); // Antwort zurücksetzen nach Senden
     } catch (error) {
       handleError(error);
     }
+  };
+
+  const addReaction = async (messageId, emoji) => {
+    try {
+      const { data: message } = await supabase
+        .from("messages")
+        .select("reactions")
+        .eq("id", messageId)
+        .single();
+      const currentReactions = message.reactions || {};
+      const updatedReactions = {
+        ...currentReactions,
+        [emoji]: (currentReactions[emoji] || 0) + 1,
+      };
+      await supabase
+        .from("messages")
+        .update({ reactions: updatedReactions })
+        .eq("id", messageId);
+    } catch (error) {
+      handleError(error);
+    }
+  };
+
+  const handleMenuOpen = (event, messageId) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedMessageId(messageId);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedMessageId(null);
+  };
+
+  const handleReply = (message) => {
+    setReplyTo(message);
+    handleMenuClose();
   };
 
   const displayedMessages = showAll ? initialMessages : initialMessages.slice(-5);
@@ -36,15 +86,21 @@ const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
   return (
     <Box sx={{ marginBottom: 2 }}>
       <Typography variant="h6" gutterBottom>
-        Chat {/* Geändert von "Chatverlauf" zu "Chat" */}
+        Chat
       </Typography>
       <List>
         {displayedMessages.map((msg) => (
           <React.Fragment key={msg.id}>
             <ListItem>
-              <ListItemText
-                primary={msg.message}
-                secondary={`Von: ${msg.sender} am ${new Date(msg.created_at).toLocaleString()}`}
+              <ChatMessage
+                message={msg.message}
+                sender={msg.sender}
+                timestamp={msg.created_at}
+                isOwnMessage={msg.sender === loggedInUser}
+                reactions={msg.reactions || {}}
+                onReact={(emoji) => addReaction(msg.id, emoji)}
+                onMenuOpen={(e) => handleMenuOpen(e, msg.id)}
+                parentMessage={msg.parent_message_id ? initialMessages.find(m => m.id === msg.parent_message_id) : null}
               />
             </ListItem>
             <Divider />
@@ -62,6 +118,21 @@ const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
         </Button>
       )}
       <Box sx={{ display: "flex", gap: 1, alignItems: "center", marginTop: 2 }}>
+        {replyTo && (
+          <Box
+            sx={{
+              backgroundColor: "grey.100",
+              padding: 1,
+              borderRadius: 1,
+              marginBottom: 1,
+              width: "100%",
+            }}
+          >
+            <Typography variant="caption" color="text.secondary">
+              Antwort auf: {replyTo.sender} - {replyTo.message}
+            </Typography>
+          </Box>
+        )}
         <TextField
           label="Neue Nachricht"
           variant="outlined"
@@ -79,6 +150,18 @@ const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
           <SendIcon />
         </IconButton>
       </Box>
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem onClick={() => handleReply(displayedMessages.find(m => m.id === selectedMessageId))}>
+          Antworten
+        </MenuItem>
+        <MenuItem onClick={() => addReaction(selectedMessageId, "👍")}>👍 Like</MenuItem>
+        <MenuItem onClick={() => addReaction(selectedMessageId, "❤️")}>❤️ Liebe</MenuItem>
+        <MenuItem onClick={() => addReaction(selectedMessageId, "😂")}>😂 Lachen</MenuItem>
+      </Menu>
     </Box>
   );
 };
