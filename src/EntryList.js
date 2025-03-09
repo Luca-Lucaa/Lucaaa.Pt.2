@@ -12,6 +12,7 @@ import {
   MenuItem,
   Snackbar,
   Alert,
+  Chip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -69,38 +70,36 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   }, [entries]);
 
   const entryCount = countEntriesByOwner(loggedInUser);
-  let motivationMessage = "";
-  if (entryCount >= 100) {
-    motivationMessage = `🎉 Unglaublich! Du hast ${entryCount} Einträge erreicht! Du bist ein absoluter Champion!`;
-  } else if (entryCount >= 90) {
-    motivationMessage = `🎉 Beeindruckend! Du hast ${entryCount} Einträge! Nur noch ${100 - entryCount} bis zu 100! Weiter so!`;
-  } else if (entryCount >= 80) {
-    motivationMessage = `🎉 Fantastisch! Du hast ${entryCount} Einträge! Nur noch ${100 - entryCount} bis zu 100! Bleib dran!`;
-  } else if (entryCount >= 70) {
-    motivationMessage = `🎉 Großartig! Du hast ${entryCount} Einträge! Nur noch ${100 - entryCount} bis zu 100! Mach weiter!`;
-  } else if (entryCount >= 60) {
-    motivationMessage = `🎉 Hervorragend! Du hast ${entryCount} Einträge! Nur noch ${100 - entryCount} bis zu 100! Weiter so!`;
-  } else if (entryCount >= 50) {
-    motivationMessage = `🎉 Wow! Du hast ${entryCount} Einträge! Nur noch ${100 - entryCount} bis zu 100! Du rockst das!`;
-  } else if (entryCount >= 40) {
-    motivationMessage = `🎉 Super! Du hast ${entryCount} Einträge! Nur noch ${100 - entryCount} bis zu 100! Bleib motiviert!`;
-  } else if (entryCount >= 30) {
-    motivationMessage = `🎉 Toll! Du hast ${entryCount} Einträge! Nur noch ${100 - entryCount} bis zu 100! Weiter so!`;
-  } else if (entryCount >= 25) {
-    motivationMessage = `🎉 Wow! Du hast ${entryCount} Einträge erreicht! Deine Kreativität kennt keine Grenzen! Mach weiter so!`;
-  } else if (entryCount >= 20) {
-    motivationMessage = `🎉 Großartig! Du hast ${entryCount} Einträge! Nur noch ${25 - entryCount} bis zu 25! Weiter so!`;
-  } else if (entryCount >= 15) {
-    motivationMessage = `🎉 Fantastisch! Du hast ${entryCount} Einträge! Nur noch ${20 - entryCount} bis zu 20! Lass uns das schaffen!`;
-  } else if (entryCount >= 10) {
-    motivationMessage = `🎉 Super! Du hast ${entryCount} Einträge erreicht! Mach weiter so, du bist auf dem besten Weg zu 15!`;
-  } else if (entryCount >= 5) {
-    motivationMessage = `🎉 Gut gemacht! Du hast ${entryCount} Einträge erreicht! Nur noch ${10 - entryCount} bis zu 10! Weiter so!`;
-  } else if (entryCount > 0) {
-    motivationMessage = `🎉 Du hast ${entryCount} Einträge erstellt! Der nächste Meilenstein ist 5!`;
-  } else {
-    motivationMessage = "🎉 Du hast noch keine Einträge erstellt. Lass uns mit dem ersten Eintrag beginnen!";
-  }
+
+  // Definierte Meilensteine
+  const milestones = [5, 10, 15, 20, 25, 50, 100];
+  const nextMilestone = milestones.find((milestone) => milestone > entryCount) || 100;
+  const progressToNext = nextMilestone - entryCount;
+
+  // Zufällige motivierende Phrasen
+  const motivationalPhrases = [
+    "Super Arbeit!",
+    "Fantastisch gemacht!",
+    "Du rockst das!",
+    "Unglaublich gut!",
+    "Weiter so, Champion!",
+    "Beeindruckend!",
+    "Toll drauf!",
+  ];
+
+  // Generiere eine Motivationsnachricht
+  const getMotivationMessage = () => {
+    const randomPhrase = motivationalPhrases[Math.floor(Math.random() * motivationalPhrases.length)];
+    if (entryCount === 0) {
+      return "🎉 Du hast noch keine Einträge erstellt. Lass uns mit dem ersten beginnen!";
+    } else if (entryCount >= 100) {
+      return `🎉 ${randomPhrase} Du hast ${entryCount} Einträge erreicht! Du bist ein wahrer Meister!`;
+    } else {
+      return `🎉 ${randomPhrase} Du hast ${entryCount} Einträge erreicht! Nur noch ${progressToNext} bis ${nextMilestone}!`;
+    }
+  };
+
+  const motivationMessage = getMotivationMessage();
 
   const handleOpenCreateEntryDialog = useCallback(() => {
     const username = generateUsername(loggedInUser);
@@ -219,9 +218,12 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       )}
 
       <Box sx={{ padding: 2, display: "flex", flexDirection: "column", gap: 2, marginBottom: 3 }}>
-        <Typography variant="body1" sx={{ fontStyle: "italic", color: "green" }}>
-          {motivationMessage}
-        </Typography>
+        <Chip
+          label={motivationMessage}
+          color="success"
+          variant="outlined"
+          sx={{ fontStyle: "italic", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis" }}
+        />
         <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
           <Button
             onClick={handleOpenCreateEntryDialog}
