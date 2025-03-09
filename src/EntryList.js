@@ -87,8 +87,8 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
     "Toll drauf!",
   ];
 
-  // Generiere eine Motivationsnachricht
-  const getMotivationMessage = () => {
+  // Generiere eine Motivationsnachricht und memoiziere sie
+  const motivationMessage = useMemo(() => {
     const randomPhrase = motivationalPhrases[Math.floor(Math.random() * motivationalPhrases.length)];
     if (entryCount === 0) {
       return "🎉 Du hast noch keine Einträge erstellt. Lass uns mit dem ersten beginnen!";
@@ -97,9 +97,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
     } else {
       return `🎉 ${randomPhrase} Du hast ${entryCount} Einträge erreicht! Nur noch ${progressToNext} bis ${nextMilestone}!`;
     }
-  };
-
-  const motivationMessage = getMotivationMessage();
+  }, [entryCount]); // Nur bei Änderung von entryCount neu berechnen
 
   const handleOpenCreateEntryDialog = useCallback(() => {
     const username = generateUsername(loggedInUser);
