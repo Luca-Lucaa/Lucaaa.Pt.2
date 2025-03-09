@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   List,
   ListItem,
-  ListItemText,
   Divider,
   Button,
   Typography,
@@ -61,6 +60,7 @@ const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
         .from("messages")
         .update({ reactions: updatedReactions })
         .eq("id", messageId);
+      handleMenuClose(); // Menü schließen nach Reaktion
     } catch (error) {
       handleError(error);
     }
@@ -117,7 +117,7 @@ const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
           {showAll ? "Weniger anzeigen" : "Alle Nachrichten anzeigen"}
         </Button>
       )}
-      <Box sx={{ display: "flex", gap: 1, alignItems: "center", marginTop: 2 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, marginTop: 2 }}>
         {replyTo && (
           <Box
             sx={{
@@ -125,7 +125,6 @@ const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
               padding: 1,
               borderRadius: 1,
               marginBottom: 1,
-              width: "100%",
             }}
           >
             <Typography variant="caption" color="text.secondary">
@@ -133,27 +132,37 @@ const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
             </Typography>
           </Box>
         )}
-        <TextField
-          label="Neue Nachricht"
-          variant="outlined"
-          fullWidth
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              sendMessage();
-            }
-          }}
-        />
-        <IconButton onClick={sendMessage} color="primary" disabled={!newMessage.trim()}>
-          <SendIcon />
-        </IconButton>
+        <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+          <TextField
+            label="Neue Nachricht"
+            variant="outlined"
+            fullWidth
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
+            }}
+          />
+          <IconButton onClick={sendMessage} color="primary" disabled={!newMessage.trim()}>
+            <SendIcon />
+          </IconButton>
+        </Box>
       </Box>
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
+        anchorOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "left",
+        }}
       >
         <MenuItem onClick={() => handleReply(displayedMessages.find(m => m.id === selectedMessageId))}>
           Antworten
