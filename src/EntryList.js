@@ -62,7 +62,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   // Berechne Gesamtkosten für einen bestimmten Ersteller
   const calculateTotalFeesForOwner = useCallback((owner) => {
     const ownerEntries = entries.filter((entry) => entry.owner === owner);
-    return ownerEntries.reduce((total, entry) => total + (entry.admin_fee || 0), 0);
+    return ownerEntries.reduce((-total, entry) => total + (entry.admin_fee || 0), 0);
   }, [entries]);
 
   const countEntriesByOwner = useCallback((owner) => {
@@ -97,7 +97,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
     } else {
       return `🎉 ${randomPhrase} Du hast ${entryCount} Einträge erreicht! Nur noch ${progressToNext} bis ${nextMilestone}!`;
     }
-  }, [entryCount]); // Nur bei Änderung von entryCount neu berechnen
+  }, [entryCount]);
 
   const handleOpenCreateEntryDialog = useCallback(() => {
     const username = generateUsername(loggedInUser);
@@ -173,7 +173,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       note: "Dieser Abonnent besteht bereits",
       extensionHistory: [],
       bougetList: manualEntry.bougetList,
-      admin_fee: manualEntry.admin_fee, // Inkludiere admin_fee
+      admin_fee: role === "Admin" ? manualEntry.admin_fee : null, // Nur Admin kann admin_fee setzen
     };
     try {
       const { data, error } = await supabase.from("entries").insert([newManualEntry]).select();
@@ -186,7 +186,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [manualEntry, loggedInUser, setEntries, showSnackbar]);
+  }, [manualEntry, loggedInUser, role, setEntries, showSnackbar]);
 
   const filterEntries = useMemo(() => {
     return entries
@@ -368,21 +368,23 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             value={newEntry.password}
             disabled
           />
-          <TextField
-            label="Admin-Gebühr ($)"
-            fullWidth
-            margin="normal"
-            type="number"
-            value={newEntry.admin_fee || ""}
-            onChange={(e) => {
-              const value = e.target.value.replace(/[^0-9]/g, "");
-              const numValue = value ? parseInt(value) : null;
-              if (numValue > 999) return;
-              setNewEntry({ ...newEntry, admin_fee: numValue });
-            }}
-            inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
-            disabled={isLoading}
-          />
+          {role === "Admin" && ( // Nur für Admins sichtbar
+            <TextField
+              label="Admin-Gebühr ($)"
+              fullWidth
+              margin="normal"
+              type="number"
+              value={newEntry.admin_fee || ""}
+              onChange={(e) => {
+                const value = e.target.value.replace(/[^0-9]/g, "");
+                const numValue = value ? parseInt(value) : null;
+                if (numValue > 999) return;
+                setNewEntry({ ...newEntry, admin_fee: numValue });
+              }}
+              inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+              disabled={isLoading}
+            />
+          )}
           <Typography variant="body1">
             <strong>Aktuelles Datum:</strong> {formatDate(new Date())}
           </Typography>
@@ -455,21 +457,23 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             onChange={(e) => setManualEntry({ ...manualEntry, validUntil: new Date(e.target.value) })}
             disabled={isLoading}
           />
-          <TextField
-            label="Admin-Gebühr ($)"
-            fullWidth
-            margin="normal"
-            type="number"
-            value={manualEntry.admin_fee || ""}
-            onChange={(e) => {
-              const value = e.target.value.replace(/[^0-9]/g, "");
-              const numValue = value ? parseInt(value) : null;
-              if (numValue > 999) return;
-              setManualEntry({ ...manualEntry, admin_fee: numValue });
-            }}
-            inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
-            disabled={isLoading}
-          />
+          {role === "Admin" && ( // Nur für Admins sichtbar
+            <TextField
+              label="Admin-Gebühr ($)"
+              fullWidth
+              margin="normal"
+              type="number"
+              value={manualEntry.admin_fee || ""}
+              onChange={(e) => {
+                const value = e.target.value.replace(/[^0-9]/g, "");
+                const numValue = value ? parseInt(value) : null;
+                if (numValue > 999) return;
+                setManualEntry({ ...manualEntry, admin_fee: numValue });
+              }}
+              inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+              disabled={isLoading}
+            />
+          )}
           <Typography variant="body1">
             <strong>Aktuelles Datum:</strong> {formatDate(new Date())}
           </Typography>
