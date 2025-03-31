@@ -62,7 +62,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   // Berechne Gesamtkosten für einen bestimmten Ersteller
   const calculateTotalFeesForOwner = useCallback((owner) => {
     const ownerEntries = entries.filter((entry) => entry.owner === owner);
-    return ownerEntries.reduce((-total, entry) => total + (entry.admin_fee || 0), 0);
+    return ownerEntries.reduce((total, entry) => total + (entry.admin_fee || 0), 0);
   }, [entries]);
 
   const countEntriesByOwner = useCallback((owner) => {
