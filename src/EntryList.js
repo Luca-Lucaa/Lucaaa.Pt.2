@@ -74,7 +74,6 @@ const EntryList = ({
 
   const { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, closeSnackbar } = useSnackbar();
 
-  // Berechnungen
   const calculateTotalFeesForOwner = useCallback((owner) => {
     const ownerEntries = entries.filter((entry) => entry.owner === owner);
     return ownerEntries.reduce((total, entry) => total + (entry.admin_fee || 0), 0);
@@ -111,7 +110,6 @@ const EntryList = ({
     }
   }, [entryCount]);
 
-  // Dialog-Handler
   const handleOpenCreateEntryDialog = useCallback(() => {
     const username = generateUsername(loggedInUser);
     const randomPassword = Math.random().toString(36).slice(-8);
@@ -201,7 +199,6 @@ const EntryList = ({
     }
   }, [manualEntry, loggedInUser, role, setEntries, showSnackbar, setOpenManualDialog]);
 
-  // Filterlogik
   const filteredEntries = useMemo(() => {
     return entries
       .filter((entry) =>
@@ -219,7 +216,6 @@ const EntryList = ({
 
   const uniqueOwners = useMemo(() => [...new Set(entries.map((entry) => entry.owner))], [entries]);
 
-  // Aktionen für Admin
   const toggleStatus = useCallback(async (entryId, currentStatus) => {
     const newStatus = currentStatus === "Aktiv" ? "Inaktiv" : "Aktiv";
     setIsLoading(true);
@@ -268,7 +264,6 @@ const EntryList = ({
 
   return (
     <Box sx={{ padding: 2 }}>
-      {/* Motivation und Buttons (nur für Nicht-Admins sichtbar) */}
       {role !== "Admin" && (
         <>
           <Box sx={{ padding: 0.5, backgroundColor: "#f5f5f5", borderRadius: 2, mb: 1 }}>
@@ -310,8 +305,6 @@ const EntryList = ({
           </Box>
         </>
       )}
-
-      {/* Filter und Suche */}
       <Box sx={{ mb: 3, display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
         <TextField
           label="🔍 Suche nach Benutzername oder Spitzname"
@@ -347,8 +340,6 @@ const EntryList = ({
           <MenuItem value="Nicht gezahlt">Nicht gezahlt</MenuItem>
         </Select>
       </Box>
-
-      {/* Owner-Filter für Admin */}
       {role === "Admin" && (
         <Box sx={{ mb: 3 }}>
           <Typography variant="h6" gutterBottom>
@@ -368,8 +359,6 @@ const EntryList = ({
           </Box>
         </Box>
       )}
-
-      {/* Einträge als Karten */}
       <Grid container spacing={2}>
         {filteredEntries.length > 0 ? (
           filteredEntries.map((entry) => (
@@ -456,8 +445,6 @@ const EntryList = ({
           <Typography sx={{ p: 2 }}>🚀 Keine passenden Einträge gefunden.</Typography>
         )}
       </Grid>
-
-      {/* Dialog zum Erstellen neuer Einträge */}
       <Dialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} fullScreen>
         <DialogTitle>Neuen Abonnenten anlegen</DialogTitle>
         <DialogContent>
@@ -530,8 +517,6 @@ const EntryList = ({
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Dialog zum manuellen Hinzufügen */}
       <Dialog open={openManualDialog} onClose={() => setOpenManualDialog(false)} fullScreen>
         <DialogTitle>Bestehenden Abonnenten einpflegen</DialogTitle>
         <DialogContent>
@@ -621,8 +606,6 @@ const EntryList = ({
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Snackbar */}
       <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={closeSnackbar}>
         <Alert onClose={closeSnackbar} severity={snackbarSeverity} sx={{ width: "100%" }}>
           {snackbarMessage}
