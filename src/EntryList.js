@@ -62,17 +62,17 @@ const EntryList = ({
     username: "",
     password: "",
     aliasNotes: "",
-    type: "PremiumVodka",
+    type: "Premium",
     validUntil: new Date(new Date().getFullYear(), 11, 31),
     owner: loggedInUser,
     extensionHistory: [],
     bougetList: "",
     admin_fee: null,
   });
-  const [editEntry, setEditEntry] = useState(null); // Zustand für den zu bearbeitenden Eintrag
-  const [openEditDialog, setOpenEditDialog] = useState(false); // Zustand für den Bearbeitungs-Dialog
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false); // Zustand für Löschbestätigung
-  const [entryToDelete, setEntryToDelete] = useState(null); // Eintrag, der gelöscht werden soll
+  const [editEntry, setEditEntry] = useState(null);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
@@ -131,7 +131,7 @@ const EntryList = ({
       bougetList: "",
       admin_fee: null,
     });
-    setOpenCreateDialog(true);
+    setOpenCreateDialog(true); // Öffnet den Dialog
   }, [loggedInUser, setOpenCreateDialog]);
 
   const handleOpenManualEntryDialog = useCallback(() => {
@@ -203,16 +203,14 @@ const EntryList = ({
     }
   }, [manualEntry, loggedInUser, role, setEntries, showSnackbar, setOpenManualDialog]);
 
-  // Funktion zum Öffnen des Bearbeitungs-Dialogs
   const handleOpenEditDialog = useCallback((entry) => {
     setEditEntry({
       ...entry,
-      validUntil: new Date(entry.validUntil).toISOString().split("T")[0], // Für das Datumseingabefeld
+      validUntil: new Date(entry.validUntil).toISOString().split("T")[0],
     });
     setOpenEditDialog(true);
   }, []);
 
-  // Funktion zum Speichern der Änderungen
   const handleSaveEdit = useCallback(async () => {
     if (!editEntry.username || !editEntry.password || !editEntry.aliasNotes) {
       showSnackbar("Bitte füllen Sie alle Felder aus.", "error");
@@ -290,13 +288,11 @@ const EntryList = ({
     }
   }, [setEntries, showSnackbar]);
 
-  // Funktion zum Öffnen der Löschbestätigung
   const handleDeleteClick = useCallback((entryId) => {
     setEntryToDelete(entryId);
     setDeleteConfirmOpen(true);
   }, []);
 
-  // Funktion zum Bestätigen des Löschens
   const confirmDelete = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -522,7 +518,6 @@ const EntryList = ({
           <Typography sx={{ p: 2 }}>🚀 Keine passenden Einträge gefunden.</Typography>
         )}
       </Grid>
-      {/* Dialog für das Erstellen eines neuen Eintrags */}
       <Dialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} fullScreen>
         <DialogTitle>Neuen Abonnenten anlegen</DialogTitle>
         <DialogContent>
@@ -595,7 +590,6 @@ const EntryList = ({
           </Button>
         </DialogActions>
       </Dialog>
-      {/* Dialog für das Einpflegen eines bestehenden Abonnenten */}
       <Dialog open={openManualDialog} onClose={() => setOpenManualDialog(false)} fullScreen>
         <DialogTitle>Bestehenden Abonnenten einpflegen</DialogTitle>
         <DialogContent>
@@ -685,7 +679,6 @@ const EntryList = ({
           </Button>
         </DialogActions>
       </Dialog>
-      {/* Dialog für das Bearbeiten eines Eintrags */}
       <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} fullScreen>
         <DialogTitle>Eintrag bearbeiten</DialogTitle>
         <DialogContent>
@@ -784,7 +777,6 @@ const EntryList = ({
           </Button>
         </DialogActions>
       </Dialog>
-      {/* Dialog für die Löschbestätigung */}
       <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
         <DialogTitle>Löschbestätigung</DialogTitle>
         <DialogContent>
