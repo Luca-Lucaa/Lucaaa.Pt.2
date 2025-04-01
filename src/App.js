@@ -37,6 +37,7 @@ import { useSnackbar } from "./useSnackbar";
 
 const LoginForm = lazy(() => import("./LoginForm"));
 const EntryList = lazy(() => import("./EntryList"));
+const AdminDashboard = lazy(() => import("./AdminDashboard"));
 
 const StyledContainer = styled(Container)(({ theme }) => ({
   backgroundColor: theme.palette.background.default,
@@ -71,6 +72,8 @@ const App = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [chatExpanded, setChatExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [openCreateDialog, setOpenCreateDialog] = useState(false); // Für Dashboard
+  const [openManualDialog, setOpenManualDialog] = useState(false); // Für Dashboard
 
   const { messages, unreadCount, markAsRead } = useMessages(loggedInUser, selectedUser);
   const { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, closeSnackbar } = useSnackbar();
@@ -394,7 +397,28 @@ const App = () => {
                   </Box>
                 </AccordionDetails>
               </Accordion>
-              <EntryList role={role} loggedInUser={loggedInUser} entries={entries} setEntries={setEntries} />
+              {role === "Admin" ? (
+                <>
+                  <AdminDashboard
+                    entries={entries}
+                    loggedInUser={loggedInUser}
+                    setOpenCreateDialog={setOpenCreateDialog}
+                    setOpenManualDialog={setOpenManualDialog}
+                  />
+                  <EntryList
+                    role={role}
+                    loggedInUser={loggedInUser}
+                    entries={entries}
+                    setEntries={setEntries}
+                    openCreateDialog={openCreateDialog}
+                    setOpenCreateDialog={setOpenCreateDialog}
+                    openManualDialog={openManualDialog}
+                    setOpenManualDialog={setOpenManualDialog}
+                  />
+                </>
+              ) : (
+                <EntryList role={role} loggedInUser={loggedInUser} entries={entries} setEntries={setEntries} />
+              )}
             </Box>
           )}
         </Suspense>
