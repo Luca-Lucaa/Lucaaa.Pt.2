@@ -377,7 +377,22 @@ const EntryList = ({
                     {entry.aliasNotes} ({entry.username})
                   </Typography>
                   <Typography variant="body2" color="textSecondary">
+                    <strong>Benutzername:</strong> {entry.username}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    <strong>Passwort:</strong> {entry.password}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    <strong>Spitzname/Notizen:</strong> {entry.aliasNotes}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    <strong>Typ:</strong> {entry.type}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
                     <strong>Ersteller:</strong> {entry.owner}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    <strong>Erstellt am:</strong> {formatDate(entry.createdAt)}
                   </Typography>
                   <Typography variant="body2" color="textSecondary">
                     <strong>Gültig bis:</strong> {formatDate(entry.validUntil)}
@@ -389,6 +404,17 @@ const EntryList = ({
                     <Typography variant="body2" color="textSecondary">
                       <strong>Admin-Gebühr:</strong>{" "}
                       {entry.admin_fee ? `${entry.admin_fee}$` : "Nicht gesetzt"}
+                    </Typography>
+                  )}
+                  {entry.note && (
+                    <Typography variant="body2" color="textSecondary">
+                      <strong>Notiz:</strong> {entry.note}
+                    </Typography>
+                  )}
+                  {entry.extensionHistory && entry.extensionHistory.length > 0 && (
+                    <Typography variant="body2" color="textSecondary">
+                      <strong>Verlängerungsverlauf:</strong>{" "}
+                      {entry.extensionHistory.map((date) => formatDate(date)).join(", ")}
                     </Typography>
                   )}
                   <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
