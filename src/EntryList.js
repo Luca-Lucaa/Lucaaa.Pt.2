@@ -62,7 +62,7 @@ const EntryList = ({
     username: "",
     password: "",
     aliasNotes: "",
-    type: "Premium",
+    type: "PremiumVodka",
     validUntil: new Date(new Date().getFullYear(), 11, 31),
     owner: loggedInUser,
     extensionHistory: [],
