@@ -25,15 +25,21 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
-import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import { supabase } from "./supabaseClient";
 import { formatDate, generateUsername, useDebounce, handleError } from "./utils";
 import { useSnackbar } from "./useSnackbar";
 import { OWNER_COLORS } from "./config";
 
-const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
-  const [openCreateEntryDialog, setOpenCreateEntryDialog] = useState(false);
-  const [openManualEntryDialog, setOpenManualEntryDialog] = useState(false);
+const EntryList = ({
+  role,
+  loggedInUser,
+  entries,
+  setEntries,
+  openCreateDialog,
+  setOpenCreateDialog,
+  openManualDialog,
+  setOpenManualDialog,
+}) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
@@ -123,8 +129,8 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       bougetList: "",
       admin_fee: null,
     });
-    setOpenCreateEntryDialog(true);
-  }, [loggedInUser]);
+    setOpenCreateDialog(true);
+  }, [loggedInUser, setOpenCreateDialog]);
 
   const handleOpenManualEntryDialog = useCallback(() => {
     setManualEntry({
@@ -138,8 +144,8 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       bougetList: "",
       admin_fee: null,
     });
-    setOpenManualEntryDialog(true);
-  }, [loggedInUser]);
+    setOpenManualDialog(true);
+  }, [loggedInUser, setOpenManualDialog]);
 
   const createEntry = useCallback(async () => {
     if (!newEntry.aliasNotes.trim() || !newEntry.username.trim()) {
@@ -151,14 +157,14 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       const { data, error } = await supabase.from("entries").insert([newEntry]).select();
       if (error) throw error;
       setEntries((prev) => [data[0], ...prev]);
-      setOpenCreateEntryDialog(false);
+      setOpenCreateDialog(false);
       showSnackbar("Neuer Abonnent erfolgreich angelegt!");
     } catch (error) {
       handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
     }
-  }, [newEntry, setEntries, showSnackbar]);
+  }, [newEntry, setEntries, showSnackbar, setOpenCreateDialog]);
 
   const handleAddManualEntry = useCallback(async () => {
     if (!manualEntry.username || !manualEntry.password || !manualEntry.aliasNotes) {
@@ -186,14 +192,14 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       const { data, error } = await supabase.from("entries").insert([newManualEntry]).select();
       if (error) throw error;
       setEntries((prev) => [data[0], ...prev]);
-      setOpenManualEntryDialog(false);
+      setOpenManualDialog(false);
       showSnackbar("Bestehender Abonnent erfolgreich eingepflegt!");
     } catch (error) {
       handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
     }
-  }, [manualEntry, loggedInUser, role, setEntries, showSnackbar]);
+  }, [manualEntry, loggedInUser, role, setEntries, showSnackbar, setOpenManualDialog]);
 
   // Filterlogik
   const filteredEntries = useMemo(() => {
@@ -262,46 +268,48 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
 
   return (
     <Box sx={{ padding: 2 }}>
-      {/* Motivation und Buttons */}
-      {(role !== "Admin" || loggedInUser === selectedUser) && (
-        <Box sx={{ padding: 0.5, backgroundColor: "#f5f5f5", borderRadius: 2, mb: 1 }}>
-          <Typography variant="body2" sx={{ color: "green" }}>
-            Gesamtkosten deiner Einträge: {calculateTotalFeesForOwner(loggedInUser)}$ €
-          </Typography>
-        </Box>
+      {/* Motivation und Buttons (nur für Nicht-Admins sichtbar) */}
+      {role !== "Admin" && (
+        <>
+          <Box sx={{ padding: 0.5, backgroundColor: "#f5f5f5", borderRadius: 2, mb: 1 }}>
+            <Typography variant="body2" sx={{ color: "green" }}>
+              Gesamtkosten deiner Einträge: {calculateTotalFeesForOwner(loggedInUser)}$ €
+            </Typography>
+          </Box>
+          <Box sx={{ mb: 3, display: "flex", flexDirection: "column", gap: 2 }}>
+            <Chip
+              label={motivationMessage}
+              color="success"
+              variant="outlined"
+              sx={{ fontStyle: "italic", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis" }}
+            />
+            <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
+              <Button
+                onClick={handleOpenCreateEntryDialog}
+                variant="contained"
+                color="success"
+                startIcon={<AddIcon />}
+                fullWidth
+                disabled={isLoading}
+                sx={{ borderRadius: 2 }}
+              >
+                Abonnent anlegen
+              </Button>
+              <Button
+                onClick={handleOpenManualEntryDialog}
+                variant="contained"
+                color="primary"
+                startIcon={<EditIcon />}
+                fullWidth
+                disabled={isLoading}
+                sx={{ borderRadius: 2 }}
+              >
+                Bestehenden Abonnenten einpflegen
+              </Button>
+            </Box>
+          </Box>
+        </>
       )}
-      <Box sx={{ mb: 3, display: "flex", flexDirection: "column", gap: 2 }}>
-        <Chip
-          label={motivationMessage}
-          color="success"
-          variant="outlined"
-          sx={{ fontStyle: "italic", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis" }}
-        />
-        <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
-          <Button
-            onClick={handleOpenCreateEntryDialog}
-            variant="contained"
-            color="success"
-            startIcon={<AddIcon />}
-            fullWidth
-            disabled={isLoading}
-            sx={{ borderRadius: 2 }}
-          >
-            Abonnent anlegen
-          </Button>
-          <Button
-            onClick={handleOpenManualEntryDialog}
-            variant="contained"
-            color="primary"
-            startIcon={<EditIcon />}
-            fullWidth
-            disabled={isLoading}
-            sx={{ borderRadius: 2 }}
-          >
-            Bestehenden Abonnenten einpflegen
-          </Button>
-        </Box>
-      </Box>
 
       {/* Filter und Suche */}
       <Box sx={{ mb: 3, display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
@@ -450,7 +458,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       </Grid>
 
       {/* Dialog zum Erstellen neuer Einträge */}
-      <Dialog open={openCreateEntryDialog} onClose={() => setOpenCreateEntryDialog(false)} fullScreen>
+      <Dialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} fullScreen>
         <DialogTitle>Neuen Abonnenten anlegen</DialogTitle>
         <DialogContent>
           <TextField
@@ -514,7 +522,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           {isLoading && <Typography>🔄 Speichere...</Typography>}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenCreateEntryDialog(false)} color="secondary" disabled={isLoading}>
+          <Button onClick={() => setOpenCreateDialog(false)} color="secondary" disabled={isLoading}>
             Abbrechen
           </Button>
           <Button onClick={createEntry} color="primary" disabled={isLoading}>
@@ -524,7 +532,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       </Dialog>
 
       {/* Dialog zum manuellen Hinzufügen */}
-      <Dialog open={openManualEntryDialog} onClose={() => setOpenManualEntryDialog(false)} fullScreen>
+      <Dialog open={openManualDialog} onClose={() => setOpenManualDialog(false)} fullScreen>
         <DialogTitle>Bestehenden Abonnenten einpflegen</DialogTitle>
         <DialogContent>
           <TextField
@@ -605,7 +613,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           {isLoading && <Typography>🔄 Speichere...</Typography>}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenManualEntryDialog(false)} color="secondary" disabled={isLoading}>
+          <Button onClick={() => setOpenManualDialog(false)} color="secondary" disabled={isLoading}>
             Abbrechen
           </Button>
           <Button onClick={handleAddManualEntry} color="primary" disabled={isLoading}>
