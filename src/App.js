@@ -220,7 +220,6 @@ const App = () => {
     }
   }, [selectedUser, messages, markAsRead]);
 
-  // Umgekehrte Nachrichtenliste (neueste oben)
   const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
   return (
@@ -361,7 +360,6 @@ const App = () => {
                   )}
                 </AccordionSummary>
                 <AccordionDetails>
-                  {/* Eingabefeld oberhalb des Chatverlaufs */}
                   <Box sx={{ mb: 2 }}>
                     <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1, mb: 2 }}>
                       <TextField
@@ -391,7 +389,6 @@ const App = () => {
                         {isLoading ? "Sende..." : "Senden"}
                       </Button>
                     </Box>
-                    {/* Chatverlauf mit Scrollbar */}
                     <Box sx={{ maxHeight: "50vh", overflowY: "auto" }}>
                       {reversedMessages.map((msg) => (
                         <ChatMessage
@@ -426,7 +423,16 @@ const App = () => {
                   />
                 </>
               ) : (
-                <EntryList role={role} loggedInUser={loggedInUser} entries={entries} setEntries={setEntries} />
+                <EntryList
+                  role={role}
+                  loggedInUser={loggedInUser}
+                  entries={entries}
+                  setEntries={setEntries}
+                  openCreateDialog={openCreateDialog}
+                  setOpenCreateDialog={setOpenCreateDialog}
+                  openManualDialog={openManualDialog}
+                  setOpenManualDialog={setOpenManualDialog}
+                />
               )}
             </Box>
           )}
