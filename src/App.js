@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy, useCallback } from "react";
+import React, { useState, useEffect, Suspense, lazy, useCallback, useMemo } from "react"; // useMemo hinzugefügt
 import {
   Container,
   Typography,
@@ -70,7 +70,7 @@ const App = () => {
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
   const [guidesAnchorEl, setGuidesAnchorEl] = useState(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [chatExpanded, setChatExpanded] = useState(true); // Standardmäßig aufgeklappt
+  const [chatExpanded, setChatExpanded] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [openManualDialog, setOpenManualDialog] = useState(false);
