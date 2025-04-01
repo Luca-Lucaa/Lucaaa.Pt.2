@@ -70,7 +70,7 @@ const App = () => {
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
   const [guidesAnchorEl, setGuidesAnchorEl] = useState(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [chatExpanded, setChatExpanded] = useState(false);
+  const [chatExpanded, setChatExpanded] = useState(true); // Standardmäßig aufgeklappt
   const [isLoading, setIsLoading] = useState(false);
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [openManualDialog, setOpenManualDialog] = useState(false);
@@ -220,6 +220,9 @@ const App = () => {
     }
   }, [selectedUser, messages, markAsRead]);
 
+  // Umgekehrte Nachrichtenliste (neueste oben)
+  const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
+
   return (
     <ThemeProvider theme={theme}>
       <StyledContainer maxWidth="xl">
@@ -358,8 +361,8 @@ const App = () => {
                   )}
                 </AccordionSummary>
                 <AccordionDetails>
-                  <Box sx={{ maxHeight: "50vh", overflowY: "auto", mb: 2 }}>
-                    {messages.map((msg) => (
+                  <Box sx={{ mb: 2 }}>
+                    {reversedMessages.map((msg) => (
                       <ChatMessage
                         key={msg.id}
                         message={msg.message}
@@ -374,6 +377,8 @@ const App = () => {
                       label="Neue Nachricht"
                       variant="outlined"
                       fullWidth
+                      multiline
+                      rows={2}
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       onKeyDown={(e) => {
@@ -389,7 +394,7 @@ const App = () => {
                       variant="contained"
                       color="primary"
                       onClick={sendMessage}
-                      sx={{ width: { xs: "100%", sm: "auto" }, borderRadius: 2 }}
+                      sx={{ width: { xs: "100%", sm: "auto" }, borderRadius: 2, alignSelf: "flex-end" }}
                       disabled={isLoading || !newMessage.trim()}
                     >
                       {isLoading ? "Sende..." : "Senden"}
