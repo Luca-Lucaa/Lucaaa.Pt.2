@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy, useCallback, useMemo } from "react"; // useMemo hinzugefügt
+import React, { useState, useEffect, Suspense, lazy, useCallback, useMemo } from "react";
 import {
   Container,
   Typography,
@@ -361,44 +361,48 @@ const App = () => {
                   )}
                 </AccordionSummary>
                 <AccordionDetails>
+                  {/* Eingabefeld oberhalb des Chatverlaufs */}
                   <Box sx={{ mb: 2 }}>
-                    {reversedMessages.map((msg) => (
-                      <ChatMessage
-                        key={msg.id}
-                        message={msg.message}
-                        sender={msg.sender}
-                        timestamp={msg.created_at}
-                        isOwnMessage={msg.sender === loggedInUser}
+                    <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1, mb: 2 }}>
+                      <TextField
+                        label="Neue Nachricht"
+                        variant="outlined"
+                        fullWidth
+                        multiline
+                        rows={2}
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            sendMessage();
+                          }
+                        }}
+                        disabled={isLoading}
+                        sx={{ backgroundColor: "white", borderRadius: 2 }}
                       />
-                    ))}
-                  </Box>
-                  <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1 }}>
-                    <TextField
-                      label="Neue Nachricht"
-                      variant="outlined"
-                      fullWidth
-                      multiline
-                      rows={2}
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          sendMessage();
-                        }
-                      }}
-                      disabled={isLoading}
-                      sx={{ backgroundColor: "white", borderRadius: 2 }}
-                    />
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={sendMessage}
-                      sx={{ width: { xs: "100%", sm: "auto" }, borderRadius: 2, alignSelf: "flex-end" }}
-                      disabled={isLoading || !newMessage.trim()}
-                    >
-                      {isLoading ? "Sende..." : "Senden"}
-                    </Button>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={sendMessage}
+                        sx={{ width: { xs: "100%", sm: "auto" }, borderRadius: 2, alignSelf: "flex-end" }}
+                        disabled={isLoading || !newMessage.trim()}
+                      >
+                        {isLoading ? "Sende..." : "Senden"}
+                      </Button>
+                    </Box>
+                    {/* Chatverlauf mit Scrollbar */}
+                    <Box sx={{ maxHeight: "50vh", overflowY: "auto" }}>
+                      {reversedMessages.map((msg) => (
+                        <ChatMessage
+                          key={msg.id}
+                          message={msg.message}
+                          sender={msg.sender}
+                          timestamp={msg.created_at}
+                          isOwnMessage={msg.sender === loggedInUser}
+                        />
+                      ))}
+                    </Box>
                   </Box>
                 </AccordionDetails>
               </Accordion>
