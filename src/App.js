@@ -72,8 +72,8 @@ const App = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [chatExpanded, setChatExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [openCreateDialog, setOpenCreateDialog] = useState(false); // Für Dashboard
-  const [openManualDialog, setOpenManualDialog] = useState(false); // Für Dashboard
+  const [openCreateDialog, setOpenCreateDialog] = useState(false);
+  const [openManualDialog, setOpenManualDialog] = useState(false);
 
   const { messages, unreadCount, markAsRead } = useMessages(loggedInUser, selectedUser);
   const { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, closeSnackbar } = useSnackbar();
