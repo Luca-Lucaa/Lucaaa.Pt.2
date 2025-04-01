@@ -69,6 +69,10 @@ const EntryList = ({
     bougetList: "",
     admin_fee: null,
   });
+  const [editEntry, setEditEntry] = useState(null); // Zustand für den zu bearbeitenden Eintrag
+  const [openEditDialog, setOpenEditDialog] = useState(false); // Zustand für den Bearbeitungs-Dialog
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false); // Zustand für Löschbestätigung
+  const [entryToDelete, setEntryToDelete] = useState(null); // Eintrag, der gelöscht werden soll
   const [isLoading, setIsLoading] = useState(false);
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
@@ -199,6 +203,44 @@ const EntryList = ({
     }
   }, [manualEntry, loggedInUser, role, setEntries, showSnackbar, setOpenManualDialog]);
 
+  // Funktion zum Öffnen des Bearbeitungs-Dialogs
+  const handleOpenEditDialog = useCallback((entry) => {
+    setEditEntry({
+      ...entry,
+      validUntil: new Date(entry.validUntil).toISOString().split("T")[0], // Für das Datumseingabefeld
+    });
+    setOpenEditDialog(true);
+  }, []);
+
+  // Funktion zum Speichern der Änderungen
+  const handleSaveEdit = useCallback(async () => {
+    if (!editEntry.username || !editEntry.password || !editEntry.aliasNotes) {
+      showSnackbar("Bitte füllen Sie alle Felder aus.", "error");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const updatedEntry = {
+        ...editEntry,
+        validUntil: new Date(editEntry.validUntil),
+      };
+      const { error } = await supabase
+        .from("entries")
+        .update(updatedEntry)
+        .eq("id", editEntry.id);
+      if (error) throw error;
+      setEntries((prev) =>
+        prev.map((e) => (e.id === editEntry.id ? updatedEntry : e))
+      );
+      setOpenEditDialog(false);
+      showSnackbar("Eintrag erfolgreich bearbeitet!");
+    } catch (error) {
+      handleError(error, showSnackbar);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [editEntry, setEntries, showSnackbar]);
+
   const filteredEntries = useMemo(() => {
     return entries
       .filter((entry) =>
@@ -248,19 +290,28 @@ const EntryList = ({
     }
   }, [setEntries, showSnackbar]);
 
-  const deleteEntry = useCallback(async (entryId) => {
+  // Funktion zum Öffnen der Löschbestätigung
+  const handleDeleteClick = useCallback((entryId) => {
+    setEntryToDelete(entryId);
+    setDeleteConfirmOpen(true);
+  }, []);
+
+  // Funktion zum Bestätigen des Löschens
+  const confirmDelete = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.from("entries").delete().eq("id", entryId);
+      const { error } = await supabase.from("entries").delete().eq("id", entryToDelete);
       if (error) throw error;
-      setEntries((prev) => prev.filter((e) => e.id !== entryId));
+      setEntries((prev) => prev.filter((e) => e.id !== entryToDelete));
       showSnackbar("Eintrag gelöscht.");
     } catch (error) {
       handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
+      setDeleteConfirmOpen(false);
+      setEntryToDelete(null);
     }
-  }, [setEntries, showSnackbar]);
+  }, [entryToDelete, setEntries, showSnackbar]);
 
   return (
     <Box sx={{ padding: 2 }}>
@@ -456,10 +507,10 @@ const EntryList = ({
                         )}
                       </IconButton>
                     </Tooltip>
-                    <IconButton disabled={isLoading}>
+                    <IconButton onClick={() => handleOpenEditDialog(entry)} disabled={isLoading}>
                       <EditIcon />
                     </IconButton>
-                    <IconButton onClick={() => deleteEntry(entry.id)} disabled={isLoading}>
+                    <IconButton onClick={() => handleDeleteClick(entry.id)} disabled={isLoading}>
                       <DeleteIcon color="error" />
                     </IconButton>
                   </CardActions>
@@ -471,6 +522,7 @@ const EntryList = ({
           <Typography sx={{ p: 2 }}>🚀 Keine passenden Einträge gefunden.</Typography>
         )}
       </Grid>
+      {/* Dialog für das Erstellen eines neuen Eintrags */}
       <Dialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} fullScreen>
         <DialogTitle>Neuen Abonnenten anlegen</DialogTitle>
         <DialogContent>
@@ -543,6 +595,7 @@ const EntryList = ({
           </Button>
         </DialogActions>
       </Dialog>
+      {/* Dialog für das Einpflegen eines bestehenden Abonnenten */}
       <Dialog open={openManualDialog} onClose={() => setOpenManualDialog(false)} fullScreen>
         <DialogTitle>Bestehenden Abonnenten einpflegen</DialogTitle>
         <DialogContent>
@@ -629,6 +682,120 @@ const EntryList = ({
           </Button>
           <Button onClick={handleAddManualEntry} color="primary" disabled={isLoading}>
             {isLoading ? "Speichere..." : "Hinzufügen"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* Dialog für das Bearbeiten eines Eintrags */}
+      <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} fullScreen>
+        <DialogTitle>Eintrag bearbeiten</DialogTitle>
+        <DialogContent>
+          {editEntry && (
+            <>
+              <TextField
+                label="Benutzername"
+                fullWidth
+                margin="normal"
+                value={editEntry.username}
+                onChange={(e) => setEditEntry({ ...editEntry, username: e.target.value })}
+                disabled={isLoading}
+              />
+              <TextField
+                label="Passwort"
+                fullWidth
+                margin="normal"
+                type="text"
+                value={editEntry.password}
+                onChange={(e) => setEditEntry({ ...editEntry, password: e.target.value })}
+                disabled={isLoading}
+              />
+              <TextField
+                label="Spitzname, Notizen etc."
+                fullWidth
+                margin="normal"
+                value={editEntry.aliasNotes}
+                onChange={(e) => setEditEntry({ ...editEntry, aliasNotes: e.target.value })}
+                disabled={isLoading}
+              />
+              <TextField
+                label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
+                fullWidth
+                margin="normal"
+                value={editEntry.bougetList || ""}
+                onChange={(e) => setEditEntry({ ...editEntry, bougetList: e.target.value })}
+                disabled={isLoading}
+              />
+              <Select
+                fullWidth
+                margin="normal"
+                value={editEntry.type}
+                onChange={(e) => setEditEntry({ ...editEntry, type: e.target.value })}
+                disabled={isLoading}
+              >
+                <MenuItem value="Premium">Premium</MenuItem>
+                <MenuItem value="Basic">Basic</MenuItem>
+              </Select>
+              <TextField
+                label="Gültig bis"
+                fullWidth
+                margin="normal"
+                type="date"
+                value={editEntry.validUntil}
+                onChange={(e) => setEditEntry({ ...editEntry, validUntil: e.target.value })}
+                disabled={isLoading}
+              />
+              {role === "Admin" && (
+                <TextField
+                  label="Admin-Gebühr ($)"
+                  fullWidth
+                  margin="normal"
+                  type="number"
+                  value={editEntry.admin_fee || ""}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, "");
+                    const numValue = value ? parseInt(value) : null;
+                    if (numValue > 999) return;
+                    setEditEntry({ ...editEntry, admin_fee: numValue });
+                  }}
+                  inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+                  disabled={isLoading}
+                />
+              )}
+              <TextField
+                label="Notiz"
+                fullWidth
+                margin="normal"
+                value={editEntry.note || ""}
+                onChange={(e) => setEditEntry({ ...editEntry, note: e.target.value })}
+                disabled={isLoading}
+              />
+              <Typography variant="body1">
+                <strong>Erstellt am:</strong> {formatDate(editEntry.createdAt)}
+              </Typography>
+              {isLoading && <Typography>🔄 Speichere...</Typography>}
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenEditDialog(false)} color="secondary" disabled={isLoading}>
+            Abbrechen
+          </Button>
+          <Button onClick={handleSaveEdit} color="primary" disabled={isLoading}>
+            {isLoading ? "Speichere..." : "Speichern"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* Dialog für die Löschbestätigung */}
+      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
+        <DialogTitle>Löschbestätigung</DialogTitle>
+        <DialogContent>
+          <Typography>Möchten Sie diesen Eintrag wirklich löschen?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirmOpen(false)} color="secondary" disabled={isLoading}>
+            Abbrechen
+          </Button>
+          <Button onClick={confirmDelete} color="error" disabled={isLoading}>
+            {isLoading ? "Lösche..." : "Löschen"}
           </Button>
         </DialogActions>
       </Dialog>
