@@ -46,9 +46,7 @@ const StyledContainer = styled(Container)(({ theme }) => ({
 }));
 
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
-  background: "linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)", // Moderner Farbverlauf
-  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.1)",
-  borderRadius: "0 0 10px 10px",
+  backgroundColor: theme.palette.primary.main,
 }));
 
 const theme = createTheme(THEME_CONFIG);
@@ -221,7 +219,7 @@ const App = () => {
 
   return (
     <ThemeProvider theme={theme}>
-      <StyledContainer>
+      <StyledContainer maxWidth="xl">
         <StyledAppBar position="static">
           <Toolbar>
             <Typography variant="h6">Luca-TV</Typography>
@@ -313,16 +311,16 @@ const App = () => {
           </Toolbar>
         </StyledAppBar>
         <Suspense fallback={<div>🔄 Lade...</div>}>
-          {isLoading && <Typography>🔄 Lade Daten...</Typography>}
+          {isLoading && <Typography sx={{ mt: 2 }}>🔄 Lade Daten...</Typography>}
           {!loggedInUser ? (
-            <Grid container justifyContent="center" style={{ marginTop: "20px" }}>
+            <Grid container justifyContent="center" sx={{ mt: 4 }}>
               <Grid item xs={12} sm={6} md={4}>
                 <LoginForm handleLogin={handleLogin} />
               </Grid>
             </Grid>
           ) : (
-            <>
-              <Accordion expanded={chatExpanded} onChange={() => setChatExpanded(!chatExpanded)} sx={{ mb: 2, borderRadius: 2, boxShadow: 3 }}>
+            <Box sx={{ mt: 2 }}>
+              <Accordion expanded={chatExpanded} onChange={() => setChatExpanded(!chatExpanded)} sx={{ mb: 2, borderRadius: 2 }}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Typography variant="h6">Chat mit {selectedUser}</Typography>
                   {role === "Admin" && (
@@ -335,7 +333,7 @@ const App = () => {
                             e.stopPropagation();
                             setSelectedUser("Scholli");
                           }}
-                          sx={{ minWidth: 0, p: 0.5 }}
+                          sx={{ minWidth: 0, p: 0.5, borderRadius: 2 }}
                         >
                           Scholli {USER_EMOJIS["Scholli"]}
                         </Button>
@@ -348,7 +346,7 @@ const App = () => {
                             e.stopPropagation();
                             setSelectedUser("Jamaica05");
                           }}
-                          sx={{ minWidth: 0, p: 0.5 }}
+                          sx={{ minWidth: 0, p: 0.5, borderRadius: 2 }}
                         >
                           Jamaica05 {USER_EMOJIS["Jamaica05"]}
                         </Button>
@@ -382,6 +380,7 @@ const App = () => {
                         }
                       }}
                       disabled={isLoading}
+                      sx={{ backgroundColor: "white", borderRadius: 2 }}
                     />
                     <Button
                       variant="contained"
@@ -396,7 +395,7 @@ const App = () => {
                 </AccordionDetails>
               </Accordion>
               <EntryList role={role} loggedInUser={loggedInUser} entries={entries} setEntries={setEntries} />
-            </>
+            </Box>
           )}
         </Suspense>
         <CustomSnackbar
@@ -405,7 +404,7 @@ const App = () => {
           onClose={closeSnackbar}
           severity={snackbarSeverity}
         />
-        <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} fullWidth maxWidth="sm">
+        <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)}>
           <DialogTitle>Backup importieren</DialogTitle>
           <DialogContent>
             <input type="file" accept=".json" onChange={handleFileChange} disabled={isLoading} />
