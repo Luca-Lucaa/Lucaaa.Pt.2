@@ -13,14 +13,23 @@ import {
   Snackbar,
   Alert,
   Chip,
+  Card,
+  CardContent,
+  CardActions,
+  Grid,
+  Tooltip,
+  IconButton,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import CancelIcon from "@mui/icons-material/Cancel";
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import { supabase } from "./supabaseClient";
 import { formatDate, generateUsername, useDebounce, handleError } from "./utils";
-import EntryAccordion from "./EntryAccordion";
 import { useSnackbar } from "./useSnackbar";
-import { OWNER_COLORS } from "./config"; // Import der Farben
+import { OWNER_COLORS } from "./config";
 
 const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
   const [openCreateEntryDialog, setOpenCreateEntryDialog] = useState(false);
@@ -41,7 +50,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
     owner: loggedInUser,
     extensionHistory: [],
     bougetList: "",
-    admin_fee: null, // Standardwert für Admin-Gebühr
+    admin_fee: null,
   });
   const [manualEntry, setManualEntry] = useState({
     username: "",
@@ -52,14 +61,14 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
     owner: loggedInUser,
     extensionHistory: [],
     bougetList: "",
-    admin_fee: null, // Standardwert für Admin-Gebühr
+    admin_fee: null,
   });
   const [isLoading, setIsLoading] = useState(false);
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   const { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, closeSnackbar } = useSnackbar();
 
-  // Berechne Gesamtkosten für einen bestimmten Ersteller
+  // Berechnungen
   const calculateTotalFeesForOwner = useCallback((owner) => {
     const ownerEntries = entries.filter((entry) => entry.owner === owner);
     return ownerEntries.reduce((total, entry) => total + (entry.admin_fee || 0), 0);
@@ -71,12 +80,10 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
 
   const entryCount = countEntriesByOwner(loggedInUser);
 
-  // Definierte Meilensteine
   const milestones = [5, 10, 15, 20, 25, 50, 100];
   const nextMilestone = milestones.find((milestone) => milestone > entryCount) || 100;
   const progressToNext = nextMilestone - entryCount;
 
-  // Zufällige motivierende Phrasen
   const motivationalPhrases = [
     "Super Arbeit!",
     "Fantastisch gemacht!",
@@ -87,7 +94,6 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
     "Toll drauf!",
   ];
 
-  // Generiere eine Motivationsnachricht und memoiziere sie
   const motivationMessage = useMemo(() => {
     const randomPhrase = motivationalPhrases[Math.floor(Math.random() * motivationalPhrases.length)];
     if (entryCount === 0) {
@@ -99,6 +105,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
     }
   }, [entryCount]);
 
+  // Dialog-Handler
   const handleOpenCreateEntryDialog = useCallback(() => {
     const username = generateUsername(loggedInUser);
     const randomPassword = Math.random().toString(36).slice(-8);
@@ -114,7 +121,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       owner: loggedInUser,
       extensionHistory: [],
       bougetList: "",
-      admin_fee: null, // Standardwert für Admin-Gebühr
+      admin_fee: null,
     });
     setOpenCreateEntryDialog(true);
   }, [loggedInUser]);
@@ -129,7 +136,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       owner: loggedInUser,
       extensionHistory: [],
       bougetList: "",
-      admin_fee: null, // Standardwert für Admin-Gebühr
+      admin_fee: null,
     });
     setOpenManualEntryDialog(true);
   }, [loggedInUser]);
@@ -173,7 +180,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
       note: "Dieser Abonnent besteht bereits",
       extensionHistory: [],
       bougetList: manualEntry.bougetList,
-      admin_fee: role === "Admin" ? manualEntry.admin_fee : null, // Nur Admin kann admin_fee setzen
+      admin_fee: role === "Admin" ? manualEntry.admin_fee : null,
     };
     try {
       const { data, error } = await supabase.from("entries").insert([newManualEntry]).select();
@@ -188,7 +195,8 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
     }
   }, [manualEntry, loggedInUser, role, setEntries, showSnackbar]);
 
-  const filterEntries = useMemo(() => {
+  // Filterlogik
+  const filteredEntries = useMemo(() => {
     return entries
       .filter((entry) =>
         role === "Admin" ? (selectedUser ? entry.owner === selectedUser : true) : entry.owner === loggedInUser
@@ -205,17 +213,64 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
 
   const uniqueOwners = useMemo(() => [...new Set(entries.map((entry) => entry.owner))], [entries]);
 
+  // Aktionen für Admin
+  const toggleStatus = useCallback(async (entryId, currentStatus) => {
+    const newStatus = currentStatus === "Aktiv" ? "Inaktiv" : "Aktiv";
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.from("entries").update({ status: newStatus }).eq("id", entryId);
+      if (error) throw error;
+      setEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, status: newStatus } : e)));
+      showSnackbar(`Status auf "${newStatus}" geändert.`);
+    } catch (error) {
+      handleError(error, showSnackbar);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [setEntries, showSnackbar]);
+
+  const togglePaymentStatus = useCallback(async (entryId, currentPaymentStatus) => {
+    const newPaymentStatus = currentPaymentStatus === "Gezahlt" ? "Nicht gezahlt" : "Gezahlt";
+    setIsLoading(true);
+    try {
+      const updateData = { paymentStatus: newPaymentStatus };
+      if (newPaymentStatus === "Gezahlt") updateData.admin_fee = 0;
+      const { error } = await supabase.from("entries").update(updateData).eq("id", entryId);
+      if (error) throw error;
+      setEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...updateData } : e)));
+      showSnackbar(`Zahlungsstatus auf "${newPaymentStatus}" geändert.`);
+    } catch (error) {
+      handleError(error, showSnackbar);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [setEntries, showSnackbar]);
+
+  const deleteEntry = useCallback(async (entryId) => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.from("entries").delete().eq("id", entryId);
+      if (error) throw error;
+      setEntries((prev) => prev.filter((e) => e.id !== entryId));
+      showSnackbar("Eintrag gelöscht.");
+    } catch (error) {
+      handleError(error, showSnackbar);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [setEntries, showSnackbar]);
+
   return (
-    <div>
+    <Box sx={{ padding: 2 }}>
+      {/* Motivation und Buttons */}
       {(role !== "Admin" || loggedInUser === selectedUser) && (
-        <Box sx={{ padding: 0.5, backgroundColor: "#f5f5f5", borderRadius: 2, marginBottom: 0.5 }}>
+        <Box sx={{ padding: 0.5, backgroundColor: "#f5f5f5", borderRadius: 2, mb: 1 }}>
           <Typography variant="body2" sx={{ color: "green" }}>
             Gesamtkosten deiner Einträge: {calculateTotalFeesForOwner(loggedInUser)}$ €
           </Typography>
         </Box>
       )}
-
-      <Box sx={{ padding: 2, display: "flex", flexDirection: "column", gap: 2, marginBottom: 3 }}>
+      <Box sx={{ mb: 3, display: "flex", flexDirection: "column", gap: 2 }}>
         <Chip
           label={motivationMessage}
           color="success"
@@ -230,6 +285,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             startIcon={<AddIcon />}
             fullWidth
             disabled={isLoading}
+            sx={{ borderRadius: 2 }}
           >
             Abonnent anlegen
           </Button>
@@ -240,47 +296,23 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             startIcon={<EditIcon />}
             fullWidth
             disabled={isLoading}
+            sx={{ borderRadius: 2 }}
           >
             Bestehenden Abonnenten einpflegen
           </Button>
         </Box>
       </Box>
 
-      {role === "Admin" && (
-        <Box sx={{ marginBottom: 3, padding: 2 }}>
-          <Typography variant="h6">Ersteller filtern:</Typography>
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {uniqueOwners.map((owner) => (
-              <Button
-                key={owner}
-                variant="outlined"
-                onClick={() => setSelectedUser(owner)}
-                color={selectedUser === owner ? "primary" : "default"}
-                sx={{
-                  backgroundColor: OWNER_COLORS[owner] || "#ffffff", // Farbe nur für Admin
-                  "&:hover": {
-                    backgroundColor: OWNER_COLORS[owner] || "#ffffff", // Hover-Effekt behält die Farbe
-                  },
-                }}
-              >
-                {owner} ({countEntriesByOwner(owner)}) - Gesamtkosten: {calculateTotalFeesForOwner(owner)}$ €
-              </Button>
-            ))}
-            <Button variant="outlined" onClick={() => setSelectedUser("")} fullWidth>
-              Alle anzeigen
-            </Button>
-          </Box>
-        </Box>
-      )}
-
-      <Box sx={{ marginBottom: 3, padding: 2, display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
+      {/* Filter und Suche */}
+      <Box sx={{ mb: 3, display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
         <TextField
-          label="🔍 Suchen nach Benutzername oder Spitzname"
+          label="🔍 Suche nach Benutzername oder Spitzname"
           variant="outlined"
           fullWidth
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           disabled={isLoading}
+          sx={{ backgroundColor: "white", borderRadius: 2 }}
         />
         <Select
           value={statusFilter}
@@ -288,8 +320,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           displayEmpty
           fullWidth
           variant="outlined"
-          sx={{ minWidth: 120 }}
-          disabled={isLoading}
+          sx={{ minWidth: 120, backgroundColor: "white", borderRadius: 2 }}
         >
           <MenuItem value="">Alle Status</MenuItem>
           <MenuItem value="Aktiv">Aktiv</MenuItem>
@@ -301,35 +332,124 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           displayEmpty
           fullWidth
           variant="outlined"
-          sx={{ minWidth: 120 }}
-          disabled={isLoading}
+          sx={{ minWidth: 120, backgroundColor: "white", borderRadius: 2 }}
         >
           <MenuItem value="">Alle Zahlungen</MenuItem>
           <MenuItem value="Gezahlt">Gezahlt</MenuItem>
           <MenuItem value="Nicht gezahlt">Nicht gezahlt</MenuItem>
         </Select>
       </Box>
-      <Box sx={{ maxHeight: "60vh", overflowY: "auto", padding: 2 }}>
-        {isLoading && <Typography>🔄 Lade Einträge...</Typography>}
-        {filterEntries.length > 0 ? (
-          filterEntries.map((entry) => (
-            <EntryAccordion
-              key={entry.id}
-              entry={entry}
-              role={role}
-              loggedInUser={loggedInUser}
-              setEntries={setEntries}
-            />
+
+      {/* Owner-Filter für Admin */}
+      {role === "Admin" && (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Ersteller auswählen:
+          </Typography>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            {uniqueOwners.map((owner) => (
+              <Chip
+                key={owner}
+                label={`${owner} (${countEntriesByOwner(owner)}) - ${calculateTotalFeesForOwner(owner)}$ €`}
+                onClick={() => setSelectedUser(owner)}
+                color={selectedUser === owner ? "primary" : "default"}
+                sx={{ backgroundColor: OWNER_COLORS[owner], "&:hover": { opacity: 0.8 } }}
+              />
+            ))}
+            <Chip label="Alle" onClick={() => setSelectedUser("")} variant="outlined" />
+          </Box>
+        </Box>
+      )}
+
+      {/* Einträge als Karten */}
+      <Grid container spacing={2}>
+        {filteredEntries.length > 0 ? (
+          filteredEntries.map((entry) => (
+            <Grid item xs={12} sm={6} md={4} key={entry.id}>
+              <Card
+                sx={{
+                  borderRadius: 2,
+                  boxShadow: 3,
+                  backgroundColor: OWNER_COLORS[entry.owner] || "#fff",
+                  transition: "transform 0.2s",
+                  "&:hover": { transform: "scale(1.02)" },
+                }}
+              >
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    {entry.aliasNotes} ({entry.username})
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    <strong>Ersteller:</strong> {entry.owner}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    <strong>Gültig bis:</strong> {formatDate(entry.validUntil)}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    <strong>Bouget-Liste:</strong> {entry.bougetList || "Nicht angegeben"}
+                  </Typography>
+                  {role === "Admin" && (
+                    <Typography variant="body2" color="textSecondary">
+                      <strong>Admin-Gebühr:</strong>{" "}
+                      {entry.admin_fee ? `${entry.admin_fee}$` : "Nicht gesetzt"}
+                    </Typography>
+                  )}
+                  <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
+                    <Chip
+                      label={entry.status}
+                      size="small"
+                      color={entry.status === "Aktiv" ? "success" : "error"}
+                    />
+                    <Chip
+                      label={entry.paymentStatus}
+                      size="small"
+                      color={entry.paymentStatus === "Gezahlt" ? "success" : "error"}
+                    />
+                  </Box>
+                </CardContent>
+                {role === "Admin" && (
+                  <CardActions sx={{ justifyContent: "space-between", p: 2 }}>
+                    <Tooltip title={`Status: ${entry.status}`}>
+                      <IconButton
+                        onClick={() => toggleStatus(entry.id, entry.status)}
+                        disabled={isLoading}
+                      >
+                        {entry.status === "Aktiv" ? (
+                          <CancelIcon color="error" />
+                        ) : (
+                          <CheckCircleIcon color="success" />
+                        )}
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title={`Zahlung: ${entry.paymentStatus}`}>
+                      <IconButton
+                        onClick={() => togglePaymentStatus(entry.id, entry.paymentStatus)}
+                        disabled={isLoading}
+                      >
+                        {entry.paymentStatus === "Gezahlt" ? (
+                          <CancelIcon color="error" />
+                        ) : (
+                          <CheckCircleIcon color="success" />
+                        )}
+                      </IconButton>
+                    </Tooltip>
+                    <IconButton disabled={isLoading}>
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton onClick={() => deleteEntry(entry.id)} disabled={isLoading}>
+                      <DeleteIcon color="error" />
+                    </IconButton>
+                  </CardActions>
+                )}
+              </Card>
+            </Grid>
           ))
         ) : (
-          <Typography>🚀 Keine passenden Einträge gefunden.</Typography>
+          <Typography sx={{ p: 2 }}>🚀 Keine passenden Einträge gefunden.</Typography>
         )}
-      </Box>
-      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={closeSnackbar}>
-        <Alert onClose={closeSnackbar} severity={snackbarSeverity} sx={{ width: "100%" }}>
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
+      </Grid>
+
+      {/* Dialog zum Erstellen neuer Einträge */}
       <Dialog open={openCreateEntryDialog} onClose={() => setOpenCreateEntryDialog(false)} fullScreen>
         <DialogTitle>Neuen Abonnenten anlegen</DialogTitle>
         <DialogContent>
@@ -364,11 +484,11 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             label="Passwort"
             fullWidth
             margin="normal"
-            type="text" // Sichtbar für neue Einträge
+            type="text"
             value={newEntry.password}
             disabled
           />
-          {role === "Admin" && ( // Nur für Admins sichtbar
+          {role === "Admin" && (
             <TextField
               label="Admin-Gebühr ($)"
               fullWidth
@@ -402,6 +522,8 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Dialog zum manuellen Hinzufügen */}
       <Dialog open={openManualEntryDialog} onClose={() => setOpenManualEntryDialog(false)} fullScreen>
         <DialogTitle>Bestehenden Abonnenten einpflegen</DialogTitle>
         <DialogContent>
@@ -417,7 +539,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             label="Passwort"
             fullWidth
             margin="normal"
-            type="text" // Geändert von "password" zu "text", um das Passwort sichtbar zu machen
+            type="text"
             value={manualEntry.password}
             onChange={(e) => setManualEntry({ ...manualEntry, password: e.target.value })}
             disabled={isLoading}
@@ -457,7 +579,7 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
             onChange={(e) => setManualEntry({ ...manualEntry, validUntil: new Date(e.target.value) })}
             disabled={isLoading}
           />
-          {role === "Admin" && ( // Nur für Admins sichtbar
+          {role === "Admin" && (
             <TextField
               label="Admin-Gebühr ($)"
               fullWidth
@@ -491,7 +613,14 @@ const EntryList = ({ role, loggedInUser, entries, setEntries }) => {
           </Button>
         </DialogActions>
       </Dialog>
-    </div>
+
+      {/* Snackbar */}
+      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={closeSnackbar}>
+        <Alert onClose={closeSnackbar} severity={snackbarSeverity} sx={{ width: "100%" }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </Box>
   );
 };
 
