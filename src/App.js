@@ -33,7 +33,7 @@ import { supabase } from "./supabaseClient";
 import ChatMessage from "./ChatMessage";
 import { useMessages, handleError } from "./utils";
 import { USER_CREDENTIALS, USER_EMOJIS, THEME_CONFIG, GUIDES } from "./config";
-import { useSnackbar } from "./useSnackbar"; // Neuer Import
+import { useSnackbar } from "./useSnackbar";
 
 const LoginForm = lazy(() => import("./LoginForm"));
 const EntryList = lazy(() => import("./EntryList"));
@@ -46,7 +46,9 @@ const StyledContainer = styled(Container)(({ theme }) => ({
 }));
 
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
-  backgroundColor: theme.palette.primary.main,
+  background: "linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)", // Moderner Farbverlauf
+  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.1)",
+  borderRadius: "0 0 10px 10px",
 }));
 
 const theme = createTheme(THEME_CONFIG);
@@ -73,7 +75,7 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const { messages, unreadCount, markAsRead } = useMessages(loggedInUser, selectedUser);
-  const { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, closeSnackbar } = useSnackbar(); // Verwende Hook
+  const { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, closeSnackbar } = useSnackbar();
 
   const handleLogin = useCallback((username, password) => {
     if (USER_CREDENTIALS[username] === password) {
@@ -109,7 +111,7 @@ const App = () => {
       if (error) throw error;
       setNewMessage("");
     } catch (error) {
-      handleError(error, showSnackbar); // Übergib showSnackbar direkt
+      handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
     }
@@ -122,7 +124,7 @@ const App = () => {
       if (error) throw error;
       setEntries(data);
     } catch (error) {
-      handleError(error, showSnackbar); // Übergib showSnackbar direkt
+      handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
     }
@@ -172,7 +174,7 @@ const App = () => {
         setFile(null);
         setImportDialogOpen(false);
       } catch (error) {
-        handleError(error, showSnackbar); // Übergib showSnackbar direkt
+        handleError(error, showSnackbar);
       } finally {
         setIsLoading(false);
       }
@@ -245,7 +247,7 @@ const App = () => {
                         color="secondary"
                         startIcon={<BackupIcon />}
                         onClick={handleMenuClick}
-                        sx={{ mr: 1 }}
+                        sx={{ mr: 1, borderRadius: 2 }}
                       >
                         Backup
                       </Button>
@@ -255,6 +257,7 @@ const App = () => {
                       color="secondary"
                       startIcon={<DescriptionIcon />}
                       onClick={handleGuidesClick}
+                      sx={{ borderRadius: 2 }}
                     >
                       Anleitungen
                     </Button>
@@ -302,7 +305,7 @@ const App = () => {
               <Button
                 onClick={handleLogout}
                 color="inherit"
-                sx={{ fontSize: { xs: "12px", sm: "16px" } }}
+                sx={{ fontSize: { xs: "12px", sm: "16px" }, borderRadius: 2 }}
               >
                 🔓 Logout
               </Button>
@@ -319,7 +322,7 @@ const App = () => {
             </Grid>
           ) : (
             <>
-              <Accordion expanded={chatExpanded} onChange={() => setChatExpanded(!chatExpanded)} sx={{ mb: 2 }}>
+              <Accordion expanded={chatExpanded} onChange={() => setChatExpanded(!chatExpanded)} sx={{ mb: 2, borderRadius: 2, boxShadow: 3 }}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Typography variant="h6">Chat mit {selectedUser}</Typography>
                   {role === "Admin" && (
@@ -384,7 +387,7 @@ const App = () => {
                       variant="contained"
                       color="primary"
                       onClick={sendMessage}
-                      sx={{ width: { xs: "100%", sm: "auto" } }}
+                      sx={{ width: { xs: "100%", sm: "auto" }, borderRadius: 2 }}
                       disabled={isLoading || !newMessage.trim()}
                     >
                       {isLoading ? "Sende..." : "Senden"}
@@ -399,10 +402,10 @@ const App = () => {
         <CustomSnackbar
           open={snackbarOpen}
           message={snackbarMessage}
-          onClose={closeSnackbar} // Verwende closeSnackbar
+          onClose={closeSnackbar}
           severity={snackbarSeverity}
         />
-        <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)}>
+        <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} fullWidth maxWidth="sm">
           <DialogTitle>Backup importieren</DialogTitle>
           <DialogContent>
             <input type="file" accept=".json" onChange={handleFileChange} disabled={isLoading} />
