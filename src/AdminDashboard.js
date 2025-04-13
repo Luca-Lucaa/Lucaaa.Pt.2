@@ -1,11 +1,30 @@
-import React, { useMemo } from "react";
-import { Box, Typography, Grid, Card, CardContent, Button } from "@mui/material";
+import React, { useMemo, useState, useCallback } from "react";
+import {
+  Box,
+  Typography,
+  Grid,
+  Card,
+  CardContent,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+} from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import CancelIcon from "@mui/icons-material/Cancel";
+import { supabase } from "./supabaseClient";
+import { formatDate, handleError } from "./utils";
+import { useSnackbar } from "./useSnackbar";
 import { OWNER_COLORS } from "./config";
 
-const AdminDashboard = ({ entries, loggedInUser, setOpenCreateDialog, setOpenManualDialog }) => {
-  // Statistiken berechnen
+const AdminDashboard = ({ entries, loggedInUser, setOpenCreateDialog, setOpenManualDialog, setEntries }) => {
+  const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState(null);
+  const { showSnackbar } = useSnackbar();
+
   const stats = useMemo(() => {
     const owners = [...new Set(entries.map((e) => e.owner))];
     const result = {
@@ -18,9 +37,64 @@ const AdminDashboard = ({ entries, loggedInUser, setOpenCreateDialog, setOpenMan
         count: entries.filter((e) => e.owner === owner).length,
         fees: entries.filter((e) => e.owner === owner).reduce((sum, e) => sum + (e.admin_fee || 0), 0),
       })),
+      pendingExtensions: entries.filter((e) => e.extensionRequest?.pending),
     };
     return result;
   }, [entries]);
+
+  const handleApproveExtension = useCallback(async () => {
+    if (!selectedEntry) return;
+    const newValidUntil = new Date(selectedEntry.validUntil);
+    newValidUntil.setFullYear(newValidUntil.getFullYear() + 1);
+
+    const updatedEntry = {
+      validUntil: newValidUntil.toISOString(),
+      extensionRequest: { pending: false, approved: true, approvalDate: new Date().toISOString() },
+      extensionHistory: [
+        ...(selectedEntry.extensionHistory || []),
+        { approvalDate: new Date().toISOString(), validUntil: newValidUntil.toISOString() },
+      ],
+    };
+
+    try {
+      const { data, error } = await supabase
+        .from("entries")
+        .update(updatedEntry)
+        .eq("id", selectedEntry.id)
+        .select()
+        .single();
+      if (error) throw error;
+      setEntries((prev) =>
+        prev.map((e) => (e.id === selectedEntry.id ? { ...e, ...data } : e))
+      );
+      showSnackbar("Verlängerung genehmigt.");
+      setExtensionDialogOpen(false);
+      setSelectedEntry(null);
+    } catch (error) {
+      handleError(error, showSnackbar);
+    }
+  }, [selectedEntry, setEntries, showSnackbar]);
+
+  const handleRejectExtension = useCallback(async () => {
+    if (!selectedEntry) return;
+    try {
+      const { error } = await supabase
+        .from("entries")
+        .update({ extensionRequest: { pending: false, approved: false } })
+        .eq("id", selectedEntry.id);
+      if (error) throw error;
+      setEntries((prev) =>
+        prev.map((e) =>
+          e.id === selectedEntry.id ? { ...e, extensionRequest: { pending: false, approved: false } } : e
+        )
+      );
+      showSnackbar("Verlängerung abgelehnt.");
+      setExtensionDialogOpen(false);
+      setSelectedEntry(null);
+    } catch (error) {
+      handleError(error, showSnackbar);
+    }
+  }, [selectedEntry, setEntries, showSnackbar]);
 
   return (
     <Box sx={{ p: 2, borderBottom: "1px solid #e0e0e0" }}>
@@ -28,7 +102,6 @@ const AdminDashboard = ({ entries, loggedInUser, setOpenCreateDialog, setOpenMan
         Admin-Dashboard
       </Typography>
       <Grid container spacing={1} alignItems="center">
-        {/* Statistik-Kacheln */}
         <Grid item xs={6} sm={3} md={2}>
           <Card sx={{ borderRadius: 1, boxShadow: 1, p: 1 }}>
             <CardContent sx={{ p: 1 }}>
@@ -77,7 +150,6 @@ const AdminDashboard = ({ entries, loggedInUser, setOpenCreateDialog, setOpenMan
             </CardContent>
           </Card>
         </Grid>
-        {/* Buttons */}
         <Grid item xs={12} sm={6} md={4}>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
             <Button
@@ -103,6 +175,86 @@ const AdminDashboard = ({ entries, loggedInUser, setOpenCreateDialog, setOpenMan
           </Box>
         </Grid>
       </Grid>
+      <Box sx={{ mt: 2 }}>
+        <Typography variant="h6" gutterBottom>
+          Ausstehende Verlängerungsanfragen
+        </Typography>
+        {stats.pendingExtensions.length > 0 ? (
+          <Grid container spacing={1}>
+            {stats.pendingExtensions.map((entry) => (
+              <Grid item xs={12} sm={6} md={4} key={entry.id}>
+                <Card sx={{ borderRadius: 1, boxShadow: 1, p: 1 }}>
+                  <CardContent sx={{ p: 1 }}>
+                    <Typography variant="body2">
+                      <strong>{entry.aliasNotes}</strong> ({entry.username})
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      Ersteller: {entry.owner}
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      Gültig bis: {formatDate(entry.validUntil)}
+                    </Typography>
+                  </CardContent>
+                  <Box sx={{ display: "flex", gap: 1, p: 1 }}>
+                    <Button
+                      variant="contained"
+                      color="success"
+                      size="small"
+                      startIcon={<CheckCircleIcon />}
+                      onClick={() => {
+                        setSelectedEntry(entry);
+                        setExtensionDialogOpen(true);
+                      }}
+                    >
+                      Genehmigen
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="error"
+                      size="small"
+                      startIcon={<CancelIcon />}
+                      onClick={() => {
+                        setSelectedEntry(entry);
+                        handleRejectExtension();
+                      }}
+                    >
+                      Ablehnen
+                    </Button>
+                  </Box>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        ) : (
+          <Typography>Keine ausstehenden Anfragen.</Typography>
+        )}
+      </Box>
+      <Dialog open={extensionDialogOpen} onClose={() => setExtensionDialogOpen(false)}>
+        <DialogTitle>Verlängerung genehmigen</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Möchtest du die Verlängerung für <strong>{selectedEntry?.aliasNotes}</strong> um ein Jahr genehmigen?
+          </Typography>
+          {selectedEntry && (
+            <>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                Aktuelles Gültigkeitsdatum: {formatDate(selectedEntry.validUntil)}
+              </Typography>
+              <Typography variant="body2">
+                Neues Gültigkeitsdatum: {formatDate(new Date(new Date(selectedEntry.validUntil).setFullYear(new Date(selectedEntry.validUntil).getFullYear() + 1)))}
+              </Typography>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setExtensionDialogOpen(false)} color="secondary">
+            Abbrechen
+          </Button>
+          <Button onClick={handleApproveExtension} color="success">
+            Genehmigen
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
