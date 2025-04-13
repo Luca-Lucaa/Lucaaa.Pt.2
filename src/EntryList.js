@@ -167,8 +167,8 @@ const EntryList = ({
   }, [loggedInUser, setOpenManualDialog]);
 
   const createEntry = useCallback(async () => {
-    if (!newEntry.aliasNotes.trim() || !newEntry.username.trim()) {
-      showSnackbar("Bitte Spitzname und Benutzername eingeben.", "error");
+    if (!newEntry.aliasNotes.trim()) {
+      showSnackbar("Bitte Spitzname eingeben.", "error");
       return;
     }
     setIsLoading(true);
@@ -354,8 +354,8 @@ const EntryList = ({
             fullWidth
             margin="normal"
             value={newEntry.username}
-            onChange={(e) => setNewEntry({ ...newEntry, username: e.target.value })}
-            disabled={isLoading}
+            disabled
+            sx={{ bgcolor: "#f0f0f0" }}
           />
           <TextField
             label="Passwort"
@@ -363,8 +363,8 @@ const EntryList = ({
             margin="normal"
             type="text"
             value={newEntry.password}
-            onChange={(e) => setNewEntry({ ...newEntry, password: e.target.value })}
-            disabled={isLoading}
+            disabled
+            sx={{ bgcolor: "#f0f0f0" }}
           />
           <TextField
             label="Spitzname, Notizen etc."
