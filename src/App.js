@@ -410,6 +410,7 @@ const App = () => {
                     loggedInUser={loggedInUser}
                     setOpenCreateDialog={setOpenCreateDialog}
                     setOpenManualDialog={setOpenManualDialog}
+                    setEntries={setEntries}
                   />
                   <EntryList
                     role={role}
