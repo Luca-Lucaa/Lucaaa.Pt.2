@@ -19,9 +19,9 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import AttachMoneyIcon from "@mui/icons-material/AttachMoney"; // Icon für den Betrag
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import { supabase } from "./supabaseClient";
-import { formatDate, handleError } from "./utils"; // Import der formatDate-Funktion
+import { formatDate, handleError } from "./utils";
 import { useSnackbar } from "./useSnackbar";
 import { OWNER_COLORS } from "./config";
 
@@ -36,11 +36,19 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
 
   const { showSnackbar } = useSnackbar();
 
+  // Berechne, ob Verlängerungsbutton angezeigt werden soll
+  const isExtensionAvailable = useCallback(() => {
+    const validUntil = new Date(entry.validUntil);
+    const today = new Date();
+    const diffTime = validUntil - today;
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+    return diffDays <= 30 && diffDays >= 0 && !entry.extensionRequest?.pending && entry.owner === loggedInUser;
+  }, [entry.validUntil, entry.extensionRequest, entry.owner, loggedInUser]);
+
   const changePaymentStatus = useCallback(async (entryId, paymentStatus) => {
     setIsLoading(true);
     try {
       const updateData = { paymentStatus };
-      // Wenn der Status auf "Gezahlt" gesetzt wird und der Benutzer Admin ist, setze admin_fee auf 0
       if (role === "Admin" && paymentStatus === "Gezahlt") {
         updateData.admin_fee = 0;
       }
@@ -89,15 +97,6 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   }, [setEntries, showSnackbar]);
 
   const requestExtension = useCallback(async (entryId) => {
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const octoberFirst = new Date(currentYear, 9, 1);
-
-    if (today < octoberFirst) {
-      showSnackbar("Die Verlängerung ist erst ab dem 01.10. aktiviert.", "error");
-      return;
-    }
-
     setIsLoading(true);
     try {
       const { error } = await supabase
@@ -110,7 +109,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
           e.id === entryId ? { ...e, extensionRequest: { pending: true, approved: false } } : e
         )
       );
-      showSnackbar("Anfrage zur Verlängerung gesendet.");
+      showSnackbar("Verlängerungsanfrage gesendet.");
     } catch (error) {
       handleError(error, showSnackbar);
     } finally {
@@ -193,7 +192,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
           validUntil: adminEditedEntry.validUntil,
           bougetList: adminEditedEntry.bougetList,
           note: adminEditedEntry.note,
-          admin_fee: adminEditedEntry.adminFee, // Korrigierter Schlüssel
+          admin_fee: adminEditedEntry.adminFee,
         })
         .eq("id", entry.id)
         .select()
@@ -216,10 +215,6 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const getPaymentStatusColor = (paymentStatus) =>
     paymentStatus === "Gezahlt" ? "green" : paymentStatus === "Nicht gezahlt" ? "red" : "black";
 
-  const today = new Date();
-  const currentYear = today.getFullYear();
-  const octoberFirst = new Date(currentYear, 9, 1);
-  const isBeforeOctober = today < octoberFirst;
   const isOwner = entry.owner === loggedInUser;
 
   return (
@@ -313,20 +308,22 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
           )}
         </Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, marginTop: 2 }}>
-          {isBeforeOctober && (
-            <Typography variant="caption" sx={{ color: "gray", fontStyle: "italic" }}>
-              Ab 01.10 anwählbar
+          {isExtensionAvailable() && (
+            <Button
+              onClick={() => requestExtension(entry.id)}
+              variant="outlined"
+              color="primary"
+              disabled={isLoading}
+              size="small"
+            >
+              Verlängerung anfragen (+1 Jahr)
+            </Button>
+          )}
+          {entry.extensionRequest?.pending && isOwner && (
+            <Typography variant="caption" sx={{ color: "orange" }}>
+              Verlängerungsanfrage ausstehend
             </Typography>
           )}
-          <Button
-            onClick={() => requestExtension(entry.id)}
-            variant="outlined"
-            color="primary"
-            disabled={isBeforeOctober || isLoading}
-            size="small"
-          >
-            +1 Jahr verlängern
-          </Button>
         </Box>
         {role === "Admin" && (
           <Box sx={{ marginTop: 2, display: "flex", gap: 1, flexWrap: "wrap" }}>
@@ -368,7 +365,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
               variant="contained"
               color="success"
               size="small"
-              disabled={isLoading}
+              disabled={isLoading || !entry.extensionRequest?.pending}
             >
               Verlängerung genehmigen
             </Button>
