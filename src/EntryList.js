@@ -222,17 +222,21 @@ const EntryList = ({
   }, [manualEntry, loggedInUser, role, setEntries, showSnackbar, setOpenManualDialog]);
 
   return (
-    <Box sx={{ p: 2, borderBottom: "1px solid #e0e0e0" }}>
-      <Typography variant="h6" gutterBottom>
+    <Box sx={{ p: 3, bgcolor: "#f5f5f5", borderRadius: 2 }}>
+      <Typography variant="h5" gutterBottom sx={{ fontWeight: "bold", color: "#1976d2" }}>
         Abonnenten
       </Typography>
       {role !== "Admin" && (
-        <Box sx={{ mb: 3, bgcolor: "#e3f2fd", p: 2, borderRadius: 2 }}>
-          <Typography variant="body1">{motivationMessage}</Typography>
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            Gesamtgebühren: {calculateTotalFeesForOwner(loggedInUser).toLocaleString()} €
-          </Typography>
-        </Box>
+        <Card sx={{ mb: 3, p: 2, bgcolor: "#e3f2fd", boxShadow: 3, borderRadius: 2 }}>
+          <CardContent>
+            <Typography variant="body1" sx={{ fontSize: "1.1rem" }}>
+              {motivationMessage}
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 1, color: "#555" }}>
+              Gesamtgebühren: {calculateTotalFeesForOwner(loggedInUser).toLocaleString()} €
+            </Typography>
+          </CardContent>
+        </Card>
       )}
       <Box sx={{ mb: 3, display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
         <TextField
@@ -241,12 +245,14 @@ const EntryList = ({
           fullWidth
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          sx={{ bgcolor: "#fff", borderRadius: 1 }}
         />
         <Select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           displayEmpty
           fullWidth
+          sx={{ bgcolor: "#fff", borderRadius: 1 }}
         >
           <MenuItem value="">Alle Status</MenuItem>
           <MenuItem value="Aktiv">Aktiv</MenuItem>
@@ -257,19 +263,21 @@ const EntryList = ({
           onChange={(e) => setPaymentFilter(e.target.value)}
           displayEmpty
           fullWidth
+          sx={{ bgcolor: "#fff", borderRadius: 1 }}
         >
           <MenuItem value="">Alle Zahlungen</MenuItem>
           <MenuItem value="Gezahlt">Gezahlt</MenuItem>
           <MenuItem value="Nicht gezahlt">Nicht gezahlt</MenuItem>
         </Select>
       </Box>
-      <Box sx={{ mb: 2, display: "flex", gap: 2, flexWrap: "wrap" }}>
+      <Box sx={{ mb: 3, display: "flex", gap: 2, flexWrap: "wrap" }}>
         <Button
           variant="contained"
           color="success"
           startIcon={<AddIcon />}
           onClick={handleOpenCreateEntryDialog}
           disabled={isLoading}
+          sx={{ borderRadius: 2, px: 3 }}
         >
           Neuer Abonnent
         </Button>
@@ -280,26 +288,47 @@ const EntryList = ({
             startIcon={<AddIcon />}
             onClick={handleOpenManualEntryDialog}
             disabled={isLoading}
+            sx={{ borderRadius: 2, px: 3 }}
           >
             Bestehender Abonnent
           </Button>
         )}
       </Box>
-      {isLoading && <Typography>🔄 Lade...</Typography>}
+      {isLoading && (
+        <Typography sx={{ textAlign: "center", my: 2 }}>🔄 Lade...</Typography>
+      )}
       {filteredEntries.length === 0 ? (
-        <Typography>Keine Einträge gefunden.</Typography>
+        <Card sx={{ p: 3, textAlign: "center", boxShadow: 3, borderRadius: 2 }}>
+          <Typography variant="h6" color="textSecondary">
+            Keine Einträge gefunden.
+          </Typography>
+        </Card>
       ) : (
-        <Grid container spacing={2}>
+        <Grid container spacing={3}>
           {filteredEntries.map((entry) => (
-            <Grid item xs={12} key={entry.id}>
+            <Grid item xs={12} sm={6} md={4} key={entry.id}>
               <Card
                 sx={{
-                  borderRadius: 2,
-                  boxShadow: 1,
-                  backgroundColor: role === "Admin" ? OWNER_COLORS[entry.owner] || "#ffffff" : "#ffffff",
+                  borderRadius: 3,
+                  boxShadow: 4,
+                  bgcolor: role === "Admin" ? OWNER_COLORS[entry.owner] || "#ffffff" : "#ffffff",
+                  transition: "transform 0.2s",
+                  "&:hover": {
+                    transform: "translateY(-4px)",
+                    boxShadow: 6,
+                  },
                 }}
               >
-                <CardContent>
+                <CardContent sx={{ p: 3 }}>
+                  <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1 }}>
+                    {entry.aliasNotes}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Benutzername: {entry.username}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Gültig bis: {formatDate(entry.validUntil)}
+                  </Typography>
                   <EntryAccordion
                     entry={entry}
                     role={role}
@@ -429,8 +458,14 @@ const EntryList = ({
             fullWidth
             margin="normal"
             type="date"
-            value={manualEntry.validUntil ? new Date(manualEntry.validUntil).toISOString().split("T")[0] : ""}
-            onChange={(e) => setManualEntry({ ...manualEntry, validUntil: new Date(e.target.value) })}
+            value={
+              manualEntry.validUntil
+                ? new Date(manualEntry.validUntil).toISOString().split("T")[0]
+                : ""
+            }
+            onChange={(e) =>
+              setManualEntry({ ...manualEntry, validUntil: new Date(e.target.value) })
+            }
             disabled={isLoading}
           />
           {role === "Admin" && (
