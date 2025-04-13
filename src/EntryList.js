@@ -34,6 +34,7 @@ const EntryList = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
+  const [ownerFilter, setOwnerFilter] = useState(""); // Neuer State für Ersteller-Filter
   const [isLoading, setIsLoading] = useState(false);
   const [newEntry, setNewEntry] = useState({
     username: "",
@@ -66,10 +67,18 @@ const EntryList = ({
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const { showSnackbar } = useSnackbar();
 
+  // Liste der einzigartigen Ersteller für den Filter
+  const owners = useMemo(() => {
+    const uniqueOwners = [...new Set(entries.map((entry) => entry.owner))];
+    return uniqueOwners.sort();
+  }, [entries]);
+
   const filteredEntries = useMemo(() => {
     let filtered = entries;
     if (role !== "Admin") {
       filtered = entries.filter((entry) => entry.owner === loggedInUser);
+    } else if (ownerFilter) {
+      filtered = filtered.filter((entry) => entry.owner === ownerFilter);
     }
     if (debouncedSearchTerm) {
       filtered = filtered.filter(
@@ -85,7 +94,15 @@ const EntryList = ({
       filtered = filtered.filter((entry) => entry.paymentStatus === paymentFilter);
     }
     return filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }, [entries, role, loggedInUser, debouncedSearchTerm, statusFilter, paymentFilter]);
+  }, [
+    entries,
+    role,
+    loggedInUser,
+    debouncedSearchTerm,
+    statusFilter,
+    paymentFilter,
+    ownerFilter,
+  ]);
 
   const calculateTotalFeesForOwner = useCallback(
     (owner) => {
@@ -269,6 +286,22 @@ const EntryList = ({
           <MenuItem value="Gezahlt">Gezahlt</MenuItem>
           <MenuItem value="Nicht gezahlt">Nicht gezahlt</MenuItem>
         </Select>
+        {role === "Admin" && (
+          <Select
+            value={ownerFilter}
+            onChange={(e) => setOwnerFilter(e.target.value)}
+            displayEmpty
+            fullWidth
+            sx={{ bgcolor: "#fff", borderRadius: 1 }}
+          >
+            <MenuItem value="">Alle Ersteller</MenuItem>
+            {owners.map((owner) => (
+              <MenuItem key={owner} value={owner}>
+                {owner}
+              </MenuItem>
+            ))}
+          </Select>
+        )}
       </Box>
       <Box sx={{ mb: 3, display: "flex", gap: 2, flexWrap: "wrap" }}>
         <Button
