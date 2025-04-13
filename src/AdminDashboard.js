@@ -10,6 +10,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  TextField,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -20,9 +21,16 @@ import { formatDate, handleError } from "./utils";
 import { useSnackbar } from "./useSnackbar";
 import { OWNER_COLORS } from "./config";
 
-const AdminDashboard = ({ entries, loggedInUser, setOpenCreateDialog, setOpenManualDialog, setEntries }) => {
+const AdminDashboard = ({
+  entries,
+  loggedInUser,
+  setOpenCreateDialog,
+  setOpenManualDialog,
+  setEntries,
+}) => {
   const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState(null);
+  const [newValidUntil, setNewValidUntil] = useState("");
   const { showSnackbar } = useSnackbar();
 
   const stats = useMemo(() => {
@@ -35,66 +43,92 @@ const AdminDashboard = ({ entries, loggedInUser, setOpenCreateDialog, setOpenMan
       byOwner: owners.map((owner) => ({
         owner,
         count: entries.filter((e) => e.owner === owner).length,
-        fees: entries.filter((e) => e.owner === owner).reduce((sum, e) => sum + (e.admin_fee || 0), 0),
+        fees: entries
+          .filter((e) => e.owner === owner)
+          .reduce((sum, e) => sum + (e.admin_fee || 0), 0),
       })),
       pendingExtensions: entries.filter((e) => e.extensionRequest?.pending),
     };
     return result;
   }, [entries]);
 
-  const handleApproveExtension = useCallback(async () => {
-    if (!selectedEntry) return;
-    const newValidUntil = new Date(selectedEntry.validUntil);
-    newValidUntil.setFullYear(newValidUntil.getFullYear() + 1);
+  const handleApproveExtension = useCallback(
+    async () => {
+      if (!selectedEntry || !newValidUntil) {
+        showSnackbar("Bitte ein Gültigkeitsdatum auswählen.", "error");
+        return;
+      }
+      const selectedDate = new Date(newValidUntil);
+      const currentDate = new Date();
+      if (selectedDate < currentDate) {
+        showSnackbar("Das Datum muss in der Zukunft liegen.", "error");
+        return;
+      }
 
-    const updatedEntry = {
-      validUntil: newValidUntil.toISOString(),
-      extensionRequest: { pending: false, approved: true, approvalDate: new Date().toISOString() },
-      extensionHistory: [
-        ...(selectedEntry.extensionHistory || []),
-        { approvalDate: new Date().toISOString(), validUntil: newValidUntil.toISOString() },
-      ],
-    };
+      const updatedEntry = {
+        validUntil: selectedDate.toISOString(),
+        extensionRequest: {
+          pending: false,
+          approved: true,
+          approvalDate: new Date().toISOString(),
+        },
+        extensionHistory: [
+          ...(selectedEntry.extensionHistory || []),
+          {
+            approvalDate: new Date().toISOString(),
+            validUntil: selectedDate.toISOString(),
+          },
+        ],
+      };
 
-    try {
-      const { data, error } = await supabase
-        .from("entries")
-        .update(updatedEntry)
-        .eq("id", selectedEntry.id)
-        .select()
-        .single();
-      if (error) throw error;
-      setEntries((prev) =>
-        prev.map((e) => (e.id === selectedEntry.id ? { ...e, ...data } : e))
-      );
-      showSnackbar("Verlängerung genehmigt.");
-      setExtensionDialogOpen(false);
-      setSelectedEntry(null);
-    } catch (error) {
-      handleError(error, showSnackbar);
-    }
-  }, [selectedEntry, setEntries, showSnackbar]);
+      try {
+        const { data, error } = await supabase
+          .from("entries")
+          .update(updatedEntry)
+          .eq("id", selectedEntry.id)
+          .select()
+          .single();
+        if (error) throw error;
+        setEntries((prev) =>
+          prev.map((e) => (e.id === selectedEntry.id ? { ...e, ...data } : e))
+        );
+        showSnackbar("Verlängerung genehmigt.");
+        setExtensionDialogOpen(false);
+        setSelectedEntry(null);
+        setNewValidUntil("");
+      } catch (error) {
+        handleError(error, showSnackbar);
+      }
+    },
+    [selectedEntry, newValidUntil, setEntries, showSnackbar]
+  );
 
-  const handleRejectExtension = useCallback(async () => {
-    if (!selectedEntry) return;
-    try {
-      const { error } = await supabase
-        .from("entries")
-        .update({ extensionRequest: { pending: false, approved: false } })
-        .eq("id", selectedEntry.id);
-      if (error) throw error;
-      setEntries((prev) =>
-        prev.map((e) =>
-          e.id === selectedEntry.id ? { ...e, extensionRequest: { pending: false, approved: false } } : e
-        )
-      );
-      showSnackbar("Verlängerung abgelehnt.");
-      setExtensionDialogOpen(false);
-      setSelectedEntry(null);
-    } catch (error) {
-      handleError(error, showSnackbar);
-    }
-  }, [selectedEntry, setEntries, showSnackbar]);
+  const handleRejectExtension = useCallback(
+    async () => {
+      if (!selectedEntry) return;
+      try {
+        const { error } = await supabase
+          .from("entries")
+          .update({ extensionRequest: { pending: false, approved: false } })
+          .eq("id", selectedEntry.id);
+        if (error) throw error;
+        setEntries((prev) =>
+          prev.map((e) =>
+            e.id === selectedEntry.id
+              ? { ...e, extensionRequest: { pending: false, approved: false } }
+              : e
+          )
+        );
+        showSnackbar("Verlängerung abgelehnt.");
+        setExtensionDialogOpen(false);
+        setSelectedEntry(null);
+        setNewValidUntil("");
+      } catch (error) {
+        handleError(error, showSnackbar);
+      }
+    },
+    [selectedEntry, setEntries, showSnackbar]
+  );
 
   return (
     <Box sx={{ p: 2, borderBottom: "1px solid #e0e0e0" }}>
@@ -203,6 +237,9 @@ const AdminDashboard = ({ entries, loggedInUser, setOpenCreateDialog, setOpenMan
                       startIcon={<CheckCircleIcon />}
                       onClick={() => {
                         setSelectedEntry(entry);
+                        setNewValidUntil(
+                          new Date(entry.validUntil).toISOString().split("T")[0]
+                        );
                         setExtensionDialogOpen(true);
                       }}
                     >
@@ -229,25 +266,35 @@ const AdminDashboard = ({ entries, loggedInUser, setOpenCreateDialog, setOpenMan
           <Typography>Keine ausstehenden Anfragen.</Typography>
         )}
       </Box>
-      <Dialog open={extensionDialogOpen} onClose={() => setExtensionDialogOpen(false)}>
+      <Dialog
+        open={extensionDialogOpen}
+        onClose={() => setExtensionDialogOpen(false)}
+      >
         <DialogTitle>Verlängerung genehmigen</DialogTitle>
         <DialogContent>
-          <Typography>
-            Möchtest du die Verlängerung für <strong>{selectedEntry?.aliasNotes}</strong> um ein Jahr genehmigen?
+          <Typography sx={{ mb: 2 }}>
+            Wähle das neue Gültigkeitsdatum für{" "}
+            <strong>{selectedEntry?.aliasNotes}</strong>:
           </Typography>
+          <TextField
+            label="Neues Gültigkeitsdatum"
+            type="date"
+            fullWidth
+            value={newValidUntil}
+            onChange={(e) => setNewValidUntil(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+          />
           {selectedEntry && (
-            <>
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                Aktuelles Gültigkeitsdatum: {formatDate(selectedEntry.validUntil)}
-              </Typography>
-              <Typography variant="body2">
-                Neues Gültigkeitsdatum: {formatDate(new Date(new Date(selectedEntry.validUntil).setFullYear(new Date(selectedEntry.validUntil).getFullYear() + 1)))}
-              </Typography>
-            </>
+            <Typography variant="body2" sx={{ mt: 2 }}>
+              Aktuelles Gültigkeitsdatum: {formatDate(selectedEntry.validUntil)}
+            </Typography>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setExtensionDialogOpen(false)} color="secondary">
+          <Button
+            onClick={() => setExtensionDialogOpen(false)}
+            color="secondary"
+          >
             Abbrechen
           </Button>
           <Button onClick={handleApproveExtension} color="success">
