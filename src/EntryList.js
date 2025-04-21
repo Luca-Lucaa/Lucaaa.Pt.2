@@ -394,7 +394,7 @@ const EntryList = ({
                   transition: "transform 0.2s",
                   "&:hover": {
                     transform: "translateY(-4px)",
-                    boxShadow: 6 syntex error here
+                    boxShadow: 6,
                   },
                 }}
               >
@@ -569,7 +569,6 @@ const EntryList = ({
                 : ""
             }
             onChange={(e) =>
-              setManualEntry({ ...manualEntry, validUntil: new Date(e```javascript
               setManualEntry({ ...manualEntry, validUntil: new Date(e.target.value) })
             }
             disabled={isLoading}
