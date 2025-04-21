@@ -9,8 +9,10 @@ import {
   Box,
   useMediaQuery,
   useTheme,
+  IconButton,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import EditIcon from "@mui/icons-material/Edit";
 import { supabase } from "./supabaseClient";
 import { formatDate, handleError } from "./utils";
 import { useSnackbar } from "./useSnackbar";
@@ -18,6 +20,7 @@ import { useSnackbar } from "./useSnackbar";
 const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [editNotes, setEditNotes] = useState(entry.aliasNotes);
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [editBougetList, setEditBougetList] = useState(entry.bougetList || "");
   const [editAdminFee, setEditAdminFee] = useState(entry.admin_fee || "");
   const { showSnackbar } = useSnackbar();
@@ -29,7 +32,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
     try {
       const updates = {
         aliasNotes: editNotes,
-        bougetList: editBougetList || null,
+        ...(role === "Admin" && { bougetList: editBougetList || null }),
         admin_fee: role === "Admin" && editAdminFee ? parseInt(editAdminFee) : entry.admin_fee,
       };
       const { data, error } = await supabase
@@ -41,6 +44,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
       setEntries((prev) =>
         prev.map((e) => (e.id === entry.id ? { ...e, ...data[0] } : e))
       );
+      setIsEditingNotes(false);
       showSnackbar("Eintrag erfolgreich aktualisiert!");
     } catch (error) {
       handleError(error, showSnackbar);
@@ -132,6 +136,49 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
             </Typography>
           </Box>
 
+          {/* Spitzname mit Stift-Symbol */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
+              Spitzname:
+            </Typography>
+            {isEditingNotes ? (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1 }}>
+                <TextField
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  disabled={isLoading}
+                  size={isMobile ? "small" : "medium"}
+                  sx={{ flex: 1 }}
+                />
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleUpdate}
+                  disabled={isLoading}
+                  sx={{ py: isMobile ? 1 : 0.5, minHeight: isMobile ? 40 : 36 }}
+                >
+                  {isLoading ? "Speichere..." : "Speichern"}
+                </Button>
+              </Box>
+            ) : (
+              <>
+                <Typography variant="body2" sx={{ FONTSIZE: isMobile ? "0.8rem" : "0.875rem" }}>
+                  {entry.aliasNotes}
+                </Typography>
+                {canEdit && (
+                  <IconButton
+                    onClick={() => setIsEditingNotes(true)}
+                    disabled={isLoading}
+                    size="small"
+                    sx={{ ml: "auto" }}
+                  >
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                )}
+              </>
+            )}
+          </Box>
+
           {/* Weitere Felder nur anzeigen, wenn sie ausgefüllt sind */}
           {entry.note && (
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -180,54 +227,49 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
             </Typography>
           </Box>
 
-          {/* Bearbeitungsfelder */}
+          {/* Bearbeitungsfelder nur für Admins (außer Spitzname) */}
           {canEdit && (
-            <>
-              <TextField
-                label="Spitzname, Notizen etc."
-                fullWidth
-                margin="dense"
-                value={editNotes}
-                onChange={(e) => setEditNotes(e.target.value)}
-                disabled={isLoading}
-                size={isMobile ? "small" : "medium"}
-              />
-              <TextField
-                label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
-                fullWidth
-                margin="dense"
-                value={editBougetList}
-                onChange={(e) => setEditBougetList(e.target.value)}
-                disabled={isLoading}
-                size={isMobile ? "small" : "medium"}
-              />
+            <Box sx={{ mt: 1 }}>
               {role === "Admin" && (
-                <TextField
-                  label="Admin-Gebühr (€)"
-                  fullWidth
-                  margin="dense"
-                  value={editAdminFee}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9]/g, "");
-                    const numValue = value ? parseInt(value) : "";
-                    if (numValue > 999) return;
-                    setEditAdminFee(numValue);
-                  }}
-                  inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
-                  disabled={isLoading}
-                  size={isMobile ? "small" : "medium"}
-                />
+                <>
+                  <TextField
+                    label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
+                    fullWidth
+                    margin="dense"
+                    value={editBougetList}
+                    onChange={(e) => setEditBougetList(e.target.value)}
+                    disabled={isLoading}
+                    size={isMobile ? "small" : "medium"}
+                  />
+                  <TextField
+                    label="Admin-Gebühr (€)"
+                    fullWidth
+                    margin="dense"
+                    value={editAdminFee}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^0-9]/g, "");
+                      const numValue = value ? parseInt(value) : "";
+                      if (numValue > 999) return;
+                      setEditAdminFee(numValue);
+                    }}
+                    inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+                    disabled={isLoading}
+                    size={isMobile ? "small" : "medium"}
+                  />
+                </>
               )}
               <Box sx={{ display: "flex", gap: 1, mt: 1, flexDirection: isMobile ? "column" : "row" }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleUpdate}
-                  disabled={isLoading}
-                  sx={{ borderRadius: 2, py: isMobile ? 1.5 : 1, minHeight: isMobile ? 48 : 36 }}
-                >
-                  {isLoading ? "Speichere..." : "Speichern"}
-                </Button>
+                {role === "Admin" && (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleUpdate}
+                    disabled={isLoading}
+                    sx={{ borderRadius: 2, py: isMobile ? 1.5 : 1, minHeight: isMobile ? 48 : 36 }}
+                  >
+                    {isLoading ? "Speichere..." : "Speichern"}
+                  </Button>
+                )}
                 <Button
                   variant="outlined"
                   color="secondary"
@@ -247,7 +289,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
                   {entry.paymentStatus === "Gezahlt" ? "Nicht gezahlt" : "Gezahlt"}
                 </Button>
               </Box>
-            </>
+            </Box>
           )}
         </Box>
       </AccordionDetails>
