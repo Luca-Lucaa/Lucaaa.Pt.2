@@ -13,6 +13,8 @@ import {
   Card,
   CardContent,
   Grid,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { supabase } from "./supabaseClient";
@@ -34,7 +36,7 @@ const EntryList = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
-  const [ownerFilter, setOwnerFilter] = useState(""); // Neuer State für Ersteller-Filter
+  const [ownerFilter, setOwnerFilter] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [newEntry, setNewEntry] = useState({
     username: "",
@@ -66,8 +68,9 @@ const EntryList = ({
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const { showSnackbar } = useSnackbar();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  // Liste der einzigartigen Ersteller für den Filter
   const owners = useMemo(() => {
     const uniqueOwners = [...new Set(entries.map((entry) => entry.owner))];
     return uniqueOwners.sort();
@@ -239,23 +242,38 @@ const EntryList = ({
   }, [manualEntry, loggedInUser, role, setEntries, showSnackbar, setOpenManualDialog]);
 
   return (
-    <Box sx={{ p: 3, bgcolor: "#f5f5f5", borderRadius: 2 }}>
-      <Typography variant="h5" gutterBottom sx={{ fontWeight: "bold", color: "#1976d2" }}>
+    <Box sx={{ p: isMobile ? 1 : 3, bgcolor: "#f5f5f5", borderRadius: 2 }}>
+      <Typography
+        variant="h5"
+        gutterBottom
+        sx={{
+          fontWeight: "bold",
+          color: "#1976d2",
+          fontSize: isMobile ? "1.2rem" : "1.5rem",
+        }}
+      >
         Abonnenten
       </Typography>
       {role !== "Admin" && (
-        <Card sx={{ mb: 3, p: 2, bgcolor: "#e3f2fd", boxShadow: 3, borderRadius: 2 }}>
+        <Card sx={{ mb: 3, p: isMobile ? 1 : 2, bgcolor: "#e3f2fd", boxShadow: 3, borderRadius: 2 }}>
           <CardContent>
-            <Typography variant="body1" sx={{ fontSize: "1.1rem" }}>
+            <Typography variant="body1" sx={{ fontSize: isMobile ? "0.9rem" : "1.1rem" }}>
               {motivationMessage}
             </Typography>
-            <Typography variant="body2" sx={{ mt: 1, color: "#555" }}>
+            <Typography variant="body2" sx={{ mt: 1, color: "#555", fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
               Gesamtgebühren: {calculateTotalFeesForOwner(loggedInUser).toLocaleString()} €
             </Typography>
           </CardContent>
         </Card>
       )}
-      <Box sx={{ mb: 3, display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
+      <Box
+        sx={{
+          mb: 3,
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          gap: isMobile ? 1 : 2,
+        }}
+      >
         <TextField
           label="🔍 Suche nach Benutzername oder Spitzname"
           variant="outlined"
@@ -263,6 +281,7 @@ const EntryList = ({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           sx={{ bgcolor: "#fff", borderRadius: 1 }}
+          size={isMobile ? "small" : "medium"}
         />
         <Select
           value={statusFilter}
@@ -270,6 +289,7 @@ const EntryList = ({
           displayEmpty
           fullWidth
           sx={{ bgcolor: "#fff", borderRadius: 1 }}
+          size={isMobile ? "small" : "medium"}
         >
           <MenuItem value="">Alle Status</MenuItem>
           <MenuItem value="Aktiv">Aktiv</MenuItem>
@@ -281,6 +301,7 @@ const EntryList = ({
           displayEmpty
           fullWidth
           sx={{ bgcolor: "#fff", borderRadius: 1 }}
+          size={isMobile ? "small" : "medium"}
         >
           <MenuItem value="">Alle Zahlungen</MenuItem>
           <MenuItem value="Gezahlt">Gezahlt</MenuItem>
@@ -293,6 +314,7 @@ const EntryList = ({
             displayEmpty
             fullWidth
             sx={{ bgcolor: "#fff", borderRadius: 1 }}
+            size={isMobile ? "small" : "medium"}
           >
             <MenuItem value="">Alle Ersteller</MenuItem>
             {owners.map((owner) => (
@@ -303,14 +325,29 @@ const EntryList = ({
           </Select>
         )}
       </Box>
-      <Box sx={{ mb: 3, display: "flex", gap: 2, flexWrap: "wrap" }}>
+      <Box
+        sx={{
+          mb: 3,
+          display: "flex",
+          gap: isMobile ? 1 : 2,
+          flexWrap: "wrap",
+          flexDirection: isMobile ? "column" : "row",
+        }}
+      >
         <Button
           variant="contained"
           color="success"
           startIcon={<AddIcon />}
           onClick={handleOpenCreateEntryDialog}
           disabled={isLoading}
-          sx={{ borderRadius: 2, px: 3 }}
+          sx={{
+            borderRadius: 2,
+            px: 3,
+            py: isMobile ? 1.5 : 1,
+            minHeight: isMobile ? 48 : 36,
+            fontSize: isMobile ? "0.9rem" : "1rem",
+          }}
+          aria-label="Neuen Abonnenten erstellen"
         >
           Neuer Abonnent
         </Button>
@@ -321,23 +358,32 @@ const EntryList = ({
             startIcon={<AddIcon />}
             onClick={handleOpenManualEntryDialog}
             disabled={isLoading}
-            sx={{ borderRadius: 2, px: 3 }}
+            sx={{
+              borderRadius: 2,
+              px: 3,
+              py: isMobile ? 1.5 : 1,
+              minHeight: isMobile ? 48 : 36,
+              fontSize: isMobile ? "0.9rem" : "1rem",
+            }}
+            aria-label="Bestehenden Abonnenten hinzufügen"
           >
             Bestehender Abonnent
           </Button>
         )}
       </Box>
       {isLoading && (
-        <Typography sx={{ textAlign: "center", my: 2 }}>🔄 Lade...</Typography>
+        <Typography sx={{ textAlign: "center", my: 2, fontSize: isMobile ? "0.9rem" : "1rem" }}>
+          🔄 Lade...
+        </Typography>
       )}
       {filteredEntries.length === 0 ? (
-        <Card sx={{ p: 3, textAlign: "center", boxShadow: 3, borderRadius: 2 }}>
-          <Typography variant="h6" color="textSecondary">
+        <Card sx={{ p: isMobile ? 2 : 3, textAlign: "center", boxShadow: 3, borderRadius: 2 }}>
+          <Typography variant="h6" color="textSecondary" sx={{ fontSize: isMobile ? "1rem" : "1.25rem" }}>
             Keine Einträge gefunden.
           </Typography>
         </Card>
       ) : (
-        <Grid container spacing={3}>
+        <Grid container spacing={isMobile ? 1 : 3}>
           {filteredEntries.map((entry) => (
             <Grid item xs={12} sm={6} md={4} key={entry.id}>
               <Card
@@ -348,18 +394,18 @@ const EntryList = ({
                   transition: "transform 0.2s",
                   "&:hover": {
                     transform: "translateY(-4px)",
-                    boxShadow: 6,
+                    boxShadow: 6 syntex error here
                   },
                 }}
               >
-                <CardContent sx={{ p: 3 }}>
-                  <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1 }}>
+                <CardContent sx={{ p: isMobile ? 2 : 3 }}>
+                  <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1, fontSize: isMobile ? "1rem" : "1.25rem" }}>
                     {entry.aliasNotes}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
                     Benutzername: {entry.username}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
                     Gültig bis: {formatDate(entry.validUntil)}
                   </Typography>
                   <EntryAccordion
@@ -379,8 +425,11 @@ const EntryList = ({
         onClose={() => setOpenCreateDialog(false)}
         fullWidth
         maxWidth="sm"
+        fullScreen={isMobile}
       >
-        <DialogTitle>Neuen Abonnenten anlegen</DialogTitle>
+        <DialogTitle sx={{ fontSize: isMobile ? "1rem" : "1.25rem" }}>
+          Neuen Abonnenten anlegen
+        </DialogTitle>
         <DialogContent>
           <TextField
             label="Benutzername"
@@ -389,6 +438,7 @@ const EntryList = ({
             value={newEntry.username}
             disabled
             sx={{ bgcolor: "#f0f0f0" }}
+            size={isMobile ? "small" : "medium"}
           />
           <TextField
             label="Passwort"
@@ -398,6 +448,7 @@ const EntryList = ({
             value={newEntry.password}
             disabled
             sx={{ bgcolor: "#f0f0f0" }}
+            size={isMobile ? "small" : "medium"}
           />
           <TextField
             label="Spitzname, Notizen etc."
@@ -406,6 +457,7 @@ const EntryList = ({
             value={newEntry.aliasNotes}
             onChange={(e) => setNewEntry({ ...newEntry, aliasNotes: e.target.value })}
             disabled={isLoading}
+            size={isMobile ? "small" : "medium"}
           />
           <TextField
             label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
@@ -414,6 +466,7 @@ const EntryList = ({
             value={newEntry.bougetList || ""}
             onChange={(e) => setNewEntry({ ...newEntry, bougetList: e.target.value })}
             disabled={isLoading}
+            size={isMobile ? "small" : "medium"}
           />
           <Select
             fullWidth
@@ -421,16 +474,27 @@ const EntryList = ({
             value={newEntry.type}
             onChange={(e) => setNewEntry({ ...newEntry, type: e.target.value })}
             disabled={isLoading}
+            size={isMobile ? "small" : "medium"}
           >
             <MenuItem value="Premium">Premium</MenuItem>
             <MenuItem value="Basic">Basic</MenuItem>
           </Select>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenCreateDialog(false)} color="secondary" disabled={isLoading}>
+          <Button
+            onClick={() => setOpenCreateDialog(false)}
+            color="secondary"
+            disabled={isLoading}
+            sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
+          >
             Abbrechen
           </Button>
-          <Button onClick={createEntry} color="primary" disabled={isLoading}>
+          <Button
+            onClick={createEntry}
+            color="primary"
+            disabled={isLoading}
+            sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
+          >
             {isLoading ? "Speichere..." : "Erstellen"}
           </Button>
         </DialogActions>
@@ -440,8 +504,11 @@ const EntryList = ({
         onClose={() => setOpenManualDialog(false)}
         fullWidth
         maxWidth="sm"
+        fullScreen={isMobile}
       >
-        <DialogTitle>Bestehenden Abonnenten einpflegen</DialogTitle>
+        <DialogTitle sx={{ fontSize: isMobile ? "1rem" : "1.25rem" }}>
+          Bestehenden Abonnenten einpflegen
+        </DialogTitle>
         <DialogContent>
           <TextField
             label="Benutzername"
@@ -450,6 +517,7 @@ const EntryList = ({
             value={manualEntry.username}
             onChange={(e) => setManualEntry({ ...manualEntry, username: e.target.value })}
             disabled={isLoading}
+            size={isMobile ? "small" : "medium"}
           />
           <TextField
             label="Passwort"
@@ -459,6 +527,7 @@ const EntryList = ({
             value={manualEntry.password}
             onChange={(e) => setManualEntry({ ...manualEntry, password: e.target.value })}
             disabled={isLoading}
+            size={isMobile ? "small" : "medium"}
           />
           <TextField
             label="Spitzname, Notizen etc."
@@ -467,6 +536,7 @@ const EntryList = ({
             value={manualEntry.aliasNotes}
             onChange={(e) => setManualEntry({ ...manualEntry, aliasNotes: e.target.value })}
             disabled={isLoading}
+            size={isMobile ? "small" : "medium"}
           />
           <TextField
             label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
@@ -475,6 +545,7 @@ const EntryList = ({
             value={manualEntry.bougetList || ""}
             onChange={(e) => setManualEntry({ ...manualEntry, bougetList: e.target.value })}
             disabled={isLoading}
+            size={isMobile ? "small" : "medium"}
           />
           <Select
             fullWidth
@@ -482,6 +553,7 @@ const EntryList = ({
             value={manualEntry.type}
             onChange={(e) => setManualEntry({ ...manualEntry, type: e.target.value })}
             disabled={isLoading}
+            size={isMobile ? "small" : "medium"}
           >
             <MenuItem value="Premium">Premium</MenuItem>
             <MenuItem value="Basic">Basic</MenuItem>
@@ -497,9 +569,11 @@ const EntryList = ({
                 : ""
             }
             onChange={(e) =>
+              setManualEntry({ ...manualEntry, validUntil: new Date(e```javascript
               setManualEntry({ ...manualEntry, validUntil: new Date(e.target.value) })
             }
             disabled={isLoading}
+            size={isMobile ? "small" : "medium"}
           />
           {role === "Admin" && (
             <TextField
@@ -515,14 +589,25 @@ const EntryList = ({
               }}
               inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
               disabled={isLoading}
+              size={isMobile ? "small" : "medium"}
             />
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenManualDialog(false)} color="secondary" disabled={isLoading}>
+          <Button
+            onClick={() => setOpenManualDialog(false)}
+            color="secondary"
+            disabled={isLoading}
+            sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
+          >
             Abbrechen
           </Button>
-          <Button onClick={handleAddManualEntry} color="primary" disabled={isLoading}>
+          <Button
+            onClick={handleAddManualEntry}
+            color="primary"
+            disabled={isLoading}
+            sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
+          >
             {isLoading ? "Speichere..." : "Hinzufügen"}
           </Button>
         </DialogActions>
