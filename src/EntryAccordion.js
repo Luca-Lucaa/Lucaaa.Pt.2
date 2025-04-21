@@ -10,6 +10,10 @@ import {
   useMediaQuery,
   useTheme,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import EditIcon from "@mui/icons-material/Edit";
@@ -24,6 +28,7 @@ import { useSnackbar } from "./useSnackbar";
 const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editUsername, setEditUsername] = useState(entry.username || "");
   const [editNotes, setEditNotes] = useState(entry.aliasNotes);
   const [editBougetList, setEditBougetList] = useState(entry.bougetList || "");
@@ -92,6 +97,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
       handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
+      setIsDeleteDialogOpen(false);
     }
   }, [entry, setEntries, showSnackbar]);
 
@@ -140,266 +146,304 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const canEdit = role === "Admin" || entry.owner === loggedInUser;
 
   return (
-    <Accordion sx={{ mt: 1, boxShadow: "none", border: "1px solid #e0e0e0", borderRadius: 2 }}>
-      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Typography sx={{ fontSize: isMobile ? "0.9rem" : "1rem", color: "#1976d2" }}>
-          Details anzeigen
-        </Typography>
-      </AccordionSummary>
-      <AccordionDetails sx={{ p: isMobile ? 1 : 2 }}>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          {/* Status mit Toggle-Button für Admins */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
-              Status:
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                fontSize: isMobile ? "0.8rem" : "0.875rem",
-                color: entry.status === "Aktiv" ? "green" : "red",
-              }}
-            >
-              {entry.status === "Aktiv" ? "✅ Aktiv" : "❌ Inaktiv"}
-            </Typography>
-            {role === "Admin" && (
-              <IconButton
-                onClick={handleToggleStatus}
-                disabled={isLoading}
-                size="small"
-                sx={{ ml: "auto" }}
-              >
-                {entry.status === "Aktiv" ? (
-                  <ToggleOffIcon fontSize="small" />
-                ) : (
-                  <ToggleOnIcon fontSize="small" />
-                )}
-              </IconButton>
-            )}
-          </Box>
-
-          {/* Zahlungsstatus mit Toggle-Button für Admins */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
-              Zahlung:
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                fontSize: isMobile ? "0.8rem" : "0.875rem",
-                color: entry.paymentStatus === "Gezahlt" ? "green" : "red",
-              }}
-            >
-              {entry.paymentStatus === "Gezahlt" ? "✅ Gezahlt" : "❌ Nicht gezahlt"}
-            </Typography>
-            {role === "Admin" && (
-              <IconButton
-                onClick={handleTogglePayment}
-                disabled={isLoading}
-                size="small"
-                sx={{ ml: "auto" }}
-              >
-                <PaymentIcon fontSize="small" />
-              </IconButton>
-            )}
-          </Box>
-
-          {/* Benutzername mit Bearbeitung für Admins */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
-              Benutzername:
-            </Typography>
-            {isEditing && role === "Admin" ? (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1 }}>
-                <TextField
-                  value={editUsername}
-                  onChange={(e) => setEditUsername(e.target.value)}
-                  disabled={isLoading}
-                  size={isMobile ? "small" : "medium"}
-                  sx={{ flex: 1 }}
-                />
-              </Box>
-            ) : (
-              <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-                {entry.username}
+    <Box>
+      <Accordion sx={{ mt: 1, boxShadow: "none", border: "1px solid #e0e0e0", borderRadius: 2 }}>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography sx={{ fontSize: isMobile ? "0.9rem" : "1rem", color: "#1976d2" }}>
+            Details anzeigen
+          </Typography>
+        </AccordionSummary>
+        <AccordionDetails sx={{ p: isMobile ? 1 : 2 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            {/* Status mit Toggle-Button für Admins */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
+                Status:
               </Typography>
-            )}
-          </Box>
-
-          {/* Spitzname mit Stift-Symbol */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
-              Spitzname:
-            </Typography>
-            {isEditing ? (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1 }}>
-                <TextField
-                  value={editNotes}
-                  onChange={(e) => setEditNotes(e.target.value)}
+              <Typography
+                variant="body2"
+                sx={{
+                  fontSize: isMobile ? "0.8rem" : "0.875rem",
+                  color: entry.status === "Aktiv" ? "green" : "red",
+                }}
+              >
+                {entry.status === "Aktiv" ? "✅ Aktiv" : "❌ Inaktiv"}
+              </Typography>
+              {role === "Admin" && (
+                <IconButton
+                  onClick={handleToggleStatus}
                   disabled={isLoading}
-                  size={isMobile ? "small" : "medium"}
-                  sx={{ flex: 1 }}
-                />
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleUpdate}
-                  disabled={isLoading}
-                  sx={{ py: 0.5, fontSize: "0.75rem", minHeight: 32 }}
+                  size="small"
+                  sx={{ ml: "auto" }}
                 >
-                  {isLoading ? "Speichere..." : "Speichern"}
-                </Button>
-              </Box>
-            ) : (
-              <>
-                <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-                  {entry.aliasNotes}
-                </Typography>
-                {canEdit && (
-                  <IconButton
-                    onClick={() => setIsEditing(true)}
-                    disabled={isLoading}
-                    size="small"
-                    sx={{ ml: "auto" }}
-                  >
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                )}
-              </>
-            )}
-          </Box>
-
-          {/* Passwort anzeigen */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
-              Passwort:
-            </Typography>
-            {isEditing && role === "Admin" ? (
-              <TextField
-                value={editPassword}
-                onChange={(e) => setEditPassword(e.target.value)}
-                disabled={isLoading}
-                size={isMobile ? "small" : "medium"}
-                sx={{ flex: 1 }}
-              />
-            ) : (
-              <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-                {entry.password}
-              </Typography>
-            )}
-          </Box>
-
-          {/* Weitere Felder nur anzeigen, wenn sie ausgefüllt sind */}
-          {entry.note && (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
-                Notiz:
-              </Typography>
-              <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-                {entry.note}
-              </Typography>
+                  {entry.status === "Aktiv" ? (
+                    <ToggleOffIcon fontSize="small" />
+                  ) : (
+                    <ToggleOnIcon fontSize="small" />
+                  )}
+                </IconButton>
+              )}
             </Box>
-          )}
-          {entry.bougetList && (
+
+            {/* Zahlungsstatus mit Toggle-Button für Admins */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
-                Bouget-Liste:
+                Zahlung:
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontSize: isMobile ? "0.8rem" : "0.875rem",
+                  color: entry.paymentStatus === "Gezahlt" ? "green" : "red",
+                }}
+              >
+                {entry.paymentStatus === "Gezahlt" ? "✅ Gezahlt" : "❌ Nicht gezahlt"}
+              </Typography>
+              {role === "Admin" && (
+                <IconButton
+                  onClick={handleTogglePayment}
+                  disabled={isLoading}
+                  size="small"
+                  sx={{ ml: "auto" }}
+                >
+                  <PaymentIcon fontSize="small" />
+                </IconButton>
+              )}
+            </Box>
+
+            {/* Benutzername mit Bearbeitung für Admins */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
+                Benutzername:
+              </Typography>
+              {isEditing && role === "Admin" ? (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1 }}>
+                  <TextField
+                    value={editUsername}
+                    onChange={(e) => setEditUsername(e.target.value)}
+                    disabled={isLoading}
+                    size={isMobile ? "small" : "medium"}
+                    sx={{ flex: 1 }}
+                  />
+                </Box>
+              ) : (
+                <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+                  {entry.username}
+                </Typography>
+              )}
+            </Box>
+
+            {/* Spitzname mit Stift-Symbol */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
+                Spitzname:
+              </Typography>
+              {isEditing ? (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1 }}>
+                  <TextField
+                    value={editNotes}
+                    onChange={(e) => setEditNotes(e.target.value)}
+                    disabled={isLoading}
+                    size={isMobile ? "small" : "medium"}
+                    sx={{ flex: 1 }}
+                  />
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleUpdate}
+                    disabled={isLoading}
+                    sx={{ py: 0.5, fontSize: "0.75rem", minHeight: 32 }}
+                  >
+                    {isLoading ? "Speichere..." : "Speichern"}
+                  </Button>
+                </Box>
+              ) : (
+                <>
+                  <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+                    {entry.aliasNotes}
+                  </Typography>
+                  {canEdit && (
+                    <IconButton
+                      onClick={() => setIsEditing(true)}
+                      disabled={isLoading}
+                      size="small"
+                      sx={{ ml: "auto" }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                </>
+              )}
+            </Box>
+
+            {/* Passwort anzeigen */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
+                Passwort:
               </Typography>
               {isEditing && role === "Admin" ? (
                 <TextField
-                  value={editBougetList}
-                  onChange={(e) => setEditBougetList(e.target.value)}
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
                   disabled={isLoading}
                   size={isMobile ? "small" : "medium"}
                   sx={{ flex: 1 }}
                 />
               ) : (
                 <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-                  {entry.bougetList}
+                  {entry.password}
                 </Typography>
               )}
             </Box>
-          )}
-          {role === "Admin" && entry.admin_fee !== null && (
+
+            {/* Weitere Felder nur anzeigen, wenn sie ausgefüllt sind */}
+            {entry.note && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
+                  Notiz:
+                </Typography>
+                <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+                  {entry.note}
+                </Typography>
+              </Box>
+            )}
+            {entry.bougetList && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
+                  Bouget-Liste:
+                </Typography>
+                {isEditing && role === "Admin" ? (
+                  <TextField
+                    value={editBougetList}
+                    onChange={(e) => setEditBougetList(e.target.value)}
+                    disabled={isLoading}
+                    size={isMobile ? "small" : "medium"}
+                    sx={{ flex: 1 }}
+                  />
+                ) : (
+                  <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+                    {entry.bougetList}
+                  </Typography>
+                )}
+              </Box>
+            )}
+            {role === "Admin" && entry.admin_fee !== null && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
+                  Admin-Gebühr:
+                </Typography>
+                {isEditing ? (
+                  <TextField
+                    value={editAdminFee}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^0-9]/g, "");
+                      const numValue = value ? parseInt(value) : "";
+                      if (numValue > 999) return;
+                      setEditAdminFee(numValue);
+                    }}
+                    inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+                    disabled={isLoading}
+                    size={isMobile ? "small" : "medium"}
+                    sx={{ flex: 1 }}
+                  />
+                ) : (
+                  <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+                    {entry.admin_fee} €
+                  </Typography>
+                )}
+              </Box>
+            )}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
-                Admin-Gebühr:
+                Erstellt am:
               </Typography>
-              {isEditing ? (
+              <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+                {formatDate(entry.createdAt)}
+              </Typography>
+            </Box>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
+                Gültig bis:
+              </Typography>
+              {isEditing && role === "Admin" ? (
                 <TextField
-                  value={editAdminFee}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9]/g, "");
-                    const numValue = value ? parseInt(value) : "";
-                    if (numValue > 999) return;
-                    setEditAdminFee(numValue);
-                  }}
-                  inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+                  type="date"
+                  value={editValidUntil}
+                  onChange={(e) => setEditValidUntil(e.target.value)}
                   disabled={isLoading}
                   size={isMobile ? "small" : "medium"}
                   sx={{ flex: 1 }}
                 />
               ) : (
                 <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-                  {entry.admin_fee} €
+                  {formatDate(entry.validUntil)}
                 </Typography>
               )}
             </Box>
-          )}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
-              Erstellt am:
-            </Typography>
-            <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-              {formatDate(entry.createdAt)}
-            </Typography>
-          </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
-              Gültig bis:
-            </Typography>
-            {isEditing && role === "Admin" ? (
-              <TextField
-                type="date"
-                value={editValidUntil}
-                onChange={(e) => setEditValidUntil(e.target.value)}
-                disabled={isLoading}
-                size={isMobile ? "small" : "medium"}
-                sx={{ flex: 1 }}
-              />
-            ) : (
-              <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-                {formatDate(entry.validUntil)}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
+                Ersteller:
               </Typography>
+              <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+                {entry.owner}
+              </Typography>
+            </Box>
+
+            {/* Lösch-Button für Admins */}
+            {role === "Admin" && (
+              <Box sx={{ display: "flex", gap: 1, mt: 1, flexDirection: isMobile ? "column" : "row" }}>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  disabled={isLoading}
+                  sx={{ borderRadius: 2, py: 0.5, fontSize: "0.75rem", minHeight: 32 }}
+                  startIcon={<DeleteIcon fontSize="small" />}
+                >
+                  Löschen
+                </Button>
+              </Box>
             )}
           </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
-              Ersteller:
-            </Typography>
-            <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-              {entry.owner}
-            </Typography>
-          </Box>
+        </AccordionDetails>
+      </Accordion>
 
-          {/* Lösch-Button für Admins */}
-          {role === "Admin" && (
-            <Box sx={{ display: "flex", gap: 1, mt: 1, flexDirection: isMobile ? "column" : "row" }}>
-              <Button
-                variant="outlined"
-                color="error"
-                onClick={handleDelete}
-                disabled={isLoading}
-                sx={{ borderRadius: 2, py: 0.5, fontSize: "0.75rem", minHeight: 32 }}
-                startIcon={<DeleteIcon fontSize="small" />}
-              >
-                Löschen
-              </Button>
-            </Box>
-          )}
-        </Box>
-      </AccordionDetails>
-    </Accordion>
+      {/* Bestätigungsdialog für das Löschen */}
+      <Dialog
+        open={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        fullWidth
+        maxWidth="xs"
+        fullScreen={isMobile}
+      >
+        <DialogTitle sx={{ fontSize: isMobile ? "1rem" : "1.25rem" }}>
+          Eintrag löschen?
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontSize: isMobile ? "0.9rem" : "1rem" }}>
+            Möchten Sie den Eintrag "{entry.aliasNotes}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setIsDeleteDialogOpen(false)}
+            color="secondary"
+            disabled={isLoading}
+            sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
+          >
+            Abbrechen
+          </Button>
+          <Button
+            onClick={handleDelete}
+            color="error"
+            disabled={isLoading}
+            sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
+          >
+            {isLoading ? "Lösche..." : "Löschen"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 };
 
