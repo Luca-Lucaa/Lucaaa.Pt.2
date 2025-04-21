@@ -32,7 +32,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
     try {
       const updates = {
         aliasNotes: editNotes,
-        ...(role === "Admin" && { bougetList: editBougetList || null }),
+        ...(role === "Admin" && entry.bougetList && { bougetList: editBougetList || null }),
         admin_fee: role === "Admin" && editAdminFee ? parseInt(editAdminFee) : entry.admin_fee,
       };
       const { data, error } = await supabase
@@ -162,7 +162,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
               </Box>
             ) : (
               <>
-                <Typography variant="body2" sx={{ FONTSIZE: isMobile ? "0.8rem" : "0.875rem" }}>
+                <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
                   {entry.aliasNotes}
                 </Typography>
                 {canEdit && (
@@ -220,6 +220,14 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
           </Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
+              Gültig bis:
+            </Typography>
+            <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+              {formatDate(entry.validUntil)}
+            </Typography>
+          </Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
               Ersteller:
             </Typography>
             <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
@@ -232,15 +240,17 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
             <Box sx={{ mt: 1 }}>
               {role === "Admin" && (
                 <>
-                  <TextField
-                    label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
-                    fullWidth
-                    margin="dense"
-                    value={editBougetList}
-                    onChange={(e) => setEditBougetList(e.target.value)}
-                    disabled={isLoading}
-                    size={isMobile ? "small" : "medium"}
-                  />
+                  {entry.bougetList && (
+                    <TextField
+                      label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
+                      fullWidth
+                      margin="dense"
+                      value={editBougetList}
+                      onChange={(e) => setEditBougetList(e.target.value)}
+                      disabled={isLoading}
+                      size={isMobile ? "small" : "medium"}
+                    />
+                  )}
                   <TextField
                     label="Admin-Gebühr (€)"
                     fullWidth
@@ -260,34 +270,36 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
               )}
               <Box sx={{ display: "flex", gap: 1, mt: 1, flexDirection: isMobile ? "column" : "row" }}>
                 {role === "Admin" && (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleUpdate}
-                    disabled={isLoading}
-                    sx={{ borderRadius: 2, py: isMobile ? 1.5 : 1, minHeight: isMobile ? 48 : 36 }}
-                  >
-                    {isLoading ? "Speichere..." : "Speichern"}
-                  </Button>
+                  <>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={handleUpdate}
+                      disabled={isLoading}
+                      sx={{ borderRadius: 2, py: isMobile ? 1.5 : 1, minHeight: isMobile ? 48 : 36 }}
+                    >
+                      {isLoading ? "Speichere..." : "Speichern"}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="secondary"
+                      onClick={handleToggleStatus}
+                      disabled={isLoading}
+                      sx={{ borderRadius: 2, py: isMobile ? 1.5 : 1, minHeight: isMobile ? 48 : 36 }}
+                    >
+                      {entry.status === "Aktiv" ? "Deaktivieren" : "Aktivieren"}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color={entry.paymentStatus === "Gezahlt" ? "error" : "success"}
+                      onClick={handleTogglePayment}
+                      disabled={isLoading}
+                      sx={{ borderRadius: 2, py: isMobile ? 1.5 : 1, minHeight: isMobile ? 48 : 36 }}
+                    >
+                      {entry.paymentStatus === "Gezahlt" ? "Nicht gezahlt" : "Gezahlt"}
+                    </Button>
+                  </>
                 )}
-                <Button
-                  variant="outlined"
-                  color="secondary"
-                  onClick={handleToggleStatus}
-                  disabled={isLoading}
-                  sx={{ borderRadius: 2, py: isMobile ? 1.5 : 1, minHeight: isMobile ? 48 : 36 }}
-                >
-                  {entry.status === "Aktiv" ? "Deaktivieren" : "Aktivieren"}
-                </Button>
-                <Button
-                  variant="outlined"
-                  color={entry.paymentStatus === "Gezahlt" ? "error" : "success"}
-                  onClick={handleTogglePayment}
-                  disabled={isLoading}
-                  sx={{ borderRadius: 2, py: isMobile ? 1.5 : 1, minHeight: isMobile ? 48 : 36 }}
-                >
-                  {entry.paymentStatus === "Gezahlt" ? "Nicht gezahlt" : "Gezahlt"}
-                </Button>
               </Box>
             </Box>
           )}
