@@ -13,16 +13,21 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { supabase } from "./supabaseClient";
 import { formatDate, handleError } from "./utils";
 import { useSnackbar } from "./useSnackbar";
 
 const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [editNotes, setEditNotes] = useState(entry.aliasNotes);
-  const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [editBougetList, setEditBougetList] = useState(entry.bougetList || "");
   const [editAdminFee, setEditAdminFee] = useState(entry.admin_fee || "");
+  const [editPassword, setEditPassword] = useState(entry.password || "");
+  const [editValidUntil, setEditValidUntil] = useState(
+    entry.validUntil ? new Date(entry.validUntil).toISOString().split("T")[0] : ""
+  );
   const { showSnackbar } = useSnackbar();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -32,8 +37,12 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
     try {
       const updates = {
         aliasNotes: editNotes,
-        ...(role === "Admin" && entry.bougetList && { bougetList: editBougetList || null }),
-        admin_fee: role === "Admin" && editAdminFee ? parseInt(editAdminFee) : entry.admin_fee,
+        ...(role === "Admin" && {
+          bougetList: editBougetList || null,
+          admin_fee: editAdminFee ? parseInt(editAdminFee) : null,
+          password: editPassword,
+          validUntil: editValidUntil ? new Date(editValidUntil) : entry.validUntil,
+        }),
       };
       const { data, error } = await supabase
         .from("entries")
@@ -44,14 +53,41 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
       setEntries((prev) =>
         prev.map((e) => (e.id === entry.id ? { ...e, ...data[0] } : e))
       );
-      setIsEditingNotes(false);
+      setIsEditing(false);
       showSnackbar("Eintrag erfolgreich aktualisiert!");
     } catch (error) {
       handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
     }
-  }, [entry, role, editNotes, editBougetList, editAdminFee, setEntries, showSnackbar]);
+  }, [
+    entry,
+    role,
+    editNotes,
+    editBougetList,
+    editAdminFee,
+    editPassword,
+    editValidUntil,
+    setEntries,
+    showSnackbar,
+  ]);
+
+  const handleDelete = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from("entries")
+        .delete()
+        .eq("id", entry.id);
+      if (error) throw error;
+      setEntries((prev) => prev.filter((e) => e.id !== entry.id));
+      showSnackbar("Eintrag erfolgreich gelöscht!");
+    } catch (error) {
+      handleError(error, showSnackbar);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [entry, setEntries, showSnackbar]);
 
   const handleToggleStatus = useCallback(async () => {
     const newStatus = entry.status === "Aktiv" ? "Inaktiv" : "Aktiv";
@@ -141,7 +177,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
             <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
               Spitzname:
             </Typography>
-            {isEditingNotes ? (
+            {isEditing ? (
               <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1 }}>
                 <TextField
                   value={editNotes}
@@ -155,7 +191,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
                   color="primary"
                   onClick={handleUpdate}
                   disabled={isLoading}
-                  sx={{ py: isMobile ? 1 : 0.5, minHeight: isMobile ? 40 : 36 }}
+                  sx={{ py: 0.5, fontSize: "0.75rem", minHeight: 32 }}
                 >
                   {isLoading ? "Speichere..." : "Speichern"}
                 </Button>
@@ -167,7 +203,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
                 </Typography>
                 {canEdit && (
                   <IconButton
-                    onClick={() => setIsEditingNotes(true)}
+                    onClick={() => setIsEditing(true)}
                     disabled={isLoading}
                     size="small"
                     sx={{ ml: "auto" }}
@@ -177,6 +213,16 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
                 )}
               </>
             )}
+          </Box>
+
+          {/* Passwort anzeigen */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
+              Passwort:
+            </Typography>
+            <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+              {entry.password}
+            </Typography>
           </Box>
 
           {/* Weitere Felder nur anzeigen, wenn sie ausgefüllt sind */}
@@ -235,8 +281,8 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
             </Typography>
           </Box>
 
-          {/* Bearbeitungsfelder nur für Admins (außer Spitzname) */}
-          {canEdit && (
+          {/* Bearbeitungsfelder für Admins */}
+          {canEdit && isEditing && (
             <Box sx={{ mt: 1 }}>
               {role === "Admin" && (
                 <>
@@ -266,41 +312,76 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
                     disabled={isLoading}
                     size={isMobile ? "small" : "medium"}
                   />
+                  <TextField
+                    label="Passwort"
+                    fullWidth
+                    margin="dense"
+                    value={editPassword}
+                    onChange={(e) => setEditPassword(e.target.value)}
+                    disabled={isLoading}
+                    size={isMobile ? "small" : "medium"}
+                  />
+                  <TextField
+                    label="Gültig bis"
+                    fullWidth
+                    margin="dense"
+                    type="date"
+                    value={editValidUntil}
+                    onChange={(e) => setEditValidUntil(e.target.value)}
+                    disabled={isLoading}
+                    size={isMobile ? "small" : "medium"}
+                  />
                 </>
               )}
-              <Box sx={{ display: "flex", gap: 1, mt: 1, flexDirection: isMobile ? "column" : "row" }}>
-                {role === "Admin" && (
-                  <>
+            </Box>
+          )}
+
+          {/* Buttons für Admins und Ersteller */}
+          {canEdit && (
+            <Box sx={{ display: "flex", gap: 1, mt: 1, flexDirection: isMobile ? "column" : "row" }}>
+              {role === "Admin" && (
+                <>
+                  {!isEditing && (
                     <Button
                       variant="contained"
                       color="primary"
                       onClick={handleUpdate}
                       disabled={isLoading}
-                      sx={{ borderRadius: 2, py: isMobile ? 1.5 : 1, minHeight: isMobile ? 48 : 36 }}
+                      sx={{ borderRadius: 2, py: 0.5, fontSize: "0.75rem", minHeight: 32 }}
                     >
                       {isLoading ? "Speichere..." : "Speichern"}
                     </Button>
-                    <Button
-                      variant="outlined"
-                      color="secondary"
-                      onClick={handleToggleStatus}
-                      disabled={isLoading}
-                      sx={{ borderRadius: 2, py: isMobile ? 1.5 : 1, minHeight: isMobile ? 48 : 36 }}
-                    >
-                      {entry.status === "Aktiv" ? "Deaktivieren" : "Aktivieren"}
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color={entry.paymentStatus === "Gezahlt" ? "error" : "success"}
-                      onClick={handleTogglePayment}
-                      disabled={isLoading}
-                      sx={{ borderRadius: 2, py: isMobile ? 1.5 : 1, minHeight: isMobile ? 48 : 36 }}
-                    >
-                      {entry.paymentStatus === "Gezahlt" ? "Nicht gezahlt" : "Gezahlt"}
-                    </Button>
-                  </>
-                )}
-              </Box>
+                  )}
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    onClick={handleToggleStatus}
+                    disabled={isLoading}
+                    sx={{ borderRadius: 2, py: 0.5, fontSize: "0.75rem", minHeight: 32 }}
+                  >
+                    {entry.status === "Aktiv" ? "Deaktivieren" : "Aktivieren"}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color={entry.paymentStatus === "Gezahlt" ? "error" : "success"}
+                    onClick={handleTogglePayment}
+                    disabled={isLoading}
+                    sx={{ borderRadius: 2, py: 0.5, fontSize: "0.75rem", minHeight: 32 }}
+                  >
+                    {entry.paymentStatus === "Gezahlt" ? "Nicht gezahlt" : "Gezahlt"}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    onClick={handleDelete}
+                    disabled={isLoading}
+                    sx={{ borderRadius: 2, py: 0.5, fontSize: "0.75rem", minHeight: 32 }}
+                    startIcon={<DeleteIcon fontSize="small" />}
+                  >
+                    Löschen
+                  </Button>
+                </>
+              )}
             </Box>
           )}
         </Box>
