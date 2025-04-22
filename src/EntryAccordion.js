@@ -21,6 +21,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import ToggleOnIcon from "@mui/icons-material/ToggleOn";
 import ToggleOffIcon from "@mui/icons-material/ToggleOff";
 import PaymentIcon from "@mui/icons-material/Payment";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import { supabase } from "./supabaseClient";
 import { formatDate, handleError } from "./utils";
 import { useSnackbar } from "./useSnackbar";
@@ -29,6 +30,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isExtending, setIsExtending] = useState(false);
   const [editUsername, setEditUsername] = useState(entry.username || "");
   const [editNotes, setEditNotes] = useState(entry.aliasNotes);
   const [editBougetList, setEditBougetList] = useState(entry.bougetList || "");
@@ -47,11 +49,11 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
       const updates = {
         username: role === "Admin" ? editUsername : entry.username,
         aliasNotes: editNotes,
+        validUntil: editValidUntil ? new Date(editValidUntil) : entry.validUntil,
         ...(role === "Admin" && {
           bougetList: editBougetList || null,
           admin_fee: editAdminFee ? parseInt(editAdminFee) : null,
           password: editPassword,
-          validUntil: editValidUntil ? new Date(editValidUntil) : entry.validUntil,
         }),
       };
       const { data, error } = await supabase
@@ -64,6 +66,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
         prev.map((e) => (e.id === entry.id ? { ...e, ...data[0] } : e))
       );
       setIsEditing(false);
+      setIsExtending(false);
       showSnackbar("Eintrag erfolgreich aktualisiert!");
     } catch (error) {
       handleError(error, showSnackbar);
@@ -142,6 +145,16 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
       setIsLoading(false);
     }
   }, [entry, setEntries, showSnackbar]);
+
+  const validateExtensionDate = (newDate) => {
+    const currentValidUntil = new Date(entry.validUntil);
+    const selectedDate = new Date(newDate);
+    if (selectedDate <= currentValidUntil) {
+      showSnackbar("Das neue Datum muss in der Zukunft liegen!", "error");
+      return false;
+    }
+    return true;
+  };
 
   const canEdit = role === "Admin" || entry.owner === loggedInUser;
 
@@ -374,10 +387,47 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
                   size={isMobile ? "small" : "medium"}
                   sx={{ flex: 1 }}
                 />
+              ) : isExtending && entry.owner === loggedInUser ? (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1 }}>
+                  <TextField
+                    type="date"
+                    value={editValidUntil}
+                    onChange={(e) => {
+                      const newDate = e.target.value;
+                      if (validateExtensionDate(newDate)) {
+                        setEditValidUntil(newDate);
+                      }
+                    }}
+                    disabled={isLoading}
+                    size={isMobile ? "small" : "medium"}
+                    sx={{ flex: 1 }}
+                  />
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleUpdate}
+                    disabled={isLoading}
+                    sx={{ py: 0.5, fontSize: "0.75rem", minHeight: 32 }}
+                  >
+                    {isLoading ? "Speichere..." : "Speichern"}
+                  </Button>
+                </Box>
               ) : (
-                <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-                  {formatDate(entry.validUntil)}
-                </Typography>
+                <>
+                  <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+                    {formatDate(entry.validUntil)}
+                  </Typography>
+                  {entry.owner === loggedInUser && (
+                    <IconButton
+                      onClick={() => setIsExtending(true)}
+                      disabled={isLoading}
+                      size="small"
+                      sx={{ ml: "auto" }}
+                    >
+                      <CalendarTodayIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                </>
               )}
             </Box>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
