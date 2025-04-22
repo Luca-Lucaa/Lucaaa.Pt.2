@@ -256,17 +256,17 @@ const EntryList = ({ entries, role, loggedInUser, setEntries }) => {
       </Tabs>
 
       {/* Buttons zum Erstellen und manuellen Hinzufügen */}
-      {role === "Admin" && (
-        <Box sx={{ mb: 2, display: "flex", gap: 2, flexWrap: "wrap" }}>
-          <Button
-            variant="contained"
-            color="success"
-            startIcon={<AddIcon />}
-            onClick={() => setOpenCreateDialog(true)}
-            sx={{ borderRadius: 1 }}
-          >
-            Neuer Eintrag
-          </Button>
+      <Box sx={{ mb: 2, display: "flex", gap: 2, flexWrap: "wrap" }}>
+        <Button
+          variant="contained"
+          color="success"
+          startIcon={<AddIcon />}
+          onClick={() => setOpenCreateDialog(true)}
+          sx={{ borderRadius: 1 }}
+        >
+          Neuer Eintrag
+        </Button>
+        {role === "Admin" && (
           <Button
             variant="contained"
             color="primary"
@@ -276,8 +276,8 @@ const EntryList = ({ entries, role, loggedInUser, setEntries }) => {
           >
             Bestehender Eintrag
           </Button>
-        </Box>
-      )}
+        )}
+      </Box>
 
       {/* Liste der gefilterten Einträge */}
       <Grid container spacing={1}>
