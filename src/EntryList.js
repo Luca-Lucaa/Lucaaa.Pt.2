@@ -13,10 +13,6 @@ import {
   useTheme,
   Tabs,
   Tab,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -48,13 +44,11 @@ const EntryList = ({ entries, role, loggedInUser, setEntries }) => {
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTab, setFilterTab] = useState("all");
-  const [filterStartDate, setFilterStartDate] = useState("");
-  const [filterEndDate, setFilterEndDate] = useState("");
   const { showSnackbar } = useSnackbar();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  // Einträge nach Suche, Tab und Gültigkeitsdatum filtern
+  // Einträge nach Suche, Tab und Gültigkeitsdatum sortieren
   const filteredEntries = useMemo(() => {
     let result = entries;
 
@@ -79,22 +73,15 @@ const EntryList = ({ entries, role, loggedInUser, setEntries }) => {
       result = result.filter((entry) => entry.paymentStatus === "Nicht gezahlt");
     }
 
-    // Filter nach Gültigkeitsdatum
-    if (filterStartDate || filterEndDate) {
-      result = result.filter((entry) => {
-        if (!entry.validUntil) return false; // Einträge ohne validUntil ausblenden, wenn Filter aktiv
-        const validUntilDate = new Date(entry.validUntil);
-        const startDate = filterStartDate ? new Date(filterStartDate) : null;
-        const endDate = filterEndDate ? new Date(filterEndDate) : null;
-
-        if (startDate && validUntilDate < startDate) return false;
-        if (endDate && validUntilDate > endDate) return false;
-        return true;
-      });
-    }
+    // Sortieren nach validUntil (aufsteigend)
+    result = [...result].sort((a, b) => {
+      const dateA = a.validUntil ? new Date(a.validUntil) : new Date(0);
+      const dateB = b.validUntil ? new Date(b.validUntil) : new Date(0);
+      return dateA - dateB;
+    });
 
     return result;
-  }, [entries, searchQuery, filterTab, filterStartDate, filterEndDate]);
+  }, [entries, searchQuery, filterTab]);
 
   // Neue Einträge erstellen
   const handleCreateEntry = useCallback(async () => {
@@ -228,7 +215,7 @@ const EntryList = ({ entries, role, loggedInUser, setEntries }) => {
         Einträge
       </Typography>
 
-      {/* Filter- und Suchleiste */}
+      {/* Suchleiste */}
       <Box sx={{ mb: 2, display: "flex", flexWrap: "wrap", gap: 2 }}>
         <TextField
           label="Suche nach Benutzername oder Spitzname"
@@ -240,31 +227,11 @@ const EntryList = ({ entries, role, loggedInUser, setEntries }) => {
           size="small"
           sx={{ width: isMobile ? "100%" : 300 }}
         />
-        <TextField
-          label="Gültig ab"
-          type="date"
-          value={filterStartDate}
-          onChange={(e) => setFilterStartDate(e.target.value)}
-          InputLabelProps={{ shrink: true }}
-          size="small"
-          sx={{ width: isMobile ? "100%" : 200 }}
-        />
-        <TextField
-          label="Gültig bis"
-          type="date"
-          value={filterEndDate}
-          onChange={(e) => setFilterEndDate(e.target.value)}
-          InputLabelProps={{ shrink: true }}
-          size="small"
-          sx={{ width: isMobile ? "100%" : 200 }}
-        />
         <Button
           variant="outlined"
           color="secondary"
           onClick={() => {
             setSearchQuery("");
-            setFilterStartDate("");
-            setFilterEndDate("");
             setFilterTab("all");
           }}
           sx={{ height: 40 }}
