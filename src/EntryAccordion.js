@@ -60,35 +60,49 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
     setIsLoading(true);
     try {
       // Validierungen
-      if (!editUsername || !editNotes || !editOwner) {
-        showSnackbar("Pflichtfelder dürfen nicht leer sein.", "error");
-        return;
-      }
-      if (editAdminFee && isNaN(parseInt(editAdminFee))) {
-        showSnackbar("Admin-Gebühr muss eine Zahl sein.", "error");
-        return;
-      }
-      if (editValidUntil && new Date(editValidUntil) < new Date()) {
-        showSnackbar("Gültigkeitsdatum muss in der Zukunft liegen.", "error");
-        return;
-      }
-      if (editCreatedAt && new Date(editCreatedAt) > new Date()) {
-        showSnackbar("Erstellungsdatum darf nicht in der Zukunft liegen.", "error");
+      if (!editUsername) {
+        showSnackbar("Benutzername darf nicht leer sein.", "error");
         return;
       }
 
-      const updates = {
-        username: editUsername,
-        aliasNotes: editNotes,
-        bougetList: editBougetList || null,
-        admin_fee: editAdminFee ? parseInt(editAdminFee) : null,
-        password: editPassword,
-        validUntil: editValidUntil ? new Date(editValidUntil).toISOString() : null,
-        createdAt: editCreatedAt ? new Date(editCreatedAt).toISOString() : null,
-        owner: editOwner,
-        status: editStatus,
-        paymentStatus: editPaymentStatus,
-      };
+      let updates;
+      if (role === "Admin") {
+        // Admins können alle Felder bearbeiten
+        if (!editNotes || !editOwner) {
+          showSnackbar("Pflichtfelder dürfen nicht leer sein.", "error");
+          return;
+        }
+        if (editAdminFee && isNaN(parseInt(editAdminFee))) {
+          showSnackbar("Admin-Gebühr muss eine Zahl sein.", "error");
+          return;
+        }
+        if (editValidUntil && new Date(editValidUntil) < new Date()) {
+          showSnackbar("Gültigkeitsdatum muss in der Zukunft liegen.", "error");
+          return;
+        }
+        if (editCreatedAt && new Date(editCreatedAt) > new Date()) {
+          showSnackbar("Erstellungsdatum darf nicht in der Zukunft liegen.", "error");
+          return;
+        }
+
+        updates = {
+          username: editUsername,
+          aliasNotes: editNotes,
+          bougetList: editBougetList || null,
+          admin_fee: editAdminFee ? parseInt(editAdminFee) : null,
+          password: editPassword,
+          validUntil: editValidUntil ? new Date(editValidUntil).toISOString() : null,
+          createdAt: editCreatedAt ? new Date(editCreatedAt).toISOString() : null,
+          owner: editOwner,
+          status: editStatus,
+          paymentStatus: editPaymentStatus,
+        };
+      } else {
+        // Ersteller können nur username bearbeiten
+        updates = {
+          username: editUsername,
+        };
+      }
 
       const { data, error } = await supabase
         .from("entries")
@@ -109,6 +123,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
     }
   }, [
     entry.id,
+    role,
     editUsername,
     editNotes,
     editBougetList,
@@ -168,7 +183,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
     }
   }, [entry.id, setEntries, showSnackbar, canRequestExtension]);
 
-  const canEdit = role === "Admin" || entry.owner === loggedInUser;
+  const canEdit = role === "Admin" || (entry.owner === loggedInUser && role !== "Admin");
 
   return (
     <Box>
@@ -243,7 +258,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
               <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
                 Benutzername:
               </Typography>
-              {isEditing && role === "Admin" ? (
+              {isEditing && (role === "Admin" || (entry.owner === loggedInUser && role !== "Admin")) ? (
                 <TextField
                   value={editUsername}
                   onChange={(e) => setEditUsername(e.target.value)}
@@ -256,6 +271,16 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
                   {entry.username}
                 </Typography>
               )}
+              {canEdit && !isEditing && (
+                <IconButton
+                  onClick={() => setIsEditing(true)}
+                  disabled={isLoading}
+                  size="small"
+                  sx={{ ml: "auto" }}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              )}
             </Box>
 
             {/* Spitzname */}
@@ -263,43 +288,18 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
               <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
                 Spitzname:
               </Typography>
-              {isEditing ? (
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1 }}>
-                  <TextField
-                    value={editNotes}
-                    onChange={(e) => setEditNotes(e.target.value)}
-                    disabled={isLoading}
-                    size={isMobile ? "small" : "medium"}
-                    sx={{ flex: 1 }}
-                  />
-                  {role === "Admin" && (
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={handleUpdate}
-                      disabled={isLoading}
-                      sx={{ py: 0.5, fontSize: "0.75rem", minHeight: 32 }}
-                    >
-                      {isLoading ? "Speichere..." : "Speichern"}
-                    </Button>
-                  )}
-                </Box>
+              {isEditing && role === "Admin" ? (
+                <TextField
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  disabled={isLoading}
+                  size={isMobile ? "small" : "medium"}
+                  sx={{ flex: 1 }}
+                />
               ) : (
-                <>
-                  <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-                    {entry.aliasNotes}
-                  </Typography>
-                  {canEdit && (
-                    <IconButton
-                      onClick={() => setIsEditing(true)}
-                      disabled={isLoading}
-                      size="small"
-                      sx={{ ml: "auto" }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  )}
-                </>
+                <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+                  {entry.aliasNotes}
+                </Typography>
               )}
             </Box>
 
@@ -442,6 +442,46 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
                 </Typography>
               )}
             </Box>
+
+            {/* Speichern-Button für Admins und Ersteller */}
+            {isEditing && (role === "Admin" || (entry.owner === loggedInUser && role !== "Admin")) && (
+              <Box sx={{ display: "flex", gap: 1, mt: 1, flexDirection: isMobile ? "column" : "row" }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleUpdate}
+                  disabled={isLoading}
+                  sx={{ borderRadius: 2, py: 0.5, fontSize: "0.75rem", minHeight: 32 }}
+                >
+                  {isLoading ? "Speichere..." : "Speichern"}
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditUsername(entry.username || "");
+                    setEditNotes(entry.aliasNotes);
+                    setEditBougetList(entry.bougetList || "");
+                    setEditAdminFee(entry.admin_fee || "");
+                    setEditPassword(entry.password || "");
+                    setEditValidUntil(
+                      entry.validUntil ? new Date(entry.validUntil).toISOString().split("T")[0] : ""
+                    );
+                    setEditCreatedAt(
+                      entry.createdAt ? new Date(entry.createdAt).toISOString().split("T")[0] : ""
+                    );
+                    setEditOwner(entry.owner || "");
+                    setEditStatus(entry.status || "Aktiv");
+                    setEditPaymentStatus(entry.paymentStatus || "Nicht gezahlt");
+                  }}
+                  disabled={isLoading}
+                  sx={{ borderRadius: 2, py: 0.5, fontSize: "0.75rem", minHeight: 32 }}
+                >
+                  Abbrechen
+                </Button>
+              </Box>
+            )}
 
             {/* Verlängerungsanfrage-Button für Ersteller */}
             {canEdit && entry.owner === loggedInUser && role !== "Admin" && !entry.extensionRequest?.pending && canRequestExtension() && (
