@@ -14,14 +14,13 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import ToggleOnIcon from "@mui/icons-material/ToggleOn";
-import ToggleOffIcon from "@mui/icons-material/ToggleOff";
-import PaymentIcon from "@mui/icons-material/Payment";
-import ExtensionIcon from "@mui/icons-material/Update"; // Neues Icon für Verlängerung
+import ExtensionIcon from "@mui/icons-material/Update";
 import { supabase } from "./supabaseClient";
 import { formatDate, handleError } from "./utils";
 import { useSnackbar } from "./useSnackbar";
@@ -38,6 +37,12 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const [editValidUntil, setEditValidUntil] = useState(
     entry.validUntil ? new Date(entry.validUntil).toISOString().split("T")[0] : ""
   );
+  const [editCreatedAt, setEditCreatedAt] = useState(
+    entry.createdAt ? new Date(entry.createdAt).toISOString().split("T")[0] : ""
+  );
+  const [editOwner, setEditOwner] = useState(entry.owner || "");
+  const [editStatus, setEditStatus] = useState(entry.status || "Aktiv");
+  const [editPaymentStatus, setEditPaymentStatus] = useState(entry.paymentStatus || "Nicht gezahlt");
   const { showSnackbar } = useSnackbar();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -54,24 +59,46 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const handleUpdate = useCallback(async () => {
     setIsLoading(true);
     try {
+      // Validierungen
+      if (!editUsername || !editNotes || !editOwner) {
+        showSnackbar("Pflichtfelder dürfen nicht leer sein.", "error");
+        return;
+      }
+      if (editAdminFee && isNaN(parseInt(editAdminFee))) {
+        showSnackbar("Admin-Gebühr muss eine Zahl sein.", "error");
+        return;
+      }
+      if (editValidUntil && new Date(editValidUntil) < new Date()) {
+        showSnackbar("Gültigkeitsdatum muss in der Zukunft liegen.", "error");
+        return;
+      }
+      if (editCreatedAt && new Date(editCreatedAt) > new Date()) {
+        showSnackbar("Erstellungsdatum darf nicht in der Zukunft liegen.", "error");
+        return;
+      }
+
       const updates = {
-        username: role === "Admin" ? editUsername : entry.username,
+        username: editUsername,
         aliasNotes: editNotes,
-        ...(role === "Admin" && {
-          bougetList: editBougetList || null,
-          admin_fee: editAdminFee ? parseInt(editAdminFee) : null,
-          password: editPassword,
-          validUntil: editValidUntil ? new Date(editValidUntil) : entry.validUntil,
-        }),
+        bougetList: editBougetList || null,
+        admin_fee: editAdminFee ? parseInt(editAdminFee) : null,
+        password: editPassword,
+        validUntil: editValidUntil ? new Date(editValidUntil).toISOString() : null,
+        createdAt: editCreatedAt ? new Date(editCreatedAt).toISOString() : null,
+        owner: editOwner,
+        status: editStatus,
+        paymentStatus: editPaymentStatus,
       };
+
       const { data, error } = await supabase
         .from("entries")
         .update(updates)
         .eq("id", entry.id)
-        .select();
+        .select()
+        .single();
       if (error) throw error;
       setEntries((prev) =>
-        prev.map((e) => (e.id === entry.id ? { ...e, ...data[0] } : e))
+        prev.map((e) => (e.id === entry.id ? { ...e, ...data } : e))
       );
       setIsEditing(false);
       showSnackbar("Eintrag erfolgreich aktualisiert!");
@@ -81,14 +108,17 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
       setIsLoading(false);
     }
   }, [
-    entry,
-    role,
+    entry.id,
     editUsername,
     editNotes,
     editBougetList,
     editAdminFee,
     editPassword,
     editValidUntil,
+    editCreatedAt,
+    editOwner,
+    editStatus,
+    editPaymentStatus,
     setEntries,
     showSnackbar,
   ]);
@@ -109,51 +139,8 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
       setIsLoading(false);
       setIsDeleteDialogOpen(false);
     }
-  }, [entry, setEntries, showSnackbar]);
+  }, [entry.id, setEntries, showSnackbar]);
 
-  const handleToggleStatus = useCallback(async () => {
-    const newStatus = entry.status === "Aktiv" ? "Inaktiv" : "Aktiv";
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("entries")
-        .update({ status: newStatus })
-        .eq("id", entry.id)
-        .select();
-      if (error) throw error;
-      setEntries((prev) =>
-        prev.map((e) => (e.id === entry.id ? { ...e, ...data[0] } : e))
-      );
-      showSnackbar(`Status zu "${newStatus}" geändert!`);
-    } catch (error) {
-      handleError(error, showSnackbar);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [entry, setEntries, showSnackbar]);
-
-  const handleTogglePayment = useCallback(async () => {
-    const newPaymentStatus = entry.paymentStatus === "Gezahlt" ? "Nicht gezahlt" : "Gezahlt";
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("entries")
-        .update({ paymentStatus: newPaymentStatus })
-        .eq("id", entry.id)
-        .select();
-      if (error) throw error;
-      setEntries((prev) =>
-        prev.map((e) => (e.id === entry.id ? { ...e, ...data[0] } : e))
-      );
-      showSnackbar(`Zahlungsstatus zu "${newPaymentStatus}" geändert!`);
-    } catch (error) {
-      handleError(error, showSnackbar);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [entry, setEntries, showSnackbar]);
-
-  // Neue Funktion für Verlängerungsanfrage
   const handleRequestExtension = useCallback(async () => {
     if (!canRequestExtension()) {
       showSnackbar("Verlängerung kann nur beantragt werden, wenn das Gültigkeitsdatum weniger als 60 Tage entfernt ist.", "error");
@@ -179,7 +166,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [entry, setEntries, showSnackbar, canRequestExtension]);
+  }, [entry.id, setEntries, showSnackbar, canRequestExtension]);
 
   const canEdit = role === "Admin" || entry.owner === loggedInUser;
 
@@ -193,77 +180,77 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
         </AccordionSummary>
         <AccordionDetails sx={{ p: isMobile ? 1 : 2 }}>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            {/* Status mit Toggle-Button für Admins */}
+            {/* Status */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
                 Status:
               </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  fontSize: isMobile ? "0.8rem" : "0.875rem",
-                  color: entry.status === "Aktiv" ? "green" : "red",
-                }}
-              >
-                {entry.status === "Aktiv" ? "✅ Aktiv" : "❌ Inaktiv"}
-              </Typography>
-              {role === "Admin" && (
-                <IconButton
-                  onClick={handleToggleStatus}
+              {isEditing && role === "Admin" ? (
+                <Select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value)}
                   disabled={isLoading}
                   size="small"
-                  sx={{ ml: "auto" }}
+                  sx={{ flex: 1 }}
                 >
-                  {entry.status === "Aktiv" ? (
-                    <ToggleOffIcon fontSize="small" />
-                  ) : (
-                    <ToggleOnIcon fontSize="small" />
-                  )}
-                </IconButton>
+                  <MenuItem value="Aktiv">Aktiv</MenuItem>
+                  <MenuItem value="Inaktiv">Inaktiv</MenuItem>
+                </Select>
+              ) : (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontSize: isMobile ? "0.8rem" : "0.875rem",
+                    color: entry.status === "Aktiv" ? "green" : "red",
+                  }}
+                >
+                  {entry.status === "Aktiv" ? "✅ Aktiv" : "❌ Inaktiv"}
+                </Typography>
               )}
             </Box>
 
-            {/* Zahlungsstatus mit Toggle-Button für Admins */}
+            {/* Zahlungsstatus */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
                 Zahlung:
               </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  fontSize: isMobile ? "0.8rem" : "0.875rem",
-                  color: entry.paymentStatus === "Gezahlt" ? "green" : "red",
-                }}
-              >
-                {entry.paymentStatus === "Gezahlt" ? "✅ Gezahlt" : "❌ Nicht gezahlt"}
-              </Typography>
-              {role === "Admin" && (
-                <IconButton
-                  onClick={handleTogglePayment}
+              {isEditing && role === "Admin" ? (
+                <Select
+                  value={editPaymentStatus}
+                  onChange={(e) => setEditPaymentStatus(e.target.value)}
                   disabled={isLoading}
                   size="small"
-                  sx={{ ml: "auto" }}
+                  sx={{ flex: 1 }}
                 >
-                  <PaymentIcon fontSize="small" />
-                </IconButton>
+                  <MenuItem value="Gezahlt">Gezahlt</MenuItem>
+                  <MenuItem value="Nicht gezahlt">Nicht gezahlt</MenuItem>
+                </Select>
+              ) : (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontSize: isMobile ? "0.8rem" : "0.875rem",
+                    color: entry.paymentStatus === "Gezahlt" ? "green" : "red",
+                  }}
+                >
+                  {entry.paymentStatus === "Gezahlt" ? "✅ Gezahlt" : "❌ Nicht gezahlt"}
+                </Typography>
               )}
             </Box>
 
-            {/* Benutzername mit Bearbeitung für Admins */}
+            {/* Benutzername */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
                 Benutzername:
               </Typography>
               {isEditing && role === "Admin" ? (
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1 }}>
-                  <TextField
-                    value={editUsername}
-                    onChange={(e) => setEditUsername(e.target.value)}
-                    disabled={isLoading}
-                    size={isMobile ? "small" : "medium"}
-                    sx={{ flex: 1 }}
-                  />
-                </Box>
+                <TextField
+                  value={editUsername}
+                  onChange={(e) => setEditUsername(e.target.value)}
+                  disabled={isLoading}
+                  size={isMobile ? "small" : "medium"}
+                  sx={{ flex: 1 }}
+                />
               ) : (
                 <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
                   {entry.username}
@@ -271,7 +258,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
               )}
             </Box>
 
-            {/* Spitzname mit Stift-Symbol */}
+            {/* Spitzname */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
                 Spitzname:
@@ -285,15 +272,17 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
                     size={isMobile ? "small" : "medium"}
                     sx={{ flex: 1 }}
                   />
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleUpdate}
-                    disabled={isLoading}
-                    sx={{ py: 0.5, fontSize: "0.75rem", minHeight: 32 }}
-                  >
-                    {isLoading ? "Speichere..." : "Speichern"}
-                  </Button>
+                  {role === "Admin" && (
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={handleUpdate}
+                      disabled={isLoading}
+                      sx={{ py: 0.5, fontSize: "0.75rem", minHeight: 32 }}
+                    >
+                      {isLoading ? "Speichere..." : "Speichern"}
+                    </Button>
+                  )}
                 </Box>
               ) : (
                 <>
@@ -314,7 +303,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
               )}
             </Box>
 
-            {/* Passwort anzeigen */}
+            {/* Passwort */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
                 Passwort:
@@ -334,7 +323,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
               )}
             </Box>
 
-            {/* Weitere Felder nur anzeigen, wenn sie ausgefüllt sind */}
+            {/* Notiz */}
             {entry.note && (
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
@@ -345,60 +334,75 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
                 </Typography>
               </Box>
             )}
-            {entry.bougetList && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
-                  Bouget-Liste:
+
+            {/* Bouget-Liste */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
+                Bouget-Liste:
+              </Typography>
+              {isEditing && role === "Admin" ? (
+                <TextField
+                  value={editBougetList}
+                  onChange={(e) => setEditBougetList(e.target.value)}
+                  disabled={isLoading}
+                  size={isMobile ? "small" : "medium"}
+                  sx={{ flex: 1 }}
+                />
+              ) : (
+                <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+                  {entry.bougetList || "-"}
                 </Typography>
-                {isEditing && role === "Admin" ? (
-                  <TextField
-                    value={editBougetList}
-                    onChange={(e) => setEditBougetList(e.target.value)}
-                    disabled={isLoading}
-                    size={isMobile ? "small" : "medium"}
-                    sx={{ flex: 1 }}
-                  />
-                ) : (
-                  <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-                    {entry.bougetList}
-                  </Typography>
-                )}
-              </Box>
-            )}
-            {role === "Admin" && entry.admin_fee !== null && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
-                  Admin-Gebühr:
+              )}
+            </Box>
+
+            {/* Admin-Gebühr */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
+                Admin-Gebühr:
+              </Typography>
+              {isEditing && role === "Admin" ? (
+                <TextField
+                  value={editAdminFee}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, "");
+                    const numValue = value ? parseInt(value) : "";
+                    if (numValue > 999) return;
+                    setEditAdminFee(numValue);
+                  }}
+                  inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+                  disabled={isLoading}
+                  size={isMobile ? "small" : "medium"}
+                  sx={{ flex: 1 }}
+                />
+              ) : (
+                <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+                  {entry.admin_fee ? `${entry.admin_fee} €` : "-"}
                 </Typography>
-                {isEditing ? (
-                  <TextField
-                    value={editAdminFee}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/[^0-9]/g, "");
-                      const numValue = value ? parseInt(value) : "";
-                      if (numValue > 999) return;
-                      setEditAdminFee(numValue);
-                    }}
-                    inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
-                    disabled={isLoading}
-                    size={isMobile ? "small" : "medium"}
-                    sx={{ flex: 1 }}
-                  />
-                ) : (
-                  <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-                    {entry.admin_fee} €
-                  </Typography>
-                )}
-              </Box>
-            )}
+              )}
+            </Box>
+
+            {/* Erstellt am */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
                 Erstellt am:
               </Typography>
-              <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-                {formatDate(entry.createdAt)}
-              </Typography>
+              {isEditing && role === "Admin" ? (
+                <TextField
+                  type="date"
+                  value={editCreatedAt}
+                  onChange={(e) => setEditCreatedAt(e.target.value)}
+                  disabled={isLoading}
+                  size={isMobile ? "small" : "medium"}
+                  sx={{ flex: 1 }}
+                />
+              ) : (
+                <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+                  {formatDate(entry.createdAt)}
+                </Typography>
+              )}
             </Box>
+
+            {/* Gültig bis */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
                 Gültig bis:
@@ -418,13 +422,25 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
                 </Typography>
               )}
             </Box>
+
+            {/* Ersteller */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", fontWeight: "bold" }}>
                 Ersteller:
               </Typography>
-              <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-                {entry.owner}
-              </Typography>
+              {isEditing && role === "Admin" ? (
+                <TextField
+                  value={editOwner}
+                  onChange={(e) => setEditOwner(e.target.value)}
+                  disabled={isLoading}
+                  size={isMobile ? "small" : "medium"}
+                  sx={{ flex: 1 }}
+                />
+              ) : (
+                <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+                  {entry.owner}
+                </Typography>
+              )}
             </Box>
 
             {/* Verlängerungsanfrage-Button für Ersteller */}
