@@ -21,6 +21,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import ToggleOnIcon from "@mui/icons-material/ToggleOn";
 import ToggleOffIcon from "@mui/icons-material/ToggleOff";
 import PaymentIcon from "@mui/icons-material/Payment";
+import ExtensionIcon from "@mui/icons-material/Update"; // Neues Icon für Verlängerung
 import { supabase } from "./supabaseClient";
 import { formatDate, handleError } from "./utils";
 import { useSnackbar } from "./useSnackbar";
@@ -40,6 +41,15 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const { showSnackbar } = useSnackbar();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  // Prüfen, ob Verlängerungsanfrage möglich ist (weniger als 60 Tage bis Gültigkeitsdatum)
+  const canRequestExtension = useCallback(() => {
+    if (!entry.validUntil) return false;
+    const validUntilDate = new Date(entry.validUntil);
+    const currentDate = new Date();
+    const diffInDays = (validUntilDate - currentDate) / (1000 * 60 * 60 * 24);
+    return diffInDays <= 60 && diffInDays >= 0;
+  }, [entry.validUntil]);
 
   const handleUpdate = useCallback(async () => {
     setIsLoading(true);
@@ -143,32 +153,33 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
     }
   }, [entry, setEntries, showSnackbar]);
 
+  // Neue Funktion für Verlängerungsanfrage
   const handleRequestExtension = useCallback(async () => {
+    if (!canRequestExtension()) {
+      showSnackbar("Verlängerung kann nur beantragt werden, wenn das Gültigkeitsdatum weniger als 60 Tage entfernt ist.", "error");
+      return;
+    }
     setIsLoading(true);
     try {
       const { error } = await supabase
-        .from("extension_requests")
-        .insert({
-          entry_id: entry.id,
-          requested_by: entry.owner,
-          status: "pending",
-        });
+        .from("entries")
+        .update({ extensionRequest: { pending: true, requestedDate: new Date().toISOString() } })
+        .eq("id", entry.id);
       if (error) throw error;
-      showSnackbar("Verlängerungsanfrage erfolgreich gesendet!");
+      setEntries((prev) =>
+        prev.map((e) =>
+          e.id === entry.id
+            ? { ...e, extensionRequest: { pending: true, requestedDate: new Date().toISOString() } }
+            : e
+        )
+      );
+      showSnackbar("Verlängerungsanfrage erfolgreich gestellt!");
     } catch (error) {
       handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
     }
-  }, [entry, showSnackbar]);
-
-  const isExpiringSoon = () => {
-    const validUntilDate = new Date(entry.validUntil);
-    const now = new Date();
-    const diffTime = validUntilDate - now;
-    const diffDays = diffTime / (1000 * 60 * 60 * 24);
-    return diffDays <= 7 && diffDays >= 0;
-  };
+  }, [entry, setEntries, showSnackbar, canRequestExtension]);
 
   const canEdit = role === "Admin" || entry.owner === loggedInUser;
 
@@ -416,17 +427,18 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
               </Typography>
             </Box>
 
-            {/* Verlängerungsanfrage für Ersteller */}
-            {entry.owner === loggedInUser && isExpiringSoon() && role !== "Admin" && (
-              <Box sx={{ mt: 1 }}>
+            {/* Verlängerungsanfrage-Button für Ersteller */}
+            {canEdit && entry.owner === loggedInUser && role !== "Admin" && !entry.extensionRequest?.pending && canRequestExtension() && (
+              <Box sx={{ display: "flex", gap: 1, mt: 1, flexDirection: isMobile ? "column" : "row" }}>
                 <Button
                   variant="outlined"
                   color="primary"
                   onClick={handleRequestExtension}
                   disabled={isLoading}
                   sx={{ borderRadius: 2, py: 0.5, fontSize: "0.75rem", minHeight: 32 }}
+                  startIcon={<ExtensionIcon fontSize="small" />}
                 >
-                  Verlängerung anfragen
+                  Verlängerung beantragen
                 </Button>
               </Box>
             )}
