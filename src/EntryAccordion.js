@@ -189,9 +189,14 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
     <Box>
       <Accordion sx={{ mt: 1, boxShadow: "none", border: "1px solid #e0e0e0", borderRadius: 2 }}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography sx={{ fontSize: isMobile ? "0.9rem" : "1rem", color: "#1976d2" }}>
-            Details anzeigen
-          </Typography>
+          <Box sx={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", width: "100%", gap: 1 }}>
+            <Typography sx={{ fontSize: isMobile ? "0.9rem" : "1rem", fontWeight: "bold", flex: isMobile ? "unset" : 1 }}>
+              {entry.aliasNotes}
+            </Typography>
+            <Typography sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", color: "text.secondary", flex: isMobile ? "unset" : 1 }}>
+              Gültig bis: {formatDate(entry.validUntil)}
+            </Typography>
+          </Box>
         </AccordionSummary>
         <AccordionDetails sx={{ p: isMobile ? 1 : 2 }}>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
