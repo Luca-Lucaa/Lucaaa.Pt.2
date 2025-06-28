@@ -167,6 +167,8 @@ const AdminDashboard = ({
                 Gezahlt
               </Typography>
               <Typography variant="h6" color="success.main">
+ /
+
                 {stats.paidEntries}
               </Typography>
             </CardContent>
@@ -179,7 +181,7 @@ const AdminDashboard = ({
                 Gebühren
               </Typography>
               <Typography variant="h6" color="primary">
-                {stats.totalFees}$ €
+                {stats.totalFees} €
               </Typography>
             </CardContent>
           </Card>
@@ -209,6 +211,43 @@ const AdminDashboard = ({
           </Box>
         </Grid>
       </Grid>
+      {/* New Section: Fees by Creator */}
+      <Box sx={{ mt: 2 }}>
+        <Typography variant="h6" gutterBottom>
+          Gebühren nach Ersteller
+        </Typography>
+        <Grid container spacing={1}>
+          {stats.byOwner
+            .filter((owner) => owner.owner !== "Admin") // Exclude Admin
+            .map((owner) => (
+              <Grid item xs={12} sm={6} md={4} key={owner.owner}>
+                <Card
+                  sx={{
+                    borderRadius: 1,
+                    boxShadow: 1,
+                    p: 1,
+                    bgcolor: OWNER_COLORS[owner.owner] || "#ffffff",
+                  }}
+                >
+                  <CardContent sx={{ p: 1 }}>
+                    <Typography variant="body2" fontWeight="bold">
+                      {owner.owner}
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      Anzahl Einträge: {owner.count}
+                    </Typography>
+                    <Typography variant="body2" color="primary">
+                      Zu zahlende Gebühren: {owner.fees} €
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          {stats.byOwner.filter((owner) => owner.owner !== "Admin").length === 0 && (
+            <Typography>Keine Gebühren von Erstellern vorhanden.</Typography>
+          )}
+        </Grid>
+      </Box>
       <Box sx={{ mt: 2 }}>
         <Typography variant="h6" gutterBottom>
           Ausstehende Verlängerungsanfragen
@@ -234,7 +273,8 @@ const AdminDashboard = ({
                       variant="contained"
                       color="success"
                       size="small"
-                      startIcon={<CheckCircleIcon />}
+                      startIcon={<Check",
+//CircleIcon />}
                       onClick={() => {
                         setSelectedEntry(entry);
                         setNewValidUntil(
@@ -262,6 +302,7 @@ const AdminDashboard = ({
               </Grid>
             ))}
           </Grid>
+ 
         ) : (
           <Typography>Keine ausstehenden Anfragen.</Typography>
         )}
@@ -284,11 +325,9 @@ const AdminDashboard = ({
             onChange={(e) => setNewValidUntil(e.target.value)}
             InputLabelProps={{ shrink: true }}
           />
-          {selectedEntry && (
-            <Typography variant="body2" sx={{ mt: 2 }}>
-              Aktuelles Gültigkeitsdatum: {formatDate(selectedEntry.validUntil)}
-            </Typography>
-          )}
+          <Typography variant="body2" sx={{ mt: 2 }}>
+            Aktuelles Gültigkeitsdatum: {formatDate(selectedEntry?.validUntil)}
+          </Typography>
         </DialogContent>
         <DialogActions>
           <Button
@@ -297,7 +336,9 @@ const AdminDashboard = ({
           >
             Abbrechen
           </Button>
-          <Button onClick={handleApproveExtension} color="success">
+          <Button onClick={handleApproveExtension} color="success
+
+">
             Genehmigen
           </Button>
         </DialogActions>
