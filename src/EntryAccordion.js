@@ -23,11 +23,16 @@ import { useSnackbar } from "./useSnackbar";
 const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [editedEntry, setEditedEntry] = useState({
+    username: entry.username,
+    password: entry.password,
     aliasNotes: entry.aliasNotes,
     bougetList: entry.bougetList || "",
     type: entry.type,
+    status: entry.status,
+    paymentStatus: entry.paymentStatus,
     validUntil: new Date(entry.validUntil).toISOString().split("T")[0],
     admin_fee: entry.admin_fee || "",
+    note: entry.note || "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const { showSnackbar } = useSnackbar();
@@ -90,31 +95,40 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
 
   const updateEntry = useCallback(async () => {
     // Validate inputs
+    if (!editedEntry.username.trim()) {
+      showSnackbar("Benutzername darf nicht leer sein.", "error");
+      return;
+    }
+    if (!editedEntry.password.trim()) {
+      showSnackbar("Passwort darf nicht leer sein.", "error");
+      return;
+    }
     if (!editedEntry.aliasNotes.trim()) {
       showSnackbar("Spitzname darf nicht leer sein.", "error");
       return;
     }
-
     const validUntilDate = new Date(editedEntry.validUntil);
     if (isNaN(validUntilDate)) {
       showSnackbar("Bitte ein gültiges Datum eingeben.", "error");
       return;
     }
-
-    const adminFee = editedEntry.admin_fee
-      ? parseInt(editedEntry.admin_fee)
-      : null;
+    const adminFee = editedEntry.admin_fee ? parseInt(editedEntry.admin_fee) : null;
     if (role === "Admin" && editedEntry.admin_fee && (isNaN(adminFee) || adminFee < 0 || adminFee > 999)) {
       showSnackbar("Admin-Gebühr muss zwischen 0 und 999 € liegen.", "error");
       return;
     }
 
     const updatedEntry = {
+      username: editedEntry.username.trim(),
+      password: editedEntry.password.trim(),
       aliasNotes: editedEntry.aliasNotes.trim(),
       bougetList: editedEntry.bougetList ? editedEntry.bougetList.trim() : "",
       type: editedEntry.type,
+      status: editedEntry.status,
+      paymentStatus: editedEntry.paymentStatus,
       validUntil: validUntilDate.toISOString(),
       admin_fee: role === "Admin" ? adminFee : entry.admin_fee,
+      note: editedEntry.note ? editedEntry.note.trim() : "",
     };
 
     setIsLoading(true);
@@ -155,6 +169,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
             <Typography variant="body2">Admin-Gebühr: {entry.admin_fee ? `${entry.admin_fee} €` : "Keine"}</Typography>
           )}
           <Typography variant="body2">Erstellt am: {formatDate(entry.createdAt)}</Typography>
+          <Typography variant="body2">Notiz: {entry.note || "Keine"}</Typography>
           <Typography variant="body2">Verlängerungsanfrage: {entry.extensionRequest?.pending ? "Ausstehend" : "Keine"}</Typography>
           {entry.extensionHistory?.length > 0 && (
             <Box>
@@ -204,6 +219,22 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
         <DialogTitle>Abonnent bearbeiten</DialogTitle>
         <DialogContent>
           <TextField
+            label="Benutzername"
+            fullWidth
+            margin="normal"
+            value={editedEntry.username}
+            onChange={(e) => setEditedEntry({ ...editedEntry, username: e.target.value })}
+            disabled={isLoading}
+          />
+          <TextField
+            label="Passwort"
+            fullWidth
+            margin="normal"
+            value={editedEntry.password}
+            onChange={(e) => setEditedEntry({ ...editedEntry, password: e.target.value })}
+            disabled={isLoading}
+          />
+          <TextField
             label="Spitzname, Notizen etc."
             fullWidth
             margin="normal"
@@ -229,6 +260,26 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
             <MenuItem value="Premium">Premium</MenuItem>
             <MenuItem value="Basic">Basic</MenuItem>
           </Select>
+          <Select
+            fullWidth
+            margin="normal"
+            value={editedEntry.status}
+            onChange={(e) => setEditedEntry({ ...editedEntry, status: e.target.value })}
+            disabled={isLoading}
+          >
+            <MenuItem value="Aktiv">Aktiv</MenuItem>
+            <MenuItem value="Inaktiv">Inaktiv</MenuItem>
+          </Select>
+          <Select
+            fullWidth
+            margin="normal"
+            value={editedEntry.paymentStatus}
+            onChange={(e) => setEditedEntry({ ...editedEntry, paymentStatus: e.target.value })}
+            disabled={isLoading}
+          >
+            <MenuItem value="Gezahlt">Gezahlt</MenuItem>
+            <MenuItem value="Nicht gezahlt">Nicht gezahlt</MenuItem>
+          </Select>
           <TextField
             label="Gültig bis"
             fullWidth
@@ -253,6 +304,14 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
               disabled={isLoading}
             />
           )}
+          <TextField
+            label="Notiz"
+            fullWidth
+            margin="normal"
+            value={editedEntry.note || ""}
+            onChange={(e) => setEditedEntry({ ...editedEntry, note: e.target.value })}
+            disabled={isLoading}
+          />
         </DialogContent>
         <DialogActions>
           <Button
