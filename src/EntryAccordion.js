@@ -23,15 +23,15 @@ import { useSnackbar } from "./useSnackbar";
 const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [editedEntry, setEditedEntry] = useState({
-    username: entry.username,
-    password: entry.password,
-    aliasNotes: entry.aliasNotes,
+    username: entry.username || "",
+    password: entry.password || "",
+    aliasNotes: entry.aliasNotes || "",
     bougetList: entry.bougetList || "",
-    type: entry.type,
-    status: entry.status,
-    paymentStatus: entry.paymentStatus,
-    validUntil: new Date(entry.validUntil).toISOString().split("T")[0],
-    admin_fee: entry.admin_fee || "",
+    type: entry.type || "Premium",
+    status: entry.status || "Inaktiv",
+    paymentStatus: entry.paymentStatus || "Nicht gezahlt",
+    validUntil: entry.validUntil ? new Date(entry.validUntil).toISOString().split("T")[0] : "",
+    admin_fee: entry.admin_fee != null ? entry.admin_fee.toString() : "",
     note: entry.note || "",
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -52,6 +52,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
       );
       showSnackbar(`Status zu ${newStatus} geändert.`, "success");
     } catch (error) {
+      console.error("Error toggling status:", error);
       handleError(error, showSnackbar);
       showSnackbar(`Fehler beim Ändern des Status: ${error.message || "Unbekannter Fehler"}`, "error");
     }
@@ -72,6 +73,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
       );
       showSnackbar(`Zahlungsstatus zu ${newPaymentStatus} geändert.`, "success");
     } catch (error) {
+      console.error("Error toggling payment status:", error);
       handleError(error, showSnackbar);
       showSnackbar(`Fehler beim Ändern des Zahlungsstatus: ${error.message || "Unbekannter Fehler"}`, "error");
     }
@@ -90,7 +92,8 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
         prev.map((e) => (e.id === entry.id ? { ...e, extensionRequest: data.extensionRequest } : e))
       );
       showSnackbar("Verlängerungsanfrage gesendet.", "success");
-    } DemographicData {
+    } catch (error) {
+      console.error("Error sending extension request:", error);
       handleError(error, showSnackbar);
       showSnackbar(`Fehler beim Senden der Verlängerungsanfrage: ${error.message || "Unbekannter Fehler"}`, "error");
     }
@@ -121,6 +124,24 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
       return;
     }
 
+    // Check for unique username constraint
+    if (editedEntry.username !== entry.username) {
+      const { data: existingEntry, error: checkError } = await supabase
+        .from("entries")
+        .select("id")
+        .eq("username", editedEntry.username.trim())
+        .single();
+      if (checkError && checkError.code !== "PGRST116") { // PGRST116: No rows found
+        console.error("Error checking username:", checkError);
+        showSnackbar(`Fehler beim Überprüfen des Benutzernamens: ${checkError.message}`, "error");
+        return;
+      }
+      if (existingEntry) {
+        showSnackbar("Benutzername existiert bereits.", "error");
+        return;
+      }
+    }
+
     const updatedEntry = {
       username: editedEntry.username.trim(),
       password: editedEntry.password.trim(),
@@ -149,6 +170,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
       setOpenEditDialog(false);
       showSnackbar("Abonnent erfolgreich aktualisiert.", "success");
     } catch (error) {
+      console.error("Error updating entry:", error);
       handleError(error, showSnackbar);
       showSnackbar(`Fehler beim Speichern: ${error.message || "Unbekannter Fehler"}`, "error");
     } finally {
