@@ -167,8 +167,6 @@ const AdminDashboard = ({
                 Gezahlt
               </Typography>
               <Typography variant="h6" color="success.main">
- /
-
                 {stats.paidEntries}
               </Typography>
             </CardContent>
@@ -211,14 +209,14 @@ const AdminDashboard = ({
           </Box>
         </Grid>
       </Grid>
-      {/* New Section: Fees by Creator */}
+      {/* Section: Fees by Creator */}
       <Box sx={{ mt: 2 }}>
         <Typography variant="h6" gutterBottom>
           Gebühren nach Ersteller
         </Typography>
         <Grid container spacing={1}>
           {stats.byOwner
-            .filter((owner) => owner.owner !== "Admin") // Exclude Admin
+            .filter((owner) => owner.owner !== "Admin")
             .map((owner) => (
               <Grid item xs={12} sm={6} md={4} key={owner.owner}>
                 <Card
@@ -273,8 +271,7 @@ const AdminDashboard = ({
                       variant="contained"
                       color="success"
                       size="small"
-                      startIcon={<Check",
-//CircleIcon />}
+                      startIcon={<CheckCircleIcon />}
                       onClick={() => {
                         setSelectedEntry(entry);
                         setNewValidUntil(
@@ -302,7 +299,6 @@ const AdminDashboard = ({
               </Grid>
             ))}
           </Grid>
- 
         ) : (
           <Typography>Keine ausstehenden Anfragen.</Typography>
         )}
@@ -325,9 +321,11 @@ const AdminDashboard = ({
             onChange={(e) => setNewValidUntil(e.target.value)}
             InputLabelProps={{ shrink: true }}
           />
-          <Typography variant="body2" sx={{ mt: 2 }}>
-            Aktuelles Gültigkeitsdatum: {formatDate(selectedEntry?.validUntil)}
-          </Typography>
+          {selectedEntry && (
+            <Typography variant="body2" sx={{ mt: 2 }}>
+              Aktuelles Gültigkeitsdatum: {formatDate(selectedEntry.validUntil)}
+            </Typography>
+          )}
         </DialogContent>
         <DialogActions>
           <Button
@@ -336,9 +334,10 @@ const AdminDashboard = ({
           >
             Abbrechen
           </Button>
-          <Button onClick={handleApproveExtension} color="success
-
-">
+          <Button
+            onClick={handleApproveExtension}
+            color="success"
+          >
             Genehmigen
           </Button>
         </DialogActions>
