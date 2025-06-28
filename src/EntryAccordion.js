@@ -89,6 +89,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   }, [entry, setEntries, showSnackbar]);
 
   const updateEntry = useCallback(async () => {
+    // Validate inputs
     if (!editedEntry.aliasNotes.trim()) {
       showSnackbar("Spitzname darf nicht leer sein.", "error");
       return;
@@ -100,12 +101,20 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
       return;
     }
 
+    const adminFee = editedEntry.admin_fee
+      ? parseInt(editedEntry.admin_fee)
+      : null;
+    if (role === "Admin" && editedEntry.admin_fee && (isNaN(adminFee) || adminFee < 0 || adminFee > 999)) {
+      showSnackbar("Admin-Gebühr muss zwischen 0 und 999 € liegen.", "error");
+      return;
+    }
+
     const updatedEntry = {
-      aliasNotes: editedEntry.aliasNotes,
-      bougetList: editedEntry.bougetList || "",
+      aliasNotes: editedEntry.aliasNotes.trim(),
+      bougetList: editedEntry.bougetList ? editedEntry.bougetList.trim() : "",
       type: editedEntry.type,
       validUntil: validUntilDate.toISOString(),
-      admin_fee: role === "Admin" ? (editedEntry.admin_fee ? parseInt(editedEntry.admin_fee) : null) : entry.admin_fee,
+      admin_fee: role === "Admin" ? adminFee : entry.admin_fee,
     };
 
     setIsLoading(true);
@@ -121,9 +130,10 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
         prev.map((e) => (e.id === entry.id ? { ...e, ...data } : e))
       );
       setOpenEditDialog(false);
-      showSnackbar("Abonnent erfolgreich aktualisiert.");
+      showSnackbar("Abonnent erfolgreich aktualisiert.", "success");
     } catch (error) {
       handleError(error, showSnackbar);
+      showSnackbar(`Fehler beim Speichern: ${error.message || "Unbekannter Fehler"}`, "error");
     } finally {
       setIsLoading(false);
     }
@@ -237,9 +247,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
               value={editedEntry.admin_fee || ""}
               onChange={(e) => {
                 const value = e.target.value.replace(/[^0-9]/g, "");
-                const numValue = value ? parseInt(value) : "";
-                if (numValue > 999) return;
-                setEditedEntry({ ...editedEntry, admin_fee: numValue });
+                setEditedEntry({ ...editedEntry, admin_fee: value });
               }}
               inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
               disabled={isLoading}
