@@ -185,8 +185,22 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
       </AccordionSummary>
       <AccordionDetails>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          <Typography variant="body2">Status: {entry.status}</Typography>
-          <Typography variant="body2">Zahlungsstatus: {entry.paymentStatus}</Typography>
+          <Typography
+            variant="body2"
+            sx={{
+              color: entry.status === "Aktiv" ? "success.main" : "error.main",
+            }}
+          >
+            Status: {entry.status}
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{
+              color: entry.paymentStatus === "Gezahlt" ? "success.main" : "error.main",
+            }}
+          >
+            Zahlungsstatus: {entry.paymentStatus}
+          </Typography>
           <Typography variant="body2">Typ: {entry.type}</Typography>
           <Typography variant="body2">Ersteller: {entry.owner}</Typography>
           <Typography variant="body2">Bouget-Liste: {entry.bougetList || "Keine"}</Typography>
