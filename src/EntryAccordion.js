@@ -50,9 +50,10 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
       setEntries((prev) =>
         prev.map((e) => (e.id === entry.id ? { ...e, status: newStatus } : e))
       );
-      showSnackbar(`Status zu ${newStatus} geändert.`);
+      showSnackbar(`Status zu ${newStatus} geändert.`, "success");
     } catch (error) {
       handleError(error, showSnackbar);
+      showSnackbar(`Fehler beim Ändern des Status: ${error.message || "Unbekannter Fehler"}`, "error");
     }
   }, [entry, setEntries, showSnackbar]);
 
@@ -69,9 +70,10 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
       setEntries((prev) =>
         prev.map((e) => (e.id === entry.id ? { ...e, paymentStatus: newPaymentStatus } : e))
       );
-      showSnackbar(`Zahlungsstatus zu ${newPaymentStatus} geändert.`);
+      showSnackbar(`Zahlungsstatus zu ${newPaymentStatus} geändert.`, "success");
     } catch (error) {
       handleError(error, showSnackbar);
+      showSnackbar(`Fehler beim Ändern des Zahlungsstatus: ${error.message || "Unbekannter Fehler"}`, "error");
     }
   }, [entry, setEntries, showSnackbar]);
 
@@ -87,9 +89,10 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
       setEntries((prev) =>
         prev.map((e) => (e.id === entry.id ? { ...e, extensionRequest: data.extensionRequest } : e))
       );
-      showSnackbar("Verlängerungsanfrage gesendet.");
-    } catch (error) {
+      showSnackbar("Verlängerungsanfrage gesendet.", "success");
+    } DemographicData {
       handleError(error, showSnackbar);
+      showSnackbar(`Fehler beim Senden der Verlängerungsanfrage: ${error.message || "Unbekannter Fehler"}`, "error");
     }
   }, [entry, setEntries, showSnackbar]);
 
@@ -113,7 +116,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
       return;
     }
     const adminFee = editedEntry.admin_fee ? parseInt(editedEntry.admin_fee) : null;
-    if (role === "Admin" && editedEntry.admin_fee && (isNaN(adminFee) || adminFee < 0 || adminFee > 999)) {
+    if (editedEntry.admin_fee && (isNaN(adminFee) || adminFee < 0 || adminFee > 999)) {
       showSnackbar("Admin-Gebühr muss zwischen 0 und 999 € liegen.", "error");
       return;
     }
@@ -127,7 +130,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
       status: editedEntry.status,
       paymentStatus: editedEntry.paymentStatus,
       validUntil: validUntilDate.toISOString(),
-      admin_fee: role === "Admin" ? adminFee : entry.admin_fee,
+      admin_fee: adminFee,
       note: editedEntry.note ? editedEntry.note.trim() : "",
     };
 
@@ -151,7 +154,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [editedEntry, entry, role, setEntries, showSnackbar]);
+  }, [editedEntry, entry, setEntries, showSnackbar]);
 
   return (
     <Accordion sx={{ mt: 1, borderRadius: 2, boxShadow: 2 }}>
@@ -165,9 +168,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
           <Typography variant="body2">Typ: {entry.type}</Typography>
           <Typography variant="body2">Ersteller: {entry.owner}</Typography>
           <Typography variant="body2">Bouget-Liste: {entry.bougetList || "Keine"}</Typography>
-          {role === "Admin" && (
-            <Typography variant="body2">Admin-Gebühr: {entry.admin_fee ? `${entry.admin_fee} €` : "Keine"}</Typography>
-          )}
+          <Typography variant="body2">Admin-Gebühr: {entry.admin_fee ? `${entry.admin_fee} €` : "Keine"}</Typography>
           <Typography variant="body2">Erstellt am: {formatDate(entry.createdAt)}</Typography>
           <Typography variant="body2">Notiz: {entry.note || "Keine"}</Typography>
           <Typography variant="body2">Verlängerungsanfrage: {entry.extensionRequest?.pending ? "Ausstehend" : "Keine"}</Typography>
@@ -182,7 +183,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
             </Box>
           )}
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mt: 2 }}>
-            {(role === "Admin" || entry.owner === loggedInUser) && (
+            {role === "Admin" && (
               <>
                 <Chip
                   label={entry.status === "Aktiv" ? "Deaktivieren" : "Aktivieren"}
@@ -290,20 +291,18 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
             disabled={isLoading}
             InputLabelProps={{ shrink: true }}
           />
-          {role === "Admin" && (
-            <TextField
-              label="Admin-Gebühr (€)"
-              fullWidth
-              margin="normal"
-              value={editedEntry.admin_fee || ""}
-              onChange={(e) => {
-                const value = e.target.value.replace(/[^0-9]/g, "");
-                setEditedEntry({ ...editedEntry, admin_fee: value });
-              }}
-              inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
-              disabled={isLoading}
-            />
-          )}
+          <TextField
+            label="Admin-Gebühr (€)"
+            fullWidth
+            margin="normal"
+            value={editedEntry.admin_fee || ""}
+            onChange={(e) => {
+              const value = e.target.value.replace(/[^0-9]/g, "");
+              setEditedEntry({ ...editedEntry, admin_fee: value });
+            }}
+            inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+            disabled={isLoading}
+          />
           <TextField
             label="Notiz"
             fullWidth
