@@ -37,6 +37,7 @@ const EntryList = ({
   const [statusFilter, setStatusFilter] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
   const [ownerFilter, setOwnerFilter] = useState("");
+  const [sortOrder, setSortOrder] = useState("asc"); // New state for sort order
   const [isLoading, setIsLoading] = useState(false);
   const [newEntry, setNewEntry] = useState({
     username: "",
@@ -76,6 +77,21 @@ const EntryList = ({
     return uniqueOwners.sort();
   }, [entries]);
 
+  // Calculate expiring entries for the current month
+  const expiringThisMonth = useMemo(() => {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth();
+    return entries.filter((entry) => {
+      const validUntil = new Date(entry.validUntil);
+      return (
+        validUntil.getFullYear() === currentYear &&
+        validUntil.getMonth() === currentMonth &&
+        validUntil.getDate() >= currentDate.getDate()
+      );
+    });
+  }, [entries]);
+
   const filteredEntries = useMemo(() => {
     let filtered = entries;
     if (role !== "Admin") {
@@ -96,7 +112,12 @@ const EntryList = ({
     if (paymentFilter) {
       filtered = filtered.filter((entry) => entry.paymentStatus === paymentFilter);
     }
-    return filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    // Sort by validUntil
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.validUntil);
+      const dateB = new Date(b.validUntil);
+      return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+    });
   }, [
     entries,
     role,
@@ -105,6 +126,7 @@ const EntryList = ({
     statusFilter,
     paymentFilter,
     ownerFilter,
+    sortOrder,
   ]);
 
   const calculateTotalFeesForOwner = useCallback(
@@ -266,6 +288,27 @@ const EntryList = ({
           </CardContent>
         </Card>
       )}
+      {/* Expiring This Month Info Box */}
+      <Card sx={{ mb: 3, p: isMobile ? 1 : 2, bgcolor: "#ffebee", boxShadow: 3, borderRadius: 2 }}>
+        <CardContent>
+          <Typography variant="h6" sx={{ fontSize: isMobile ? "1rem" : "1.25rem", color: "#c62828" }}>
+            Abonnenten, die diesen Monat auslaufen
+          </Typography>
+          {expiringThisMonth.length === 0 ? (
+            <Typography variant="body2" sx={{ mt: 1, color: "#555", fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+              Keine Abonnenten laufen diesen Monat aus.
+            </Typography>
+          ) : (
+            <Box sx={{ mt: 1 }}>
+              {expiringThisMonth.map((entry) => (
+                <Typography key={entry.id} variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+                  {entry.aliasNotes} (Gültig bis: {formatDate(entry.validUntil)})
+                </Typography>
+              ))}
+            </Box>
+          )}
+        </CardContent>
+      </Card>
       <Box
         sx={{
           mb: 3,
@@ -324,6 +367,17 @@ const EntryList = ({
             ))}
           </Select>
         )}
+        <Select
+          value={sortOrder}
+          onChange={(e) => setSortOrder(e.target.value)}
+          displayEmpty
+          fullWidth
+          sx={{ bgcolor: "#fff", borderRadius: 1 }}
+          size={isMobile ? "small" : "medium"}
+        >
+          <MenuItem value="asc">Gültigkeit (aufsteigend)</MenuItem>
+          <MenuItem value="desc">Gültigkeit (absteigend)</MenuItem>
+        </Select>
       </Box>
       <Box
         sx={{
