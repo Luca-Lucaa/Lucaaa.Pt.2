@@ -37,7 +37,7 @@ const EntryList = ({
   const [statusFilter, setStatusFilter] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
   const [ownerFilter, setOwnerFilter] = useState("");
-  const [sortOrder, setSortOrder] = useState("asc"); // New state for sort order
+  const [sortOrder, setSortOrder] = useState("asc");
   const [isLoading, setIsLoading] = useState(false);
   const [newEntry, setNewEntry] = useState({
     username: "",
@@ -77,18 +77,12 @@ const EntryList = ({
     return uniqueOwners.sort();
   }, [entries]);
 
-  // Calculate expiring entries for the current month
-  const expiringThisMonth = useMemo(() => {
+  // Calculate expired entries (validUntil before current date)
+  const expiredEntries = useMemo(() => {
     const currentDate = new Date();
-    const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth();
     return entries.filter((entry) => {
       const validUntil = new Date(entry.validUntil);
-      return (
-        validUntil.getFullYear() === currentYear &&
-        validUntil.getMonth() === currentMonth &&
-        validUntil.getDate() >= currentDate.getDate()
-      );
+      return validUntil < currentDate;
     });
   }, [entries]);
 
@@ -255,7 +249,7 @@ const EntryList = ({
       if (error) throw error;
       setEntries((prev) => [data[0], ...prev]);
       setOpenManualDialog(false);
-      showSnackbar("Bestehender Abonnent erfolgreich eingepflegt!");
+      showSnackbar("B Westhender Abonnent erfolgreich eingepflegt!");
     } catch (error) {
       handleError(error, showSnackbar);
     } finally {
@@ -288,19 +282,19 @@ const EntryList = ({
           </CardContent>
         </Card>
       )}
-      {/* Expiring This Month Info Box */}
+      {/* Expired Subscribers Info Box */}
       <Card sx={{ mb: 3, p: isMobile ? 1 : 2, bgcolor: "#ffebee", boxShadow: 3, borderRadius: 2 }}>
         <CardContent>
           <Typography variant="h6" sx={{ fontSize: isMobile ? "1rem" : "1.25rem", color: "#c62828" }}>
-            Abonnenten, die diesen Monat auslaufen
+            Abgelaufene Abonnenten
           </Typography>
-          {expiringThisMonth.length === 0 ? (
+          {expiredEntries.length === 0 ? (
             <Typography variant="body2" sx={{ mt: 1, color: "#555", fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-              Keine Abonnenten laufen diesen Monat aus.
+              Keine Abonnenten sind abgelaufen.
             </Typography>
           ) : (
             <Box sx={{ mt: 1 }}>
-              {expiringThisMonth.map((entry) => (
+              {expiredEntries.map((entry) => (
                 <Typography key={entry.id} variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
                   {entry.aliasNotes} (Gültig bis: {formatDate(entry.validUntil)})
                 </Typography>
