@@ -37,6 +37,16 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const [isLoading, setIsLoading] = useState(false);
   const { showSnackbar } = useSnackbar();
 
+  // Check if validUntil is within 30 days from today
+  const isExtensionRequestAllowed = useCallback(() => {
+    if (!entry.validUntil) return false;
+    const validUntilDate = new Date(entry.validUntil);
+    const currentDate = new Date("2025-06-28T14:27:00+02:00"); // Current date: June 28, 2025, 02:27 PM CEST
+    const timeDiff = validUntilDate - currentDate;
+    const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
+    return daysDiff <= 30; // Allow extension request if within 30 days
+  }, [entry.validUntil]);
+
   const handleToggleStatus = useCallback(async () => {
     const newStatus = entry.status === "Aktiv" ? "Inaktiv" : "Aktiv";
     try {
@@ -241,7 +251,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
                 />
               </>
             )}
-            {entry.owner === loggedInUser && !entry.extensionRequest?.pending && (
+            {entry.owner === loggedInUser && !entry.extensionRequest?.pending && isExtensionRequestAllowed() && (
               <Chip
                 label="Verlängerung anfragen"
                 onClick={handleExtensionRequest}
