@@ -77,9 +77,18 @@ const EntryList = ({
     return uniqueOwners.sort();
   }, [entries]);
 
+  // Check if an entry is new (created within the last 7 days)
+  const isNewEntry = useCallback((createdAt) => {
+    const createdDate = new Date(createdAt);
+    const currentDate = new Date("2025-06-30T18:36:00+02:00"); // Current date: June 30, 2025, 06:36 PM CEST
+    const timeDiff = currentDate - createdDate;
+    const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
+    return daysDiff <= 7; // Highlight entries created within 7 days
+  }, []);
+
   // Calculate expired entries (validUntil before current date)
   const expiredEntries = useMemo(() => {
-    const currentDate = new Date();
+    const currentDate = new Date("2025-06-30T18:36:00+02:00");
     return entries.filter((entry) => {
       const validUntil = new Date(entry.validUntil);
       return validUntil < currentDate && (role === "Admin" || entry.owner === loggedInUser);
@@ -435,232 +444,236 @@ const EntryList = ({
           {filteredEntries.map((entry) => (
             <Grid item xs={12} sm={6} md={4} key={entry.id}>
               <Card
-              sx={{
-                borderRadius: 3,
-                boxShadow: 4,
-                bgcolor: role === "Admin" ? OWNER_COLORS[entry.owner] || "#ffffff" : "#ffffff",
-                transition: "transform 0.2s",
-                "&:hover": {
-                  transform: "translateY(-4px)",
-                  boxShadow: 6,
-                },
-              }}
-            >
-              <CardContent sx={{ p: isMobile ? 2 : 3 }}>
-                <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1, fontSize: isMobile ? "1rem" : "1.25rem" }}>
-                  {entry.aliasNotes}
-                </Typography>
-                <Typography variant="body2" color="textSecondary" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-                  Benutzername: {entry.username}
-                </Typography>
-                <Typography variant="body2" color="textSecondary" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-                  Gültig bis: {formatDate(entry.validUntil)}
-                </Typography>
-                <EntryAccordion
-                  entry={entry}
-                  role={role}
-                  loggedInUser={loggedInUser}
-                  setEntries={setEntries}
-                />
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-    )}
-    <Dialog
-      open={openCreateDialog}
-      onClose={() => setOpenCreateDialog(false)}
-      fullWidth
-      maxWidth="sm"
-      fullScreen={isMobile}
-    >
-      <DialogTitle sx={{ fontSize: isMobile ? "1rem" : "1.25rem" }}>
-        Neuen Abonnenten anlegen
-      </DialogTitle>
-      <DialogContent>
-        <TextField
-          label="Benutzername"
-          fullWidth
-          margin="normal"
-          value={newEntry.username}
-          disabled
-          sx={{ bgcolor: "#f0f0f0" }}
-          size={isMobile ? "small" : "medium"}
-        />
-        <TextField
-          label="Passwort"
-          fullWidth
-          margin="normal"
-          type="text"
-          value={newEntry.password}
-          disabled
-          sx={{ bgcolor: "#f0f0f0" }}
-          size={isMobile ? "small" : "medium"}
-        />
-        <TextField
-          label="Spitzname, Notizen etc."
-          fullWidth
-          margin="normal"
-          value={newEntry.aliasNotes}
-          onChange={(e) => setNewEntry({ ...newEntry, aliasNotes: e.target.value })}
-          disabled={isLoading}
-          size={isMobile ? "small" : "medium"}
-        />
-        <TextField
-          label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
-          fullWidth
-          margin="normal"
-          value={newEntry.bougetList || ""}
-          onChange={(e) => setNewEntry({ ...newEntry, bougetList: e.target.value })}
-          disabled={isLoading}
-          size={isMobile ? "small" : "medium"}
-        />
-        <Select
-          fullWidth
-          margin="normal"
-          value={newEntry.type}
-          onChange={(e) => setNewEntry({ ...newEntry, type: e.target.value })}
-          disabled={isLoading}
-          size={isMobile ? "small" : "medium"}
-        >
-          <MenuItem value="Premium">Premium</MenuItem>
-          <MenuItem value="Basic">Basic</MenuItem>
-        </Select>
-      </DialogContent>
-      <DialogActions>
-        <Button
-          onClick={() => setOpenCreateDialog(false)}
-          color="secondary"
-          disabled={isLoading}
-          sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
-        >
-          Abbrechen
-        </Button>
-        <Button
-          onClick={createEntry}
-          color="primary"
-          disabled={isLoading}
-          sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
-        >
-          {isLoading ? "Speichere..." : "Erstellen"}
-        </Button>
-      </DialogActions>
-    </Dialog>
-    <Dialog
-      open={openManualDialog}
-      onClose={() => setOpenManualDialog(false)}
-      fullWidth
-      maxWidth="sm"
-      fullScreen={isMobile}
-    >
-      <DialogTitle sx={{ fontSize: isMobile ? "1rem" : "1.25rem" }}>
-        Bestehenden Abonnenten einpflegen
-      </DialogTitle>
-      <DialogContent>
-        <TextField
-          label="Benutzername"
-          fullWidth
-          margin="normal"
-          value={manualEntry.username}
-          onChange={(e) => setManualEntry({ ...manualEntry, username: e.target.value })}
-          disabled={isLoading}
-          size={isMobile ? "small" : "medium"}
-        />
-        <TextField
-          label="Passwort"
-          fullWidth
-          margin="normal"
-          type="text"
-          value={manualEntry.password}
-          onChange={(e) => setManualEntry({ ...manualEntry, password: e.target.value })}
-          disabled={isLoading}
-          size={isMobile ? "small" : "medium"}
-        />
-        <TextField
-          label="Spitzname, Notizen etc."
-          fullWidth
-          margin="normal"
-          value={manualEntry.aliasNotes}
-          onChange={(e) => setManualEntry({ ...manualEntry, aliasNotes: e.target.value })}
-          disabled={isLoading}
-          size={isMobile ? "small" : "medium"}
-        />
-        <TextField
-          label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
-          fullWidth
-          margin="normal"
-          value={manualEntry.bougetList || ""}
-          onChange={(e) => setManualEntry({ ...manualEntry, bougetList: e.target.value })}
-          disabled={isLoading}
-          size={isMobile ? "small" : "medium"}
-        />
-        <Select
-          fullWidth
-          margin="normal"
-          value={manualEntry.type}
-          onChange={(e) => setManualEntry({ ...manualEntry, type: e.target.value })}
-          disabled={isLoading}
-          size={isMobile ? "small" : "medium"}
-        >
-          <MenuItem value="Premium">Premium</MenuItem>
-          <MenuItem value="Basic">Basic</MenuItem>
-        </Select>
-        <TextField
-          label="Gültig bis"
-          fullWidth
-          margin="normal"
-          type="date"
-          value={
-            manualEntry.validUntil
-              ? new Date(manualEntry.validUntil).toISOString().split("T")[0]
-              : ""
-          }
-          onChange={(e) =>
-            setManualEntry({ ...manualEntry, validUntil: new Date(e.target.value) })
-          }
-          disabled={isLoading}
-          size={isMobile ? "small" : "medium"}
-        />
-        {role === "Admin" && (
+                sx={{
+                  borderRadius: 3,
+                  boxShadow: 4,
+                  bgcolor: isNewEntry(entry.createdAt)
+                    ? "info.light"
+                    : (role === "Admin" ? OWNER_COLORS[entry.owner] || "#ffffff" : "#ffffff"),
+                  border: isNewEntry(entry.createdAt) ? "2px solid" : "none",
+                  borderColor: isNewEntry(entry.createdAt) ? "info.main" : "none",
+                  transition: "transform 0.2s",
+                  "&:hover": {
+                    transform: "translateY(-4px)",
+                    boxShadow: 6,
+                  },
+                }}
+              >
+                <CardContent sx={{ p: isMobile ? 2 : 3 }}>
+                  <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1, fontSize: isMobile ? "1rem" : "1.25rem" }}>
+                    {entry.aliasNotes}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+                    Benutzername: {entry.username}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+                    Gültig bis: {formatDate(entry.validUntil)}
+                  </Typography>
+                  <EntryAccordion
+                    entry={entry}
+                    role={role}
+                    loggedInUser={loggedInUser}
+                    setEntries={setEntries}
+                  />
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+      <Dialog
+        open={openCreateDialog}
+        onClose={() => setOpenCreateDialog(false)}
+        fullWidth
+        maxWidth="sm"
+        fullScreen={isMobile}
+      >
+        <DialogTitle sx={{ fontSize: isMobile ? "1rem" : "1.25rem" }}>
+          Neuen Abonnenten anlegen
+        </DialogTitle>
+        <DialogContent>
           <TextField
-            label="Admin-Gebühr (€)"
+            label="Benutzername"
             fullWidth
             margin="normal"
-            value={manualEntry.admin_fee || ""}
-            onChange={(e) => {
-              const value = e.target.value.replace(/[^0-9]/g, "");
-              const numValue = value ? parseInt(value) : null;
-              if (numValue > 999) return;
-              setManualEntry({ ...manualEntry, admin_fee: numValue });
-            }}
-            inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+            value={newEntry.username}
+            disabled
+            sx={{ bgcolor: "#f0f0f0" }}
+            size={isMobile ? "small" : "medium"}
+          />
+          <TextField
+            label="Passwort"
+            fullWidth
+            margin="normal"
+            type="text"
+            value={newEntry.password}
+            disabled
+            sx={{" bgcolor": "#f0f0f0" }}
+            size={isMobile ? "small" : "medium"}
+          />
+          <TextField
+            label="Spitzname, Notizen etc."
+            fullWidth
+            margin="normal"
+            value={newEntry.aliasNotes}
+            onChange={(e) => setNewEntry({ ...newEntry, aliasNotes: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
           />
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button
-          onClick={() => setOpenManualDialog(false)}
-          color="secondary"
-          disabled={isLoading}
-          sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
-        >
-          Abbrechen
-        </Button>
-        <Button
-          onClick={handleAddManualEntry}
-          color="primary"
-          disabled={isLoading}
-          sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
-        >
-          {isLoading ? "Speichere..." : "Hinzufügen"}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  </Box>
-);
+          <TextField
+            label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
+            fullWidth
+            margin="normal"
+            value={newEntry.bougetList || ""}
+            onChange={(e) => setNewEntry({ ...newEntry, bougetList: e.target.value })}
+            disabled={isLoading}
+            size={isMobile ? "small" : "medium"}
+          />
+          <Select
+            fullWidth
+            margin="normal"
+            value={newEntry.type}
+            onChange={(e) => setNewEntry({ ...newEntry, type: e.target.value })}
+            disabled={isLoading}
+            size={isMobile ? "small" : "medium"}
+          >
+            <MenuItem value="Premium">Premium</MenuItem>
+            <MenuItem value="Basic">Basic</MenuItem>
+          </Select>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setOpenCreateDialog(false)}
+            color="secondary"
+            disabled={isLoading}
+            sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
+          >
+            Abbrechen
+          </Button>
+          <Button
+            onClick={createEntry}
+            color="primary"
+            disabled={isLoading}
+            sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
+          >
+            {isLoading ? "Speichere..." : "Erstellen"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={openManualDialog}
+        onClose={() => setOpenManualDialog(false)}
+        fullWidth
+        maxWidth="sm"
+        fullScreen={isMobile}
+      >
+        <DialogTitle sx={{ fontSize: isMobile ? "1rem" : "1.25rem" }}>
+          Bestehenden Abonnenten einpflegen
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Benutzername"
+            fullWidth
+            margin="normal"
+            value={manualEntry.username}
+            onChange={(e) => setManualEntry({ ...manualEntry, username: e.target.value })}
+            disabled={isLoading}
+            size={isMobile ? "small" : "medium"}
+          />
+          <TextField
+            label="Passwort"
+            fullWidth
+            margin="normal"
+            type="text"
+            value={manualEntry.password}
+            onChange={(e) => setManualEntry({ ...manualEntry, password: e.target.value })}
+            disabled={isLoading}
+            size={isMobile ? "small" : "medium"}
+          />
+          <TextField
+            label="Spitzname, Notizen etc."
+            fullWidth
+            margin="normal"
+            value={manualEntry.aliasNotes}
+            onChange={(e) => setManualEntry({ ...manualEntry, aliasNotes: e.target.value })}
+            disabled={isLoading}
+            size={isMobile ? "small" : "medium"}
+          />
+          <TextField
+            label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
+            fullWidth
+            margin="normal"
+            value={manualEntry.bougetList || ""}
+            onChange={(e) => setManualEntry({ ...manualEntry, bougetList: e.target.value })}
+            disabled={isLoading}
+            size={isMobile ? "small" : "medium"}
+          />
+          <Select
+            fullWidth
+            margin="normal"
+            value={manualEntry.type}
+            onChange={(e) => setManualEntry({ ...manualEntry, type: e.target.value })}
+            disabled={isLoading}
+            size={isMobile ? "small" : "medium"}
+          >
+            <MenuItem value="Premium">Premium</MenuItem>
+            <MenuItem value="Basic">Basic</MenuItem>
+          </Select>
+          <TextField
+            label="Gültig bis"
+            fullWidth
+            margin="normal"
+            type="date"
+            value={
+              manualEntry.validUntil
+                ? new Date(manualEntry.validUntil).toISOString().split("T")[0]
+                : ""
+            }
+            onChange={(e) =>
+              setManualEntry({ ...manualEntry, validUntil: new Date(e.target.value) })
+            }
+            disabled={isLoading}
+            size={isMobile ? "small" : "medium"}
+          />
+          {role === "Admin" && (
+            <TextField
+              label="Admin-Gebühr (€)"
+              fullWidth
+              margin="normal"
+              value={manualEntry.admin_fee || ""}
+              onChange={(e) => {
+                const value = e.target.value.replace(/[^0-9]/g, "");
+                const numValue = value ? parseInt(value) : null;
+                if (numValue > 999) return;
+                setManualEntry({ ...manualEntry, admin_fee: numValue });
+              }}
+              inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+              disabled={isLoading}
+              size={isMobile ? "small" : "medium"}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setOpenManualDialog(false)}
+            color="secondary"
+            disabled={isLoading}
+            sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
+          >
+            Abbrechen
+          </Button>
+          <Button
+            onClick={handleAddManualEntry}
+            color="primary"
+            disabled={isLoading}
+            sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
+          >
+            {isLoading ? "Speichere..." : "Hinzufügen"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
 };
 
 export default EntryList;
