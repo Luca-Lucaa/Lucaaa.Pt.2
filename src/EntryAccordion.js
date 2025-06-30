@@ -41,7 +41,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const isExtensionRequestAllowed = useCallback(() => {
     if (!entry.validUntil) return false;
     const validUntilDate = new Date(entry.validUntil);
-    const currentDate = new Date("2025-06-28T14:27:00+02:00"); // Current date: June 28, 2025, 02:27 PM CEST
+    const currentDate = new Date("2025-06-30T18:41:00+02:00"); // Current date: June 30, 2025, 06:41 PM CEST
     const timeDiff = validUntilDate - currentDate;
     const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
     return daysDiff <= 30; // Allow extension request if within 30 days
