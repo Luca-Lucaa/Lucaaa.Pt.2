@@ -73,25 +73,37 @@ const EntryList = ({
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const owners = useMemo(() => {
-    const uniqueOwners = [...new Set(entries.map((entry) => entry.owner))];
+    const uniqueOwners = [...new Set(entries.map((entry) => entry.owner).filter(Boolean))];
     return uniqueOwners.sort();
   }, [entries]);
 
   // Check if an entry is new (created within the last 5 days)
   const isNewEntry = useCallback((createdAt) => {
-    const createdDate = new Date(createdAt);
-    const currentDate = new Date("2025-07-17T15:01:00+02:00"); // Current date: July 17, 2025, 15:01 PM CEST
-    const timeDiff = currentDate - createdDate;
-    const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
-    return daysDiff <= 5; // Highlight entries created within 5 days
+    if (!createdAt) return false;
+    try {
+      const createdDate = new Date(createdAt);
+      const currentDate = new Date("2025-07-17T15:01:00+02:00"); // Current date: July 17, 2025, 15:01 PM CEST
+      const timeDiff = currentDate - createdDate;
+      const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
+      return daysDiff <= 5; // Highlight entries created within 5 days
+    } catch (error) {
+      console.error("Fehler bei isNewEntry:", error);
+      return false;
+    }
   }, []);
 
   // Update status and paymentStatus for expired entries
   const updateExpiredEntries = useCallback(async () => {
     const currentDate = new Date("2025-07-17T15:01:00+02:00");
     const expiredEntries = entries.filter((entry) => {
-      const validUntil = new Date(entry.validUntil);
-      return validUntil < currentDate && (entry.status !== "Inaktiv" || entry.paymentStatus !== "Nicht gezahlt");
+      if (!entry.validUntil) return false;
+      try {
+        const validUntil = new Date(entry.validUntil);
+        return validUntil < currentDate && (entry.status !== "Inaktiv" || entry.paymentStatus !== "Nicht gezahlt");
+      } catch (error) {
+        console.error(`Ungültiges Datum in Eintrag ${entry.id}:`, error);
+        return false;
+      }
     });
 
     for (const entry of expiredEntries) {
@@ -113,17 +125,23 @@ const EntryList = ({
   }, [entries, setEntries, showSnackbar]);
 
   useEffect(() => {
-    if (entries.length > 0) {
+    if (entries.length > 0 && !isLoading) {
       updateExpiredEntries();
     }
-  }, [entries, updateExpiredEntries]);
+  }, [entries, updateExpiredEntries, isLoading]);
 
   // Calculate expired entries (validUntil before current date)
   const expiredEntries = useMemo(() => {
     const currentDate = new Date("2025-07-17T15:01:00+02:00");
     return entries.filter((entry) => {
-      const validUntil = new Date(entry.validUntil);
-      return validUntil < currentDate && (role === "Admin" || entry.owner === loggedInUser);
+      if (!entry.validUntil) return false;
+      try {
+        const validUntil = new Date(entry.validUntil);
+        return validUntil < currentDate && (role === "Admin" || entry.owner === loggedInUser);
+      } catch (error) {
+        console.error(`Ungültiges Datum in Eintrag ${entry.id}:`, error);
+        return false;
+      }
     });
   }, [entries, role, loggedInUser]);
 
@@ -137,8 +155,8 @@ const EntryList = ({
     if (debouncedSearchTerm) {
       filtered = filtered.filter(
         (entry) =>
-          entry.username.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-          entry.aliasNotes.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+          (entry.username || "").toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+          (entry.aliasNotes || "").toLowerCase().includes(debouncedSearchTerm.toLowerCase())
       );
     }
     if (statusFilter) {
@@ -149,8 +167,8 @@ const EntryList = ({
     }
     // Sort by validUntil
     return filtered.sort((a, b) => {
-      const dateA = new Date(a.validUntil);
-      const dateB = new Date(b.validUntil);
+      const dateA = new Date(a.validUntil || new Date());
+      const dateB = new Date(b.validUntil || new Date());
       return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
     });
   }, [
@@ -269,6 +287,11 @@ const EntryList = ({
     }
     setIsLoading(true);
     const validUntilDate = new Date(manualEntry.validUntil);
+    if (isNaN(validUntilDate)) {
+      showSnackbar("Bitte ein gültiges Datum eingeben.", "error");
+      setIsLoading(false);
+      return;
+    }
     const newManualEntry = {
       username: manualEntry.username,
       password: manualEntry.password,
@@ -282,13 +305,13 @@ const EntryList = ({
       note: "Dieser Abonnent besteht bereits",
       extensionHistory: [],
       bougetList: manualEntry.bougetList,
-      admin_fee: role === "Admin" ? manualEntry.admin_fee : null,
+      admin_fee: role === "Admin" ? (manualEntry.admin_fee ? parseInt(manualEntry.admin_fee) : null) : null,
       extensionRequest: null,
     };
     try {
       const { data, error } = await supabase.from("entries").insert([newManualEntry]).select();
       if (error) throw error;
- pardEntries((prev) => [data[0], ...prev]);
+      setEntries((prev) => [data[0], ...prev]);
       setOpenManualDialog(false);
       showSnackbar("Bestehender Abonnent erfolgreich eingepflegt!");
     } catch (error) {
@@ -676,7 +699,7 @@ const EntryList = ({
               onChange={(e) => {
                 const value = e.target.value.replace(/[^0-9]/g, "");
                 const numValue = value ? parseInt(value) : null;
-                if (numValue > 999) return;
+                if (numValue && numValue > 999) return;
                 setManualEntry({ ...manualEntry, admin_fee: numValue });
               }}
               inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
