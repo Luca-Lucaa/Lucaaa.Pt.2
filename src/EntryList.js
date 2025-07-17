@@ -82,7 +82,7 @@ const EntryList = ({
     if (!createdAt) return false;
     try {
       const createdDate = new Date(createdAt);
-      const currentDate = new Date("2025-07-17T22:38:00+02:00"); // Current date: July 17, 2025, 22:38 PM CEST
+      const currentDate = new Date("2025-07-17T22:33:00+02:00"); // Current date: July 17, 2025, 22:33 PM CEST
       const timeDiff = currentDate - createdDate;
       const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
       return daysDiff <= 5; // Highlight entries created within 5 days
@@ -95,7 +95,7 @@ const EntryList = ({
   // Update status and paymentStatus for expired entries
   const updateExpiredEntries = useCallback(async () => {
     if (!loggedInUser) return; // Prevent updates if no user is logged in
-    const currentDate = new Date("2025-07-17T22:38:00+02:00");
+    const currentDate = new Date("2025-07-17T22:33:00+02:00");
     const expiredEntries = entries.filter((entry) => {
       if (!entry.validUntil || !entry.id) return false;
       try {
@@ -133,7 +133,7 @@ const EntryList = ({
 
   // Calculate expired entries (validUntil before current date)
   const expiredEntries = useMemo(() => {
-    const currentDate = new Date("2025-07-17T22:38:00+02:00");
+    const currentDate = new Date("2025-07-17T22:33:00+02:00");
     return entries.filter((entry) => {
       if (!entry.validUntil) return false;
       try {
@@ -644,7 +644,7 @@ const EntryList = ({
       >
         <DialogTitle sx={{ fontSize: isMobile ? "1rem" : "1.25rem" }}>
           Bestehenden Abonnenten einpflegen
-        </Dialog_HIDDEN
+        </DialogTitle>
         <DialogContent>
           <TextField
             label="Benutzername"
