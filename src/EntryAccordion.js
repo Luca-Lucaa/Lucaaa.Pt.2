@@ -5,27 +5,22 @@ import {
   AccordionDetails,
   Typography,
   Box,
-  TextField,
   Button,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
+  TextField,
   Select,
   MenuItem,
   Chip,
-  useMediaQuery,
-  useTheme,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
 import { supabase } from "./supabaseClient";
 import { formatDate, handleError } from "./utils";
 import { useSnackbar } from "./useSnackbar";
 
 const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
-  const [expanded, setExpanded] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [editedEntry, setEditedEntry] = useState({
@@ -41,40 +36,22 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
     note: entry.note || "",
     owner: entry.owner || loggedInUser || "",
   });
-
   const { showSnackbar } = useSnackbar();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
+  // Check if validUntil is within 30 days from today
   const isExtensionRequestAllowed = useCallback(() => {
     if (!entry.validUntil) return false;
     try {
       const validUntilDate = new Date(entry.validUntil);
       const currentDate = new Date();
       const timeDiff = validUntilDate - currentDate;
-      const daysDiff = timeDiff / (1000 * 60 * 60 * 24);
-      return daysDiff <= 30 && daysDiff >= 0;
+      const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
+      return daysDiff <= 30 && daysDiff >= 0; // Allow extension request if within 30 days and not expired
     } catch (error) {
       console.error(`Ungültiges Datum in Eintrag ${entry.id}:`, error);
       return false;
     }
-  }, [entry.validUntil]);
-
-  const handleDelete = useCallback(async () => {
-    if (window.confirm("Möchten Sie diesen Eintrag wirklich löschen?")) {
-      setIsLoading(true);
-      try {
-        const { error } = await supabase.from("entries").delete().eq("id", entry.id);
-        if (error) throw error;
-        setEntries((prev) => prev.filter((e) => e.id !== entry.id));
-        showSnackbar("Eintrag erfolgreich gelöscht!");
-      } catch (error) {
-        handleError(error, showSnackbar);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  }, [entry.id, setEntries, showSnackbar]);
+  }, [entry.validUntil, entry.id]);
 
   const handleToggleStatus = useCallback(async () => {
     if (!entry.id) {
@@ -100,7 +77,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [entry.id, entry.status, setEntries, showSnackbar]);
+  }, [entry, setEntries, showSnackbar]);
 
   const handleTogglePayment = useCallback(async () => {
     if (!entry.id) {
@@ -126,13 +103,9 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [entry.id, entry.paymentStatus, setEntries, showSnackbar]);
+  }, [entry, setEntries, showSnackbar]);
 
-  const handleRequestExtension = useCallback(async () => {
-    if (!isExtensionRequestAllowed()) {
-      showSnackbar("Verlängerungsanfrage nicht erlaubt. Mindestens 30 Tage vor Ablauf möglich.", "error");
-      return;
-    }
+  const handleExtensionRequest = useCallback(async () => {
     if (!entry.id) {
       showSnackbar("Eintrag-ID fehlt.", "error");
       return;
@@ -149,25 +122,34 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
       setEntries((prev) =>
         prev.map((e) => (e.id === entry.id ? { ...e, extensionRequest: data.extensionRequest } : e))
       );
-      showSnackbar("Verlängerungsanfrage erfolgreich gesendet!");
+      showSnackbar("Verlängerungsanfrage gesendet.", "success");
     } catch (error) {
       handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
     }
-  }, [entry.id, isExtensionRequestAllowed, setEntries, showSnackbar]);
+  }, [entry, setEntries, showSnackbar]);
 
-  const handleSaveEdit = useCallback(async () => {
-    if (!editedEntry.aliasNotes.trim()) {
-      showSnackbar("Bitte Spitzname eingeben.", "error");
+  const updateEntry = useCallback(async () => {
+    if (!entry.id) {
+      showSnackbar("Eintrag-ID fehlt.", "error");
       return;
     }
+    // Validate inputs
     if (!editedEntry.username.trim()) {
       showSnackbar("Benutzername darf nicht leer sein.", "error");
       return;
     }
     if (!editedEntry.password.trim()) {
       showSnackbar("Passwort darf nicht leer sein.", "error");
+      return;
+    }
+    if (!editedEntry.aliasNotes.trim()) {
+      showSnackbar("Spitzname darf nicht leer sein.", "error");
+      return;
+    }
+    if (!editedEntry.owner && role === "Admin") {
+      showSnackbar("Ersteller muss ausgewählt werden.", "error");
       return;
     }
     const validUntilDate = new Date(editedEntry.validUntil);
@@ -181,18 +163,40 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
       return;
     }
 
+    // Check for unique username constraint
+    if (editedEntry.username !== entry.username) {
+      try {
+        const { data: existingEntry, error: checkError } = await supabase
+          .from("entries")
+          .select("id")
+          .eq("username", editedEntry.username.trim())
+          .single();
+        if (checkError && checkError.code !== "PGRST116") { // PGRST116: No rows found
+          showSnackbar(`Fehler beim Überprüfen des Benutzernamens: ${checkError.message}`, "error");
+          return;
+        }
+        if (existingEntry) {
+          showSnackbar("Benutzername existiert bereits.", "error");
+          return;
+        }
+      } catch (error) {
+        handleError(error, showSnackbar);
+        return;
+      }
+    }
+
     const updatedEntry = {
       username: editedEntry.username.trim(),
       password: editedEntry.password.trim(),
       aliasNotes: editedEntry.aliasNotes.trim(),
-      bougetList: editedEntry.bougetList.trim(),
+      bougetList: editedEntry.bougetList ? editedEntry.bougetList.trim() : "",
       type: editedEntry.type,
       status: editedEntry.status,
       paymentStatus: editedEntry.paymentStatus,
       validUntil: validUntilDate.toISOString(),
       admin_fee: adminFee,
       note: editedEntry.note ? editedEntry.note.trim() : "",
-      owner: role === "Admin" ? editedEntry.owner : entry.owner,
+      owner: role === "Admin" ? editedEntry.owner : entry.owner, // Only update owner if Admin
     };
 
     setIsLoading(true);
@@ -204,104 +208,54 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
         .select()
         .single();
       if (error) throw error;
-      setEntries((prev) => prev.map((e) => (e.id === entry.id ? { ...e, ...data } : e)));
+      setEntries((prev) =>
+        prev.map((e) => (e.id === entry.id ? { ...e, ...data } : e))
+      );
       setOpenEditDialog(false);
-      showSnackbar("Abonnent erfolgreich aktualisiert!");
+      showSnackbar("Abonnent erfolgreich aktualisiert.", "success");
     } catch (error) {
       handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
     }
-  }, [editedEntry, entry.id, role, setEntries, showSnackbar]);
+  }, [editedEntry, entry, role, setEntries, showSnackbar]);
 
   return (
-    <Accordion
-      expanded={expanded}
-      onChange={() => setExpanded(!expanded)}
-      sx={{ borderRadius: 2, boxShadow: 2, mt: 1 }}
-    >
+    <Accordion sx={{ mt: 1, borderRadius: 2, boxShadow: 2 }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Typography variant="body1" sx={{ fontSize: isMobile ? "0.9rem" : "1rem" }}>
-          Typ: {entry.type}
-        </Typography>
-        {role === "Admin" && (
-          <Box sx={{ ml: "auto", display: "flex", gap: 1 }}>
-            <IconButton
-              color="primary"
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenEditDialog(true);
-              }}
-              disabled={isLoading}
-              size="small"
-            >
-              <EditIcon />
-            </IconButton>
-            <IconButton
-              color="error"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDelete();
-              }}
-              disabled={isLoading}
-              size="small"
-            >
-              <DeleteIcon />
-            </IconButton>
-          </Box>
-        )}
-        {role !== "Admin" && isExtensionRequestAllowed() && !entry.extensionRequest?.pending && (
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleRequestExtension();
-            }}
-            disabled={isLoading}
-            size="small"
-            sx={{ ml: "auto" }}
-          >
-            Verlängerung anfragen
-          </Button>
-        )}
+        <Typography sx={{ fontWeight: "medium" }}>Details</Typography>
       </AccordionSummary>
       <AccordionDetails>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          <Typography variant="body2" sx={{ mb: 1, fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-            Benutzername: {entry.username}
+          <Typography
+            variant="body2"
+            sx={{
+              color: entry.status === "Aktiv" ? "success.main" : "error.main",
+            }}
+          >
+            Status: {entry.status || "Unbekannt"}
           </Typography>
-          <Typography variant="body2" sx={{ mb: 1, fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-            Passwort: {entry.password || "Keines"}
+          <Typography
+            variant="body2"
+            sx={{
+              color: entry.paymentStatus === "Gezahlt" ? "success.main" : "error.main",
+            }}
+          >
+            Zahlungsstatus: {entry.paymentStatus || "Unbekannt"}
           </Typography>
-          <Typography variant="body2" sx={{ mb: 1, fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-            Gültig bis: {formatDate(entry.validUntil)}
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 1, fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-            Ersteller: {entry.owner || "Keiner"}
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 1, fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-            Bouget-Liste: {entry.bougetList || "Keine"}
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 1, fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-            Admin-Gebühr: {entry.admin_fee != null ? `${entry.admin_fee} €` : "Keine"}
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 1, fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-            Erstellt am: {formatDate(entry.createdAt)}
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 1, fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-            Notiz: {entry.note || "Keine"}
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 1, fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-            Verlängerungsanfrage: {entry.extensionRequest?.pending ? "Ausstehend" : "Keine"}
-          </Typography>
+          <Typography variant="body2">Passwort: {entry.password || "Keines"}</Typography>
+          <Typography variant="body2">Typ: {entry.type || "Unbekannt"}</Typography>
+          <Typography variant="body2">Ersteller: {entry.owner || "Keiner"}</Typography>
+          <Typography variant="body2">Bouget-Liste: {entry.bougetList || "Keine"}</Typography>
+          <Typography variant="body2">Admin-Gebühr: {entry.admin_fee != null ? `${entry.admin_fee} €` : "Keine"}</Typography>
+          <Typography variant="body2">Erstellt am: {formatDate(entry.createdAt)}</Typography>
+          <Typography variant="body2">Notiz: {entry.note || "Keine"}</Typography>
+          <Typography variant="body2">Verlängerungsanfrage: {entry.extensionRequest?.pending ? "Ausstehend" : "Keine"}</Typography>
           {entry.extensionHistory?.length > 0 && (
             <Box>
-              <Typography variant="body2" sx={{ fontWeight: "bold", mb: 1, fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-                Verlängerungsverlauf:
-              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: "bold" }}>Verlängerungsverlauf:</Typography>
               {entry.extensionHistory.map((ext, index) => (
-                <Typography key={index} variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+                <Typography key={index} variant="body2">
                   {formatDate(ext.approvalDate)}: Gültig bis {formatDate(ext.validUntil)}
                 </Typography>
               ))}
@@ -336,7 +290,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
             {entry.owner === loggedInUser && !entry.extensionRequest?.pending && isExtensionRequestAllowed() && (
               <Chip
                 label="Verlängerung anfragen"
-                onClick={handleRequestExtension}
+                onClick={handleExtensionRequest}
                 color="warning"
                 size="small"
                 disabled={isLoading}
@@ -344,22 +298,9 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
             )}
           </Box>
         </Box>
-        {entry.extensionRequest && (
-          <Typography variant="body2" color="primary" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-            Verlängerungsanfrage gesendet.
-          </Typography>
-        )}
       </AccordionDetails>
-      <Dialog
-        open={openEditDialog}
-        onClose={() => setOpenEditDialog(false)}
-        fullWidth
-        maxWidth="sm"
-        fullScreen={isMobile}
-      >
-        <DialogTitle sx={{ fontSize: isMobile ? "1rem" : "1.25rem" }}>
-          Eintrag bearbeiten
-        </DialogTitle>
+      <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Abonnent bearbeiten</DialogTitle>
         <DialogContent>
           <TextField
             label="Benutzername"
@@ -368,19 +309,14 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
             value={editedEntry.username}
             onChange={(e) => setEditedEntry({ ...editedEntry, username: e.target.value })}
             disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Passwort"
             fullWidth
             margin="normal"
-            type="text"
             value={editedEntry.password}
             onChange={(e) => setEditedEntry({ ...editedEntry, password: e.target.value })}
             disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Spitzname, Notizen etc."
@@ -389,8 +325,6 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
             value={editedEntry.aliasNotes}
             onChange={(e) => setEditedEntry({ ...editedEntry, aliasNotes: e.target.value })}
             disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
@@ -399,8 +333,6 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
             value={editedEntry.bougetList || ""}
             onChange={(e) => setEditedEntry({ ...editedEntry, bougetList: e.target.value })}
             disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           <Select
             fullWidth
@@ -408,7 +340,6 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
             value={editedEntry.type}
             onChange={(e) => setEditedEntry({ ...editedEntry, type: e.target.value })}
             disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
           >
             <MenuItem value="Premium">Premium</MenuItem>
             <MenuItem value="Basic">Basic</MenuItem>
@@ -419,7 +350,6 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
             value={editedEntry.status}
             onChange={(e) => setEditedEntry({ ...editedEntry, status: e.target.value })}
             disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
           >
             <MenuItem value="Aktiv">Aktiv</MenuItem>
             <MenuItem value="Inaktiv">Inaktiv</MenuItem>
@@ -430,7 +360,6 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
             value={editedEntry.paymentStatus}
             onChange={(e) => setEditedEntry({ ...editedEntry, paymentStatus: e.target.value })}
             disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
           >
             <MenuItem value="Gezahlt">Gezahlt</MenuItem>
             <MenuItem value="Nicht gezahlt">Nicht gezahlt</MenuItem>
@@ -443,42 +372,35 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
             value={editedEntry.validUntil}
             onChange={(e) => setEditedEntry({ ...editedEntry, validUntil: e.target.value })}
             disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
             InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Admin-Gebühr (€)"
             fullWidth
             margin="normal"
-            value={editedEntry.admin_fee}
+            value={editedEntry.admin_fee || ""}
             onChange={(e) => {
               const value = e.target.value.replace(/[^0-9]/g, "");
-              if (value && parseInt(value) > 999) return;
               setEditedEntry({ ...editedEntry, admin_fee: value });
             }}
             inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
             disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Notiz"
             fullWidth
             margin="normal"
-            value={editedEntry.note}
+            value={editedEntry.note || ""}
             onChange={(e) => setEditedEntry({ ...editedEntry, note: e.target.value })}
             disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           {role === "Admin" && (
             <Select
               fullWidth
               margin="normal"
-              value={editedEntry.owner}
+              value={editedEntry.owner || ""}
               onChange={(e) => setEditedEntry({ ...editedEntry, owner: e.target.value })}
               disabled={isLoading || !owners || owners.length === 0}
-              size={isMobile ? "small" : "medium"}
             >
               <MenuItem value="" disabled>
                 Ersteller auswählen
@@ -500,15 +422,13 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
             onClick={() => setOpenEditDialog(false)}
             color="secondary"
             disabled={isLoading}
-            sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
           >
             Abbrechen
           </Button>
           <Button
-            onClick={handleSaveEdit}
+            onClick={updateEntry}
             color="primary"
             disabled={isLoading}
-            sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
           >
             {isLoading ? "Speichere..." : "Speichern"}
           </Button>
