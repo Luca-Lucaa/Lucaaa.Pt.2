@@ -15,7 +15,6 @@ const FloatingChatButton = ({ loggedInUser, role }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  // Ensure selectedUser is set only if loggedInUser exists
   useEffect(() => {
     if (loggedInUser) {
       setSelectedUser((prev) => (role === "Admin" ? "Scholli" : "Admin"));
