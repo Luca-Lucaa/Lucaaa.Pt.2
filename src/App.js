@@ -12,7 +12,7 @@ import {
   TextField,
   Badge,
   Menu,
-  MenuItem,a
+  MenuItem,
   Dialog,
   DialogTitle,
   DialogContent,
