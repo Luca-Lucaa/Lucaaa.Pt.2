@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   Typography,
   TextField,
@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { supabase } from "./supabaseClient";
-import { formatDate, generateUsername, useDebounce, handleError, updateExpiredEntries } from "./utils";
+import { formatDate, generateUsername, useDebounce, handleError } from "./utils";
 import { useSnackbar } from "./useSnackbar";
 import { OWNER_COLORS } from "./config";
 import EntryAccordion from "./EntryAccordion";
@@ -73,46 +73,27 @@ const EntryList = ({
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const owners = useMemo(() => {
-    const uniqueOwners = [...new Set(entries.map((entry) => entry.owner).filter(Boolean))];
+    const uniqueOwners = [...new Set(entries.map((entry) => entry.owner))];
     return uniqueOwners.sort();
   }, [entries]);
 
-  // Check if an entry is new (created within the last 5 days)
+  // Check if an entry is new (created within the last 7 days)
   const isNewEntry = useCallback((createdAt) => {
-    if (!createdAt) return false;
-    try {
-      const createdDate = new Date(createdAt);
-      const currentDate = new Date();
-      const timeDiff = currentDate - createdDate;
-      const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
-      return daysDiff <= 5; // Highlight entries created within 5 days
-    } catch (error) {
-      console.error("Fehler bei isNewEntry:", error);
-      return false;
-    }
+    const createdDate = new Date(createdAt);
+    const currentDate = new Date("2025-06-30T18:36:00+02:00"); // Current date: June 30, 2025, 06:36 PM CEST
+    const timeDiff = currentDate - createdDate;
+    const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
+    return daysDiff <= 7; // Highlight entries created within 7 days
   }, []);
 
   // Calculate expired entries (validUntil before current date)
   const expiredEntries = useMemo(() => {
-    const currentDate = new Date();
+    const currentDate = new Date("2025-06-30T18:36:00+02:00");
     return entries.filter((entry) => {
-      if (!entry.validUntil) return false;
-      try {
-        const validUntil = new Date(entry.validUntil);
-        return validUntil < currentDate && (role === "Admin" || entry.owner === loggedInUser);
-      } catch (error) {
-        console.error(`Ungültiges Datum in Eintrag ${entry.id}:`, error);
-        return false;
-      }
+      const validUntil = new Date(entry.validUntil);
+      return validUntil < currentDate && (role === "Admin" || entry.owner === loggedInUser);
     });
   }, [entries, role, loggedInUser]);
-
-  // Update expired entries on load
-  useEffect(() => {
-    if (entries.length > 0 && !isLoading) {
-      updateExpiredEntries(entries, setEntries, showSnackbar);
-    }
-  }, [entries, setEntries, showSnackbar, isLoading]);
 
   const filteredEntries = useMemo(() => {
     let filtered = entries;
@@ -124,8 +105,8 @@ const EntryList = ({
     if (debouncedSearchTerm) {
       filtered = filtered.filter(
         (entry) =>
-          (entry.username || "").toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-          (entry.aliasNotes || "").toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+          entry.username.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+          entry.aliasNotes.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
       );
     }
     if (statusFilter) {
@@ -136,8 +117,8 @@ const EntryList = ({
     }
     // Sort by validUntil
     return filtered.sort((a, b) => {
-      const dateA = new Date(a.validUntil || new Date());
-      const dateB = new Date(b.validUntil || new Date());
+      const dateA = new Date(a.validUntil);
+      const dateB = new Date(b.validUntil);
       return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
     });
   }, [
@@ -256,25 +237,20 @@ const EntryList = ({
     }
     setIsLoading(true);
     const validUntilDate = new Date(manualEntry.validUntil);
-    if (isNaN(validUntilDate)) {
-      showSnackbar("Bitte ein gültiges Datum eingeben.", "error");
-      setIsLoading(false);
-      return;
-    }
     const newManualEntry = {
       username: manualEntry.username,
       password: manualEntry.password,
       aliasNotes: manualEntry.aliasNotes,
       type: manualEntry.type,
       validUntil: validUntilDate,
-      owner: manualEntry.owner || loggedInUser,
+      owner: loggedInUser,
       status: "Aktiv",
       paymentStatus: "Gezahlt",
       createdAt: new Date(),
       note: "Dieser Abonnent besteht bereits",
       extensionHistory: [],
       bougetList: manualEntry.bougetList,
-      admin_fee: role === "Admin" ? (manualEntry.admin_fee ? parseInt(manualEntry.admin_fee) : null) : null,
+      admin_fee: role === "Admin" ? manualEntry.admin_fee : null,
       extensionRequest: null,
     };
     try {
@@ -498,7 +474,6 @@ const EntryList = ({
                     role={role}
                     loggedInUser={loggedInUser}
                     setEntries={setEntries}
-                    owners={owners}
                   />
                 </CardContent>
               </Card>
@@ -533,7 +508,7 @@ const EntryList = ({
             type="text"
             value={newEntry.password}
             disabled
-            sx={{ bgcolor: "#f0f0f0" }}
+            sx={{" bgcolor": "#f0f0f0" }}
             size={isMobile ? "small" : "medium"}
           />
           <TextField
@@ -544,7 +519,6 @@ const EntryList = ({
             onChange={(e) => setNewEntry({ ...newEntry, aliasNotes: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
@@ -554,7 +528,6 @@ const EntryList = ({
             onChange={(e) => setNewEntry({ ...newEntry, bougetList: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           <Select
             fullWidth
@@ -606,7 +579,6 @@ const EntryList = ({
             onChange={(e) => setManualEntry({ ...manualEntry, username: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Passwort"
@@ -617,7 +589,6 @@ const EntryList = ({
             onChange={(e) => setManualEntry({ ...manualEntry, password: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Spitzname, Notizen etc."
@@ -627,7 +598,6 @@ const EntryList = ({
             onChange={(e) => setManualEntry({ ...manualEntry, aliasNotes: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
@@ -637,7 +607,6 @@ const EntryList = ({
             onChange={(e) => setManualEntry({ ...manualEntry, bougetList: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           <Select
             fullWidth
@@ -665,48 +634,23 @@ const EntryList = ({
             }
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           {role === "Admin" && (
-            <>
-              <TextField
-                label="Admin-Gebühr (€)"
-                fullWidth
-                margin="normal"
-                value={manualEntry.admin_fee || ""}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9]/g, "");
-                  const numValue = value ? parseInt(value) : null;
-                  if (numValue && numValue > 999) return;
-                  setManualEntry({ ...manualEntry, admin_fee: numValue });
-                }}
-                inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
-                disabled={isLoading}
-                size={isMobile ? "small" : "medium"}
-                InputLabelProps={{ shrink: true }}
-              />
-              <Select
-                fullWidth
-                margin="normal"
-                value={manualEntry.owner || loggedInUser}
-                onChange={(e) => setManualEntry({ ...manualEntry, owner: e.target.value })}
-                disabled={isLoading || !owners || owners.length === 0}
-                size={isMobile ? "small" : "medium"}
-              >
-                <MenuItem value="" disabled>
-                  Ersteller auswählen
-                </MenuItem>
-                {owners && owners.length > 0 ? (
-                  owners.map((owner) => (
-                    <MenuItem key={owner} value={owner}>
-                      {owner}
-                    </MenuItem>
-                  ))
-                ) : (
-                  <MenuItem value={loggedInUser}>{loggedInUser}</MenuItem>
-                )}
-              </Select>
-            </>
+            <TextField
+              label="Admin-Gebühr (€)"
+              fullWidth
+              margin="normal"
+              value={manualEntry.admin_fee || ""}
+              onChange={(e) => {
+                const value = e.target.value.replace(/[^0-9]/g, "");
+                const numValue = value ? parseInt(value) : null;
+                if (numValue > 999) return;
+                setManualEntry({ ...manualEntry, admin_fee: numValue });
+              }}
+              inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+              disabled={isLoading}
+              size={isMobile ? "small" : "medium"}
+            />
           )}
         </DialogContent>
         <DialogActions>
