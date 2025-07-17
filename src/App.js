@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy, useCallback, useMemo } from "react";
+import React, { useState, useEffect, Suspense, lazy, useCallback } from "react";
 import {
   Container,
   Typography,
@@ -9,8 +9,6 @@ import {
   Snackbar,
   Box,
   Alert,
-  TextField,
-  Badge,
   Menu,
   MenuItem,
   Dialog,
@@ -18,22 +16,18 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
 import BackupIcon from "@mui/icons-material/Backup";
 import DescriptionIcon from "@mui/icons-material/Description";
 import MenuIcon from "@mui/icons-material/Menu";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
 import { supabase } from "./supabaseClient";
-import ChatMessage from "./ChatMessage";
-import { useMessages, handleError } from "./utils";
+import { handleError } from "./utils";
 import { USER_CREDENTIALS, USER_EMOJIS, THEME_CONFIG, GUIDES } from "./config";
 import { useSnackbar } from "./useSnackbar";
+import FloatingChatButton from "./FloatingChatButton";
 
 const LoginForm = lazy(() => import("./LoginForm"));
 const EntryList = lazy(() => import("./EntryList"));
@@ -63,19 +57,15 @@ const CustomSnackbar = ({ open, message, onClose, severity }) => (
 const App = () => {
   const [loggedInUser, setLoggedInUser] = useState(() => localStorage.getItem("loggedInUser") || null);
   const [role, setRole] = useState(() => localStorage.getItem("role") || null);
-  const [selectedUser, setSelectedUser] = useState(role === "Admin" ? "Scholli" : "Admin");
-  const [newMessage, setNewMessage] = useState("");
   const [entries, setEntries] = useState([]);
   const [file, setFile] = useState(null);
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
   const [guidesAnchorEl, setGuidesAnchorEl] = useState(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [chatExpanded, setChatExpanded] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [openManualDialog, setOpenManualDialog] = useState(false);
 
-  const { messages, unreadCount, markAsRead } = useMessages(loggedInUser, selectedUser);
   const { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, closeSnackbar } = useSnackbar();
 
   const handleLogin = useCallback((username, password) => {
@@ -84,7 +74,6 @@ const App = () => {
       setRole(username === "Admin" ? "Admin" : "Friend");
       localStorage.setItem("loggedInUser", username);
       localStorage.setItem("role", username === "Admin" ? "Admin" : "Friend");
-      setSelectedUser(username === "Admin" ? "Scholli" : "Admin");
       showSnackbar(`✅ Willkommen, ${username}!`);
     } else {
       showSnackbar("❌ Ungültige Zugangsdaten", "error");
@@ -98,25 +87,6 @@ const App = () => {
     localStorage.removeItem("role");
     showSnackbar("🔓 Erfolgreich abgemeldet!");
   }, [showSnackbar]);
-
-  const sendMessage = useCallback(async () => {
-    if (!newMessage.trim()) {
-      showSnackbar("❌ Nachricht darf nicht leer sein", "error");
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const { error } = await supabase
-        .from("messages")
-        .insert([{ sender: loggedInUser, receiver: selectedUser, message: newMessage, read: false }]);
-      if (error) throw error;
-      setNewMessage("");
-    } catch (error) {
-      handleError(error, showSnackbar);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [newMessage, loggedInUser, selectedUser, showSnackbar]);
 
   const fetchEntries = useCallback(async () => {
     setIsLoading(true);
@@ -213,14 +183,6 @@ const App = () => {
 
   const themeInstance = useTheme();
   const isMobile = useMediaQuery(themeInstance.breakpoints.down("sm"));
-
-  useEffect(() => {
-    if (selectedUser && messages.length > 0) {
-      markAsRead();
-    }
-  }, [selectedUser, messages, markAsRead]);
-
-  const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
   return (
     <ThemeProvider theme={theme}>
@@ -325,84 +287,6 @@ const App = () => {
             </Grid>
           ) : (
             <Box sx={{ mt: 2 }}>
-              <Accordion expanded={chatExpanded} onChange={() => setChatExpanded(!chatExpanded)} sx={{ mb: 2, borderRadius: 2 }}>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography variant="h6">Chat mit {selectedUser}</Typography>
-                  {role === "Admin" && (
-                    <Box sx={{ display: "flex", gap: 1, ml: 2 }}>
-                      <Badge badgeContent={unreadCount["Scholli"] || 0} color="error">
-                        <Button
-                          variant={selectedUser === "Scholli" ? "contained" : "outlined"}
-                          color="primary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedUser("Scholli");
-                          }}
-                          sx={{ minWidth: 0, p: 0.5, borderRadius: 2 }}
-                        >
-                          Scholli {USER_EMOJIS["Scholli"]}
-                        </Button>
-                      </Badge>
-                      <Badge badgeContent={unreadCount["Jamaica05"] || 0} color="error">
-                        <Button
-                          variant={selectedUser === "Jamaica05" ? "contained" : "outlined"}
-                          color="primary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedUser("Jamaica05");
-                          }}
-                          sx={{ minWidth: 0, p: 0.5, borderRadius: 2 }}
-                        >
-                          Jamaica05 {USER_EMOJIS["Jamaica05"]}
-                        </Button>
-                      </Badge>
-                    </Box>
-                  )}
-                </AccordionSummary>
-                <AccordionDetails>
-                  <Box sx={{ mb: 2 }}>
-                    <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1, mb: 2 }}>
-                      <TextField
-                        label="Neue Nachricht"
-                        variant="outlined"
-                        fullWidth
-                        multiline
-                        rows={2}
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            sendMessage();
-                          }
-                        }}
-                        disabled={isLoading}
-                        sx={{ backgroundColor: "white", borderRadius: 2 }}
-                      />
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={sendMessage}
-                        sx={{ width: { xs: "100%", sm: "auto" }, borderRadius: 2, alignSelf: "flex-end" }}
-                        disabled={isLoading || !newMessage.trim()}
-                      >
-                        {isLoading ? "Sende..." : "Senden"}
-                      </Button>
-                    </Box>
-                    <Box sx={{ maxHeight: "50vh", overflowY: "auto" }}>
-                      {reversedMessages.map((msg) => (
-                        <ChatMessage
-                          key={msg.id}
-                          message={msg.message}
-                          sender={msg.sender}
-                          timestamp={msg.created_at}
-                          isOwnMessage={msg.sender === loggedInUser}
-                        />
-                      ))}
-                    </Box>
-                  </Box>
-                </AccordionDetails>
-              </Accordion>
               {role === "Admin" ? (
                 <>
                   <AdminDashboard
@@ -435,6 +319,7 @@ const App = () => {
                   setOpenManualDialog={setOpenManualDialog}
                 />
               )}
+              <FloatingChatButton loggedInUser={loggedInUser} role={role} />
             </Box>
           )}
         </Suspense>
