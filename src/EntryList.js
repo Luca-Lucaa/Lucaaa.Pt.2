@@ -1,7 +1,9 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import {
   Typography,
-  TextField,
+  Text
+
+Field,
   Button,
   Dialog,
   DialogTitle,
@@ -18,7 +20,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { supabase } from "./supabaseClient";
-import { formatDate, generateUsername, useDebounce, handleError } from "./utils";
+import { formatDate, generateUsername, useDebounce, handleError, updateExpiredEntries } from "./utils";
 import { useSnackbar } from "./useSnackbar";
 import { OWNER_COLORS } from "./config";
 import EntryAccordion from "./EntryAccordion";
@@ -77,23 +79,30 @@ const EntryList = ({
     return uniqueOwners.sort();
   }, [entries]);
 
-  // Check if an entry is new (created within the last 7 days)
+  // Check if an entry is new (created within the last 5 days)
   const isNewEntry = useCallback((createdAt) => {
     const createdDate = new Date(createdAt);
-    const currentDate = new Date("2025-06-30T18:36:00+02:00"); // Current date: June 30, 2025, 06:36 PM CEST
+    const currentDate = new Date("2025-07-17T13:00:00+02:00"); // Current date: July 17, 2025, 01:00 PM CEST
     const timeDiff = currentDate - createdDate;
     const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
-    return daysDiff <= 7; // Highlight entries created within 7 days
+    return daysDiff <= 5; // Highlight entries created within 5 days
   }, []);
 
   // Calculate expired entries (validUntil before current date)
   const expiredEntries = useMemo(() => {
-    const currentDate = new Date("2025-06-30T18:36:00+02:00");
+    const currentDate = new Date("2025-07-17T13:00:00+02:00");
     return entries.filter((entry) => {
       const validUntil = new Date(entry.validUntil);
       return validUntil < currentDate && (role === "Admin" || entry.owner === loggedInUser);
     });
   }, [entries, role, loggedInUser]);
+
+  // Update expired entries on load
+  useEffect(() => {
+    if (entries.length > 0) {
+      updateExpiredEntries(entries, setEntries, showSnackbar);
+    }
+  }, [entries, setEntries, showSnackbar]);
 
   const filteredEntries = useMemo(() => {
     let filtered = entries;
@@ -243,7 +252,7 @@ const EntryList = ({
       aliasNotes: manualEntry.aliasNotes,
       type: manualEntry.type,
       validUntil: validUntilDate,
-      owner: loggedInUser,
+      owner: manualEntry.owner || loggedInUser, // Allow owner to be set
       status: "Aktiv",
       paymentStatus: "Gezahlt",
       createdAt: new Date(),
@@ -361,7 +370,7 @@ const EntryList = ({
             fullWidth
             sx={{ bgcolor: "#fff", borderRadius: 1 }}
             size={isMobile ? "small" : "medium"}
-          >
+        >
             <MenuItem value="">Alle Ersteller</MenuItem>
             {owners.map((owner) => (
               <MenuItem key={owner} value={owner}>
@@ -474,6 +483,7 @@ const EntryList = ({
                     role={role}
                     loggedInUser={loggedInUser}
                     setEntries={setEntries}
+                    owners={owners} // Pass owners for editing
                   />
                 </CardContent>
               </Card>
@@ -508,7 +518,7 @@ const EntryList = ({
             type="text"
             value={newEntry.password}
             disabled
-            sx={{" bgcolor": "#f0f0f0" }}
+            sx={{ bgcolor: "#f0f0f0" }}
             size={isMobile ? "small" : "medium"}
           />
           <TextField
@@ -586,7 +596,7 @@ const EntryList = ({
             margin="normal"
             type="text"
             value={manualEntry.password}
-            onChange={(e) => setManualEntry({ ...manualEntry, password: e.target.value })}
+        onChange={(e) => setManualEntry({ ...manualEntry, password: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
           />
@@ -636,21 +646,37 @@ const EntryList = ({
             size={isMobile ? "small" : "medium"}
           />
           {role === "Admin" && (
-            <TextField
-              label="Admin-Gebühr (€)"
-              fullWidth
-              margin="normal"
-              value={manualEntry.admin_fee || ""}
-              onChange={(e) => {
-                const value = e.target.value.replace(/[^0-9]/g, "");
-                const numValue = value ? parseInt(value) : null;
-                if (numValue > 999) return;
-                setManualEntry({ ...manualEntry, admin_fee: numValue });
-              }}
-              inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
-              disabled={isLoading}
-              size={isMobile ? "small" : "medium"}
-            />
+            <>
+              <TextField
+                label="Admin-Gebühr (€)"
+                fullWidth
+                margin="normal"
+                value={manualEntry.admin_fee || ""}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9]/g, "");
+                  const numValue = value ? parseInt(value) : null;
+                  if (numValue > 999) return;
+                  setManualEntry({ ...manualEntry, admin_fee: numValue });
+                }}
+                inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+                disabled={isLoading}
+                size={isMobile ? "small" : "medium"}
+              />
+              <Select
+                fullWidth
+                margin="normal"
+                value={manualEntry.owner || loggedInUser}
+                onChange={(e) => setManualEntry({ ...manualEntry, owner: e.target.value })}
+                disabled={isLoading}
+                size={isMobile ? "small" : "medium"}
+              >
+                {owners.map((owner) => (
+                  <MenuItem key={owner} value={owner}>
+                    {owner}
+                  </MenuItem>
+                ))}
+              </Select>
+            </>
           )}
         </DialogContent>
         <DialogActions>
