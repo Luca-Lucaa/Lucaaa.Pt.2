@@ -22,6 +22,7 @@ import { useSnackbar } from "./useSnackbar";
 
 const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
   const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [editedEntry, setEditedEntry] = useState({
     username: entry.username || "",
     password: entry.password || "",
@@ -33,23 +34,32 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
     validUntil: entry.validUntil ? new Date(entry.validUntil).toISOString().split("T")[0] : "",
     admin_fee: entry.admin_fee != null ? entry.admin_fee.toString() : "",
     note: entry.note || "",
-    owner: entry.owner || loggedInUser, // Add owner to state
+    owner: entry.owner || loggedInUser || "",
   });
-  const [isLoading, setIsLoading] = useState(false);
   const { showSnackbar } = useSnackbar();
 
   // Check if validUntil is within 30 days from today
   const isExtensionRequestAllowed = useCallback(() => {
     if (!entry.validUntil) return false;
-    const validUntilDate = new Date(entry.validUntil);
-    const currentDate = new Date("2025-07-17T13:00:00+02:00"); // Current date: July 17, 2025, 01:00 PM CEST
-    const timeDiff = validUntilDate - currentDate;
-    const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
-    return daysDiff <= 30; // Allow extension request if within 30 days
-  }, [entry.validUntil]);
+    try {
+      const validUntilDate = new Date(entry.validUntil);
+      const currentDate = new Date();
+      const timeDiff = validUntilDate - currentDate;
+      const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
+      return daysDiff <= 30 && daysDiff >= 0; // Allow extension request if within 30 days and not expired
+    } catch (error) {
+      console.error(`Ungültiges Datum in Eintrag ${entry.id}:`, error);
+      return false;
+    }
+  }, [entry.validUntil, entry.id]);
 
   const handleToggleStatus = useCallback(async () => {
+    if (!entry.id) {
+      showSnackbar("Eintrag-ID fehlt.", "error");
+      return;
+    }
     const newStatus = entry.status === "Aktiv" ? "Inaktiv" : "Aktiv";
+    setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from("entries")
@@ -63,14 +73,19 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
       );
       showSnackbar(`Status zu ${newStatus} geändert.`, "success");
     } catch (error) {
-      console.error("Error toggling status:", error);
       handleError(error, showSnackbar);
-      showSnackbar(`Fehler beim Ändern des Status: ${error.message || "Unbekannter Fehler"}`, "error");
+    } finally {
+      setIsLoading(false);
     }
   }, [entry, setEntries, showSnackbar]);
 
   const handleTogglePayment = useCallback(async () => {
+    if (!entry.id) {
+      showSnackbar("Eintrag-ID fehlt.", "error");
+      return;
+    }
     const newPaymentStatus = entry.paymentStatus === "Gezahlt" ? "Nicht gezahlt" : "Gezahlt";
+    setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from("entries")
@@ -84,13 +99,18 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
       );
       showSnackbar(`Zahlungsstatus zu ${newPaymentStatus} geändert.`, "success");
     } catch (error) {
-      console.error("Error toggling payment status:", error);
       handleError(error, showSnackbar);
-      showSnackbar(`Fehler beim Ändern des Zahlungsstatus: ${error.message || "Unbekannter Fehler"}`, "error");
+    } finally {
+      setIsLoading(false);
     }
   }, [entry, setEntries, showSnackbar]);
 
   const handleExtensionRequest = useCallback(async () => {
+    if (!entry.id) {
+      showSnackbar("Eintrag-ID fehlt.", "error");
+      return;
+    }
+    setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from("entries")
@@ -104,13 +124,17 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
       );
       showSnackbar("Verlängerungsanfrage gesendet.", "success");
     } catch (error) {
-      console.error("Error sending extension request:", error);
       handleError(error, showSnackbar);
-      showSnackbar(`Fehler beim Senden der Verlängerungsanfrage: ${error.message || "Unbekannter Fehler"}`, "error");
+    } finally {
+      setIsLoading(false);
     }
   }, [entry, setEntries, showSnackbar]);
 
   const updateEntry = useCallback(async () => {
+    if (!entry.id) {
+      showSnackbar("Eintrag-ID fehlt.", "error");
+      return;
+    }
     // Validate inputs
     if (!editedEntry.username.trim()) {
       showSnackbar("Benutzername darf nicht leer sein.", "error");
@@ -122,6 +146,10 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
     }
     if (!editedEntry.aliasNotes.trim()) {
       showSnackbar("Spitzname darf nicht leer sein.", "error");
+      return;
+    }
+    if (!editedEntry.owner && role === "Admin") {
+      showSnackbar("Ersteller muss ausgewählt werden.", "error");
       return;
     }
     const validUntilDate = new Date(editedEntry.validUntil);
@@ -137,18 +165,22 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
 
     // Check for unique username constraint
     if (editedEntry.username !== entry.username) {
-      const { data: existingEntry, error: checkError } = await supabase
-        .from("entries")
-        .select("id")
-        .eq("username", editedEntry.username.trim())
-        .single();
-      if (checkError && checkError.code !== "PGRST116") { // PGRST116: No rows found
-        console.error("Error checking username:", checkError);
-        showSnackbar(`Fehler beim Überprüfen des Benutzernamens: ${checkError.message}`, "error");
-        return;
-      }
-      if (existingEntry) {
-        showSnackbar("Benutzername existiert bereits.", "error");
+      try {
+        const { data: existingEntry, error: checkError } = await supabase
+          .from("entries")
+          .select("id")
+          .eq("username", editedEntry.username.trim())
+          .single();
+        if (checkError && checkError.code !== "PGRST116") { // PGRST116: No rows found
+          showSnackbar(`Fehler beim Überprüfen des Benutzernamens: ${checkError.message}`, "error");
+          return;
+        }
+        if (existingEntry) {
+          showSnackbar("Benutzername existiert bereits.", "error");
+          return;
+        }
+      } catch (error) {
+        handleError(error, showSnackbar);
         return;
       }
     }
@@ -164,7 +196,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
       validUntil: validUntilDate.toISOString(),
       admin_fee: adminFee,
       note: editedEntry.note ? editedEntry.note.trim() : "",
-      owner: editedEntry.owner, // Include owner in update
+      owner: role === "Admin" ? editedEntry.owner : entry.owner, // Only update owner if Admin
     };
 
     setIsLoading(true);
@@ -182,13 +214,11 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
       setOpenEditDialog(false);
       showSnackbar("Abonnent erfolgreich aktualisiert.", "success");
     } catch (error) {
-      console.error("Error updating entry:", error);
       handleError(error, showSnackbar);
-      showSnackbar(`Fehler beim Speichern: ${error.message || "Unbekannter Fehler"}`, "error");
     } finally {
       setIsLoading(false);
     }
-  }, [editedEntry, entry, setEntries, showSnackbar]);
+  }, [editedEntry, entry, role, setEntries, showSnackbar]);
 
   return (
     <Accordion sx={{ mt: 1, borderRadius: 2, boxShadow: 2 }}>
@@ -203,7 +233,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
               color: entry.status === "Aktiv" ? "success.main" : "error.main",
             }}
           >
-            Status: {entry.status}
+            Status: {entry.status || "Unbekannt"}
           </Typography>
           <Typography
             variant="body2"
@@ -211,13 +241,13 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
               color: entry.paymentStatus === "Gezahlt" ? "success.main" : "error.main",
             }}
           >
-            Zahlungsstatus: {entry.paymentStatus}
+            Zahlungsstatus: {entry.paymentStatus || "Unbekannt"}
           </Typography>
           <Typography variant="body2">Passwort: {entry.password || "Keines"}</Typography>
-          <Typography variant="body2">Typ: {entry.type}</Typography>
-          <Typography variant="body2">Ersteller: {entry.owner}</Typography>
+          <Typography variant="body2">Typ: {entry.type || "Unbekannt"}</Typography>
+          <Typography variant="body2">Ersteller: {entry.owner || "Keiner"}</Typography>
           <Typography variant="body2">Bouget-Liste: {entry.bougetList || "Keine"}</Typography>
-          <Typography variant="body2">Admin-Gebühr: {entry.admin_fee ? `${entry.admin_fee} €` : "Keine"}</Typography>
+          <Typography variant="body2">Admin-Gebühr: {entry.admin_fee != null ? `${entry.admin_fee} €` : "Keine"}</Typography>
           <Typography variant="body2">Erstellt am: {formatDate(entry.createdAt)}</Typography>
           <Typography variant="body2">Notiz: {entry.note || "Keine"}</Typography>
           <Typography variant="body2">Verlängerungsanfrage: {entry.extensionRequest?.pending ? "Ausstehend" : "Keine"}</Typography>
@@ -239,18 +269,21 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
                   onClick={handleToggleStatus}
                   color={entry.status === "Aktiv" ? "error" : "success"}
                   size="small"
+                  disabled={isLoading}
                 />
                 <Chip
                   label={entry.paymentStatus === "Gezahlt" ? "Nicht gezahlt setzen" : "Gezahlt setzen"}
                   onClick={handleTogglePayment}
                   color={entry.paymentStatus === "Gezahlt" ? "error" : "success"}
                   size="small"
+                  disabled={isLoading}
                 />
                 <Chip
                   label="Bearbeiten"
                   onClick={() => setOpenEditDialog(true)}
                   color="primary"
                   size="small"
+                  disabled={isLoading}
                 />
               </>
             )}
@@ -260,6 +293,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
                 onClick={handleExtensionRequest}
                 color="warning"
                 size="small"
+                disabled={isLoading}
               />
             )}
           </Box>
@@ -364,15 +398,22 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
             <Select
               fullWidth
               margin="normal"
-              value={editedEntry.owner}
+              value={editedEntry.owner || ""}
               onChange={(e) => setEditedEntry({ ...editedEntry, owner: e.target.value })}
-              disabled={isLoading}
+              disabled={isLoading || !owners || owners.length === 0}
             >
-              {owners.map((owner) => (
-                <MenuItem key={owner} value={owner}>
-                  {owner}
-                </MenuItem>
-              ))}
+              <MenuItem value="" disabled>
+                Ersteller auswählen
+              </MenuItem>
+              {owners && owners.length > 0 ? (
+                owners.map((owner) => (
+                  <MenuItem key={owner} value={owner}>
+                    {owner}
+                  </MenuItem>
+                ))
+              ) : (
+                <MenuItem value={loggedInUser}>{loggedInUser}</MenuItem>
+              )}
             </Select>
           )}
         </DialogContent>
