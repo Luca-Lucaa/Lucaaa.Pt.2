@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { Fab, Dialog, DialogTitle, DialogContent, DialogActions, Badge, Box, Button, TextField, useMediaQuery, useTheme } from "@mui/material";
 import ChatIcon from "@mui/icons-material/Chat";
 import { useMessages, handleError } from "./utils";
@@ -8,18 +8,27 @@ import { useSnackbar } from "./useSnackbar";
 
 const FloatingChatButton = ({ loggedInUser, role }) => {
   const [openChat, setOpenChat] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(role === "Admin" ? "Scholli" : "Admin");
+  const [selectedUser, setSelectedUser] = useState(() => (role === "Admin" && loggedInUser ? "Scholli" : "Admin"));
   const [newMessage, setNewMessage] = useState("");
   const { messages, unreadCount, markAsRead } = useMessages(loggedInUser, selectedUser);
   const { showSnackbar } = useSnackbar();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const totalUnread = useMemo(() => Object.values(unreadCount || {}).reduce((sum, count) => sum + count, 0), [unreadCount]);
+  // Ensure selectedUser is set only if loggedInUser exists
+  useEffect(() => {
+    if (loggedInUser) {
+      setSelectedUser((prev) => (role === "Admin" ? "Scholli" : "Admin"));
+    } else {
+      setSelectedUser(null);
+    }
+  }, [loggedInUser, role]);
+
+  const totalUnread = useMemo(() => Object.values(unreadCount || {}).reduce((sum, count) => sum + (count || 0), 0), [unreadCount]);
 
   const availableUsers = useMemo(() => {
-    const users = ["Scholli", "Jamaica05", "Admin"].filter((user) => user !== loggedInUser);
-    return users;
+    if (!loggedInUser) return [];
+    return ["Scholli", "Jamaica05", "Admin"].filter((user) => user !== loggedInUser);
   }, [loggedInUser]);
 
   const handleOpenChat = useCallback(() => {
@@ -32,13 +41,13 @@ const FloatingChatButton = ({ loggedInUser, role }) => {
 
   const handleCloseChat = useCallback(() => {
     setOpenChat(false);
-    setSelectedUser(role === "Admin" ? "Scholli" : "Admin");
+    setSelectedUser(role === "Admin" && loggedInUser ? "Scholli" : "Admin");
     setNewMessage("");
-  }, [role]);
+  }, [role, loggedInUser]);
 
   const sendMessage = useCallback(async () => {
-    if (!newMessage.trim()) {
-      showSnackbar("❌ Nachricht darf nicht leer sein", "error");
+    if (!newMessage.trim() || !loggedInUser || !selectedUser) {
+      showSnackbar("❌ Nachricht darf nicht leer sein oder Benutzer fehlt.", "error");
       return;
     }
     try {
@@ -53,7 +62,9 @@ const FloatingChatButton = ({ loggedInUser, role }) => {
     }
   }, [newMessage, loggedInUser, selectedUser, showSnackbar]);
 
-  const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
+  const reversedMessages = useMemo(() => [...(messages || [])].reverse(), [messages]);
+
+  if (!loggedInUser) return null;
 
   return (
     <>
