@@ -348,7 +348,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
               setEditedEntry({ ...editedEntry, admin_fee: value });
             }}
             inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
-            disabled={isLoading}
+            disabled={isLoading
           />
           <TextField
             label="Notiz"
