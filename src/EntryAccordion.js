@@ -4,6 +4,7 @@ import {
   AccordionSummary,
   AccordionDetails,
   Typography,
+  Box,
   TextField,
   Button,
   Dialog,
@@ -12,9 +13,9 @@ import {
   DialogActions,
   Select,
   MenuItem,
+  Chip,
   useMediaQuery,
   useTheme,
-  Chip,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -38,22 +39,21 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
     validUntil: entry.validUntil ? new Date(entry.validUntil).toISOString().split("T")[0] : "",
     admin_fee: entry.admin_fee != null ? entry.admin_fee.toString() : "",
     note: entry.note || "",
-    owner: entry.owner || loggedInUser,
+    owner: entry.owner || loggedInUser || "",
   });
 
   const { showSnackbar } = useSnackbar();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  // Check if validUntil is within 30 days from today
   const isExtensionRequestAllowed = useCallback(() => {
     if (!entry.validUntil) return false;
     try {
       const validUntilDate = new Date(entry.validUntil);
       const currentDate = new Date();
       const timeDiff = validUntilDate - currentDate;
-      const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
-      return daysDiff <= 30 && daysDiff >= 0; // Allow extension request if within 30 days and not expired
+      const daysDiff = timeDiff / (1000 * 60 * 60 * 24);
+      return daysDiff <= 30 && daysDiff >= 0;
     } catch (error) {
       console.error(`Ungültiges Datum in Eintrag ${entry.id}:`, error);
       return false;
@@ -181,28 +181,6 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
       return;
     }
 
-    // Check for unique username constraint
-    if (editedEntry.username !== entry.username) {
-      try {
-        const { data: existingEntry, error: checkError } = await supabase
-          .from("entries")
-          .select("id")
-          .eq("username", editedEntry.username.trim())
-          .single();
-        if (checkError && checkError.code !== "PGRST116") { // PGRST116: No rows found
-          showSnackbar(`Fehler beim Überprüfen des Benutzernamens: ${checkError.message}`, "error");
-          return;
-        }
-        if (existingEntry) {
-          showSnackbar("Benutzername existiert bereits.", "error");
-          return;
-        }
-      } catch (error) {
-        handleError(error, showSnackbar);
-        return;
-      }
-    }
-
     const updatedEntry = {
       username: editedEntry.username.trim(),
       password: editedEntry.password.trim(),
@@ -214,7 +192,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
       validUntil: validUntilDate.toISOString(),
       admin_fee: adminFee,
       note: editedEntry.note ? editedEntry.note.trim() : "",
-      owner: role === "Admin" ? editedEntry.owner : entry.owner, // Only update owner if Admin
+      owner: role === "Admin" ? editedEntry.owner : entry.owner,
     };
 
     setIsLoading(true);
@@ -234,7 +212,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [editedEntry, entry.id, entry.username, role, setEntries, showSnackbar]);
+  }, [editedEntry, entry.id, role, setEntries, showSnackbar]);
 
   return (
     <Accordion
