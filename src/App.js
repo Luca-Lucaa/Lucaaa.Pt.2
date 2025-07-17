@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy, useCallback, useMemo } from "react";
+import React, { useState, useEffect, Suspense, lazy, useCallback } from "react";
 import {
   Container,
   Typography,
@@ -9,7 +9,6 @@ import {
   Snackbar,
   Box,
   Alert,
-  TextField,
   Badge,
   Menu,
   MenuItem,
@@ -63,7 +62,7 @@ const CustomSnackbar = ({ open, message, onClose, severity }) => (
 const App = () => {
   const [loggedInUser, setLoggedInUser] = useState(() => localStorage.getItem("loggedInUser") || null);
   const [role, setRole] = useState(() => localStorage.getItem("role") || null);
-  const [selectedUser, setSelectedUser] = useState(role === "Admin" ? "Scholli" : "Admin");
+  const [selectedUser, setSelectedUser] = useState(null);
   const [entries, setEntries] = useState([]);
   const [file, setFile] = useState(null);
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
@@ -81,9 +80,9 @@ const App = () => {
     if (USER_CREDENTIALS[username] === password) {
       setLoggedInUser(username);
       setRole(username === "Admin" ? "Admin" : "Friend");
+      setSelectedUser(username === "Admin" ? "Scholli" : "Admin");
       localStorage.setItem("loggedInUser", username);
       localStorage.setItem("role", username === "Admin" ? "Admin" : "Friend");
-      setSelectedUser(username === "Admin" ? "Scholli" : "Admin");
       showSnackbar(`✅ Willkommen, ${username}!`);
     } else {
       showSnackbar("❌ Ungültige Zugangsdaten", "error");
@@ -93,6 +92,7 @@ const App = () => {
   const handleLogout = useCallback(() => {
     setLoggedInUser(null);
     setRole(null);
+    setSelectedUser(null);
     localStorage.removeItem("loggedInUser");
     localStorage.removeItem("role");
     showSnackbar("🔓 Erfolgreich abgemeldet!");
@@ -178,8 +178,8 @@ const App = () => {
   }, []);
 
   const handleGuidesClick = useCallback((event) => {
-    setGuidesAnchorEl(event.currentTarget || menuAnchorEl);
-  }, [menuAnchorEl]);
+    setGuidesAnchorEl(event.currentTarget);
+  }, []);
 
   const handleGuidesClose = useCallback(() => {
     setGuidesAnchorEl(null);
@@ -211,13 +211,18 @@ const App = () => {
                 variant="h6"
                 sx={{ marginLeft: "auto", marginRight: 2, fontSize: { xs: "14px", sm: "16px" } }}
               >
-                {USER_EMOJIS[loggedInUser]} {loggedInUser}
+                {USER_EMOJIS[loggedInUser] || ""} {loggedInUser}
               </Typography>
             )}
             {loggedInUser && (
               <Box sx={{ marginRight: 2 }}>
                 {isMobile ? (
-                  <IconButton variant="contained" color="secondary" onClick={handleMenuClick} sx={{ p: 0.5 }}>
+                  <IconButton
+                    color="inherit"
+                    onClick={handleMenuClick}
+                    sx={{ p: 0.5 }}
+                    aria-label="Menü öffnen"
+                  >
                     <MenuIcon />
                   </IconButton>
                 ) : (
@@ -229,6 +234,7 @@ const App = () => {
                         startIcon={<BackupIcon />}
                         onClick={handleMenuClick}
                         sx={{ mr: 1, borderRadius: 2 }}
+                        aria-label="Backup-Menü öffnen"
                       >
                         Backup
                       </Button>
@@ -239,47 +245,28 @@ const App = () => {
                       startIcon={<DescriptionIcon />}
                       onClick={handleGuidesClick}
                       sx={{ borderRadius: 2 }}
+                      aria-label="Anleitungen öffnen"
                     >
                       Anleitungen
                     </Button>
                   </>
                 )}
-                {isMobile ? (
-                  <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={handleMenuClose}>
-                    {role === "Admin" && (
-                      <>
-                        <MenuItem onClick={exportEntries}>Backup erstellen</MenuItem>
-                        <MenuItem onClick={handleImportOpen}>Backup importieren</MenuItem>
-                      </>
-                    )}
-                    <MenuItem
-                      onClick={() => {
-                        handleGuidesClick({ currentTarget: menuAnchorEl });
-                        setMenuAnchorEl(null);
-                      }}
-                    >
-                      Anleitungen
+                <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={handleMenuClose}>
+                  {role === "Admin" && (
+                    <>
+                      <MenuItem onClick={exportEntries}>Backup erstellen</MenuItem>
+                      <MenuItem onClick={handleImportOpen}>Backup importieren</MenuItem>
+                    </>
+                  )}
+                  <MenuItem onClick={handleGuidesClick}>Anleitungen</MenuItem>
+                </Menu>
+                <Menu anchorEl={guidesAnchorEl} open={Boolean(guidesAnchorEl)} onClose={handleGuidesClose}>
+                  {GUIDES.map((guide) => (
+                    <MenuItem key={guide.name} onClick={() => handleGuideDownload(guide.path)}>
+                      {guide.name}
                     </MenuItem>
-                  </Menu>
-                ) : (
-                  <>
-                    <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={handleMenuClose}>
-                      {role === "Admin" && (
-                        <>
-                          <MenuItem onClick={exportEntries}>Backup erstellen</MenuItem>
-                          <MenuItem onClick={handleImportOpen}>Backup importieren</MenuItem>
-                        </>
-                      )}
-                    </Menu>
-                    <Menu anchorEl={guidesAnchorEl} open={Boolean(guidesAnchorEl)} onClose={handleGuidesClose}>
-                      {GUIDES.map((guide) => (
-                        <MenuItem key={guide.name} onClick={() => handleGuideDownload(guide.path)}>
-                          {guide.name}
-                        </MenuItem>
-                      ))}
-                    </Menu>
-                  </>
-                )}
+                  ))}
+                </Menu>
               </Box>
             )}
             {loggedInUser && (
@@ -287,13 +274,14 @@ const App = () => {
                 onClick={handleLogout}
                 color="inherit"
                 sx={{ fontSize: { xs: "12px", sm: "16px" }, borderRadius: 2 }}
+                aria-label="Abmelden"
               >
                 🔓 Logout
               </Button>
             )}
           </Toolbar>
         </StyledAppBar>
-        <Suspense fallback={<div>🔄 Lade...</div>}>
+        <Suspense fallback={<Typography>🔄 Lade...</Typography>}>
           {isLoading && <Typography sx={{ mt: 2 }}>🔄 Lade Daten...</Typography>}
           {!loggedInUser ? (
             <Grid container justifyContent="center" sx={{ mt: 4 }}>
@@ -335,9 +323,13 @@ const App = () => {
                   setOpenManualDialog={setOpenManualDialog}
                 />
               )}
-              <Accordion expanded={chatExpanded} onChange={() => setChatExpanded(!chatExpanded)} sx={{ mt: 2, borderRadius: 2 }}>
+              <Accordion
+                expanded={chatExpanded}
+                onChange={() => setChatExpanded(!chatExpanded)}
+                sx={{ mt: 2, borderRadius: 2 }}
+              >
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography variant="h6">Chat mit {selectedUser}</Typography>
+                  <Typography variant="h6">Chat mit {selectedUser || "niemandem"}</Typography>
                   {role === "Admin" && (
                     <Box sx={{ display: "flex", gap: 1, ml: 2 }}>
                       <Badge badgeContent={unreadCount["Scholli"] || 0} color="error">
@@ -350,7 +342,7 @@ const App = () => {
                           }}
                           sx={{ minWidth: 0, p: 0.5, borderRadius: 2 }}
                         >
-                          Scholli {USER_EMOJIS["Scholli"]}
+                          Scholli {USER_EMOJIS["Scholli"] || ""}
                         </Button>
                       </Badge>
                       <Badge badgeContent={unreadCount["Jamaica05"] || 0} color="error">
@@ -363,17 +355,20 @@ const App = () => {
                           }}
                           sx={{ minWidth: 0, p: 0.5, borderRadius: 2 }}
                         >
-                          Jamaica05 {USER_EMOJIS["Jamaica05"]}
+                          Jamaica05 {USER_EMOJIS["Jamaica05"] || ""}
                         </Button>
                       </Badge>
                     </Box>
                   )}
                 </AccordionSummary>
                 <AccordionDetails>
-                  <CompactChatList
-                    messages={messages}
-                    loggedInUser={loggedInUser}
-                  />
+                  {selectedUser && (
+                    <CompactChatList
+                      messages={messages}
+                      loggedInUser={loggedInUser}
+                      selectedUser={selectedUser}
+                    />
+                  )}
                 </AccordionDetails>
               </Accordion>
             </Box>
