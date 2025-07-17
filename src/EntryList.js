@@ -48,7 +48,7 @@ const EntryList = ({
     paymentStatus: "Nicht gezahlt",
     createdAt: new Date(),
     validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // Set to end of next year (2026)
-    owner: loggedInUser || "",
+    owner: loggedInUser,
     extensionHistory: [],
     bougetList: "",
     admin_fee: null,
@@ -60,7 +60,7 @@ const EntryList = ({
     aliasNotes: "",
     type: "Premium",
     validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // Set to end of next year (2026)
-    owner: loggedInUser || "",
+    owner: loggedInUser,
     extensionHistory: [],
     bougetList: "",
     admin_fee: null,
@@ -82,7 +82,7 @@ const EntryList = ({
     if (!createdAt) return false;
     try {
       const createdDate = new Date(createdAt);
-      const currentDate = new Date("2025-07-17T15:26:00+02:00"); // Current date: July 17, 2025, 15:26 PM CEST
+      const currentDate = new Date("2025-07-17T16:20:00+02:00"); // Current date: July 17, 2025, 16:20 PM CEST
       const timeDiff = currentDate - createdDate;
       const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
       return daysDiff <= 5; // Highlight entries created within 5 days
@@ -94,7 +94,8 @@ const EntryList = ({
 
   // Update status and paymentStatus for expired entries
   const updateExpiredEntries = useCallback(async () => {
-    const currentDate = new Date("2025-07-17T15:26:00+02:00");
+    if (!loggedInUser) return; // Prevent updates if no user is logged in
+    const currentDate = new Date("2025-07-17T16:20:00+02:00");
     const expiredEntries = entries.filter((entry) => {
       if (!entry.validUntil || !entry.id) return false;
       try {
@@ -122,17 +123,17 @@ const EntryList = ({
         handleError(error, showSnackbar);
       }
     }
-  }, [entries, setEntries, showSnackbar]);
+  }, [entries, setEntries, showSnackbar, loggedInUser]);
 
   useEffect(() => {
-    if (entries.length > 0 && !isLoading) {
+    if (entries.length > 0 && !isLoading && loggedInUser) {
       updateExpiredEntries();
     }
-  }, [entries, updateExpiredEntries, isLoading]);
+  }, [entries, updateExpiredEntries, isLoading, loggedInUser]);
 
   // Calculate expired entries (validUntil before current date)
   const expiredEntries = useMemo(() => {
-    const currentDate = new Date("2025-07-17T15:26:00+02:00");
+    const currentDate = new Date("2025-07-17T16:20:00+02:00");
     return entries.filter((entry) => {
       if (!entry.validUntil) return false;
       try {
@@ -215,6 +216,7 @@ const EntryList = ({
 
   const motivationMessage = useMemo(() => {
     const randomPhrase = motivationalPhrases[Math.floor(Math.random() * motivationalPhrases.length)];
+    if (!loggedInUser) return "";
     if (entryCount === 0) {
       return "🎉 Du hast noch keine Einträge erstellt. Lass uns mit dem ersten beginnen!";
     } else if (entryCount >= 100) {
@@ -222,9 +224,13 @@ const EntryList = ({
     } else {
       return `🎉 ${randomPhrase} Du hast ${entryCount} Einträge erreicht! Nur noch ${progressToNext} bis ${nextMilestone}!`;
     }
-  }, [entryCount]);
+  }, [entryCount, loggedInUser]);
 
   const handleOpenCreateEntryDialog = useCallback(() => {
+    if (!loggedInUser) {
+      showSnackbar("Bitte melden Sie sich an.", "error");
+      return;
+    }
     const username = generateUsername(loggedInUser);
     const randomPassword = Math.random().toString(36).slice(-8);
     setNewEntry({
@@ -236,30 +242,34 @@ const EntryList = ({
       paymentStatus: "Nicht gezahlt",
       createdAt: new Date(),
       validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // Set to end of next year (2026)
-      owner: loggedInUser || "",
+      owner: loggedInUser,
       extensionHistory: [],
       bougetList: "",
       admin_fee: null,
       extensionRequest: null,
     });
     setOpenCreateDialog(true);
-  }, [loggedInUser, setOpenCreateDialog]);
+  }, [loggedInUser, setOpenCreateDialog, showSnackbar]);
 
   const handleOpenManualEntryDialog = useCallback(() => {
+    if (!loggedInUser) {
+      showSnackbar("Bitte melden Sie sich an.", "error");
+      return;
+    }
     setManualEntry({
       username: "",
       password: "",
       aliasNotes: "",
       type: "Premium",
       validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // Set to end of next year (2026)
-      owner: loggedInUser || "",
+      owner: loggedInUser,
       extensionHistory: [],
       bougetList: "",
       admin_fee: null,
       extensionRequest: null,
     });
     setOpenManualDialog(true);
-  }, [loggedInUser, setOpenManualDialog]);
+  }, [loggedInUser, setOpenManualDialog, showSnackbar]);
 
   const createEntry = useCallback(async () => {
     if (!newEntry.aliasNotes.trim()) {
@@ -334,7 +344,7 @@ const EntryList = ({
       >
         Abonnenten
       </Typography>
-      {role !== "Admin" && (
+      {role !== "Admin" && loggedInUser && (
         <Card sx={{ mb: 3, p: isMobile ? 1 : 2, bgcolor: "#e3f2fd", boxShadow: 3, borderRadius: 2 }}>
           <CardContent>
             <Typography variant="body1" sx={{ fontSize: isMobile ? "0.9rem" : "1.1rem" }}>
@@ -359,7 +369,11 @@ const EntryList = ({
           ) : (
             <Box sx={{ mt: 1 }}>
               {expiredEntries.map((entry) => (
-                <Typography key={entry.id} variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+                <Typography
+                  key={entry.id}
+                  variant="body2"
+                  sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
+                >
                   {entry.aliasNotes} (Gültig bis: {formatDate(entry.validUntil)})
                 </Typography>
               ))}
@@ -451,7 +465,7 @@ const EntryList = ({
           color="success"
           startIcon={<AddIcon />}
           onClick={handleOpenCreateEntryDialog}
-          disabled={isLoading}
+          disabled={isLoading || !loggedInUser}
           sx={{
             borderRadius: 2,
             px: 3,
@@ -469,7 +483,7 @@ const EntryList = ({
             color="primary"
             startIcon={<AddIcon />}
             onClick={handleOpenManualEntryDialog}
-            disabled={isLoading}
+            disabled={isLoading || !loggedInUser}
             sx={{
               borderRadius: 2,
               px: 3,
@@ -504,7 +518,9 @@ const EntryList = ({
                   boxShadow: 4,
                   bgcolor: isNewEntry(entry.createdAt)
                     ? "info.light"
-                    : (role === "Admin" ? OWNER_COLORS[entry.owner] || "#ffffff" : "#ffffff"),
+                    : role === "Admin"
+                    ? OWNER_COLORS[entry.owner] || "#ffffff"
+                    : "#ffffff",
                   border: isNewEntry(entry.createdAt) ? "2px solid" : "none",
                   borderColor: isNewEntry(entry.createdAt) ? "info.main" : "none",
                   transition: "transform 0.2s",
@@ -515,13 +531,24 @@ const EntryList = ({
                 }}
               >
                 <CardContent sx={{ p: isMobile ? 2 : 3 }}>
-                  <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1, fontSize: isMobile ? "1rem" : "1.25rem" }}>
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: "bold", mb: 1, fontSize: isMobile ? "1rem" : "1.25rem" }}
+                  >
                     {entry.aliasNotes}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+                  <Typography
+                    variant="body2"
+                    color="textSecondary"
+                    sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
+                  >
                     Benutzername: {entry.username}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+                  <Typography
+                    variant="body2"
+                    color="textSecondary"
+                    sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
+                  >
                     Gültig bis: {formatDate(entry.validUntil)}
                   </Typography>
                   <EntryAccordion
