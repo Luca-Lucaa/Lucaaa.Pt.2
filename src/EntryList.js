@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { supabase } from "./supabaseClient";
-import { formatDate, generateUsername, useDebounce, handleError, updateExpiredEntries } from "./utils";
+import { formatDate, generateUsername, handleError, updateExpiredEntries } from "./utils";
 import { useSnackbar } from "./useSnackbar";
 import { OWNER_COLORS } from "./config";
 import EntryAccordion from "./EntryAccordion";
@@ -544,6 +544,7 @@ const EntryList = ({
             onChange={(e) => setNewEntry({ ...newEntry, aliasNotes: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
+            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
@@ -553,6 +554,7 @@ const EntryList = ({
             onChange={(e) => setNewEntry({ ...newEntry, bougetList: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
+            InputLabelProps={{ shrink: true }}
           />
           <Select
             fullWidth
@@ -604,6 +606,7 @@ const EntryList = ({
             onChange={(e) => setManualEntry({ ...manualEntry, username: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
+            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Passwort"
@@ -614,6 +617,7 @@ const EntryList = ({
             onChange={(e) => setManualEntry({ ...manualEntry, password: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
+            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Spitzname, Notizen etc."
@@ -623,6 +627,7 @@ const EntryList = ({
             onChange={(e) => setManualEntry({ ...manualEntry, aliasNotes: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
+            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
@@ -632,6 +637,7 @@ const EntryList = ({
             onChange={(e) => setManualEntry({ ...manualEntry, bougetList: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
+            InputLabelProps={{ shrink: true }}
           />
           <Select
             fullWidth
@@ -677,6 +683,7 @@ const EntryList = ({
                 inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
                 disabled={isLoading}
                 size={isMobile ? "small" : "medium"}
+                InputLabelProps={{ shrink: true }}
               />
               <Select
                 fullWidth
