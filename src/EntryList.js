@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { supabase } from "./supabaseClient";
-import { formatDate, generateUsername, handleError, updateExpiredEntries } from "./utils";
+import { formatDate, generateUsername, useDebounce, handleError, updateExpiredEntries } from "./utils";
 import { useSnackbar } from "./useSnackbar";
 import { OWNER_COLORS } from "./config";
 import EntryAccordion from "./EntryAccordion";
@@ -690,14 +690,21 @@ const EntryList = ({
                 margin="normal"
                 value={manualEntry.owner || loggedInUser}
                 onChange={(e) => setManualEntry({ ...manualEntry, owner: e.target.value })}
-                disabled={isLoading}
+                disabled={isLoading || !owners || owners.length === 0}
                 size={isMobile ? "small" : "medium"}
               >
-                {owners.map((owner) => (
-                  <MenuItem key={owner} value={owner}>
-                    {owner}
-                  </MenuItem>
-                ))}
+                <MenuItem value="" disabled>
+                  Ersteller auswählen
+                </MenuItem>
+                {owners && owners.length > 0 ? (
+                  owners.map((owner) => (
+                    <MenuItem key={owner} value={owner}>
+                      {owner}
+                    </MenuItem>
+                  ))
+                ) : (
+                  <MenuItem value={loggedInUser}>{loggedInUser}</MenuItem>
+                )}
               </Select>
             </>
           )}
