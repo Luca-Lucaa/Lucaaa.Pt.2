@@ -17,16 +17,13 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
 import BackupIcon from "@mui/icons-material/Backup";
 import DescriptionIcon from "@mui/icons-material/Description";
 import MenuIcon from "@mui/icons-material/Menu";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ChatIcon from "@mui/icons-material/Chat";
 import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
 import { supabase } from "./supabaseClient";
 import { useMessages, handleError } from "./utils";
@@ -67,8 +64,8 @@ const App = () => {
   const [file, setFile] = useState(null);
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
   const [guidesAnchorEl, setGuidesAnchorEl] = useState(null);
+  const [chatAnchorEl, setChatAnchorEl] = useState(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [chatExpanded, setChatExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [openManualDialog, setOpenManualDialog] = useState(false);
@@ -80,7 +77,7 @@ const App = () => {
     if (USER_CREDENTIALS[username] && USER_CREDENTIALS[username] === password) {
       setLoggedInUser(username);
       setRole(username === "Admin" ? "Admin" : "Friend");
-      setSelectedUser(username === "Admin" ? "Scholli" : "Admin");
+      setSelectedUser(username === "Admin" ? "Scholli" : "Admin"); // Default chat partner
       localStorage.setItem("loggedInUser", username);
       localStorage.setItem("role", username === "Admin" ? "Admin" : "Friend");
       showSnackbar(`✅ Willkommen, ${username}!`);
@@ -170,6 +167,7 @@ const App = () => {
   const handleMenuClose = useCallback(() => {
     setMenuAnchorEl(null);
     setGuidesAnchorEl(null);
+    setChatAnchorEl(null);
   }, []);
 
   const handleImportOpen = useCallback(() => {
@@ -183,6 +181,14 @@ const App = () => {
 
   const handleGuidesClose = useCallback(() => {
     setGuidesAnchorEl(null);
+  }, []);
+
+  const handleChatClick = useCallback((event) => {
+    setChatAnchorEl(event.currentTarget);
+  }, []);
+
+  const handleChatClose = useCallback(() => {
+    setChatAnchorEl(null);
   }, []);
 
   const handleGuideDownload = useCallback((path) => {
@@ -217,7 +223,7 @@ const App = () => {
               </Typography>
             )}
             {loggedInUser && (
-              <Box sx={{ marginRight: 2 }}>
+              <Box sx={{ marginRight: 2, display: "flex", alignItems: "center", gap: 1 }}>
                 {isMobile ? (
                   <IconButton
                     color="inherit"
@@ -246,10 +252,20 @@ const App = () => {
                       color="secondary"
                       startIcon={<DescriptionIcon />}
                       onClick={handleGuidesClick}
-                      sx={{ borderRadius: 2 }}
+                      sx={{ mr: 1, borderRadius: 2 }}
                       aria-label="Anleitungen öffnen"
                     >
                       Anleitungen
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="secondary"
+                      startIcon={<ChatIcon />}
+                      onClick={handleChatClick}
+                      sx={{ borderRadius: 2 }}
+                      aria-label="Chat öffnen"
+                    >
+                      Chat
                     </Button>
                   </>
                 )}
@@ -261,6 +277,7 @@ const App = () => {
                     </>
                   )}
                   <MenuItem onClick={handleGuidesClick}>Anleitungen</MenuItem>
+                  <MenuItem onClick={handleChatClick}>Chat</MenuItem>
                 </Menu>
                 <Menu anchorEl={guidesAnchorEl} open={Boolean(guidesAnchorEl)} onClose={handleGuidesClose}>
                   {GUIDES.map((guide) => (
@@ -268,6 +285,65 @@ const App = () => {
                       {guide.name}
                     </MenuItem>
                   ))}
+                </Menu>
+                <Menu
+                  anchorEl={chatAnchorEl}
+                  open={Boolean(chatAnchorEl)}
+                  onClose={handleChatClose}
+                  sx={{ maxWidth: isMobile ? "90vw" : 400 }}
+                >
+                  <Box sx={{ p: 2, width: isMobile ? "80vw" : 350 }}>
+                    <Typography variant="h6" sx={{ mb: 1 }}>
+                      Chat mit {selectedUser || "niemandem"}
+                    </Typography>
+                    {role === "Admin" ? (
+                      <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+                        <Badge badgeContent={unreadCount["Scholli"] || 0} color="error">
+                          <Button
+                            variant={selectedUser === "Scholli" ? "contained" : "outlined"}
+                            color="primary"
+                            onClick={() => setSelectedUser("Scholli")}
+                            sx={{ minWidth: 0, p: 0.5, borderRadius: 2 }}
+                            aria-label="Chat mit Scholli öffnen"
+                          >
+                            Scholli {USER_EMOJIS["Scholli"] || ""}
+                          </Button>
+                        </Badge>
+                        <Badge badgeContent={unreadCount["Jamaica05"] || 0} color="error">
+                          <Button
+                            variant={selectedUser === "Jamaica05" ? "contained" : "outlined"}
+                            color="primary"
+                            onClick={() => setSelectedUser("Jamaica05")}
+                            sx={{ minWidth: 0, p: 0.5, borderRadius: 2 }}
+                            aria-label="Chat mit Jamaica05 öffnen"
+                          >
+                            Jamaica05 {USER_EMOJIS["Jamaica05"] || ""}
+                          </Button>
+                        </Badge>
+                      </Box>
+                    ) : (
+                      <Box sx={{ mb: 2 }}>
+                        <Button
+                          variant={selectedUser === "Admin" ? "contained" : "outlined"}
+                          color="primary"
+                          onClick={() => setSelectedUser("Admin")}
+                          sx={{ minWidth: 0, p: 0.5, borderRadius: 2 }}
+                          aria-label="Chat mit Admin öffnen"
+                        >
+                          Admin {USER_EMOJIS["Admin"] || ""}
+                        </Button>
+                      </Box>
+                    )}
+                    {selectedUser ? (
+                      <CompactChatList
+                        messages={messages}
+                        loggedInUser={loggedInUser}
+                        selectedUser={selectedUser}
+                      />
+                    ) : (
+                      <Typography>Bitte wählen Sie einen Benutzer aus.</Typography>
+                    )}
+                  </Box>
                 </Menu>
               </Box>
             )}
@@ -325,60 +401,6 @@ const App = () => {
                   setOpenManualDialog={setOpenManualDialog}
                 />
               )}
-              <Accordion
-                expanded={chatExpanded}
-                onChange={() => setChatExpanded(!chatExpanded)}
-                sx={{ mt: 2, borderRadius: 2 }}
-              >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography variant="h6">
-                    Chat mit {selectedUser || "niemandem"}
-                  </Typography>
-                  {role === "Admin" && (
-                    <Box sx={{ display: "flex", gap: 1, ml: 2 }}>
-                      <Badge badgeContent={unreadCount["Scholli"] || 0} color="error">
-                        <Button
-                          variant={selectedUser === "Scholli" ? "contained" : "outlined"}
-                          color="primary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedUser("Scholli");
-                          }}
-                          sx={{ minWidth: 0, p: 0.5, borderRadius: 2 }}
-                          aria-label="Chat mit Scholli öffnen"
-                        >
-                          Scholli {USER_EMOJIS["Scholli"] || ""}
-                        </Button>
-                      </Badge>
-                      <Badge badgeContent={unreadCount["Jamaica05"] || 0} color="error">
-                        <Button
-                          variant={selectedUser === "Jamaica05" ? "contained" : "outlined"}
-                          color="primary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedUser("Jamaica05");
-                          }}
-                          sx={{ minWidth: 0, p: 0.5, borderRadius: 2 }}
-                          aria-label="Chat mit Jamaica05 öffnen"
-                        >
-                          Jamaica05 {USER_EMOJIS["Jamaica05"] || ""}
-                        </Button>
-                      </Badge>
-                    </Box>
-                  )}
-                </AccordionSummary>
-                <AccordionDetails>
-                  {selectedUser ? (
-                    <CompactChatList
-                      messages={messages}
-                      loggedInUser={loggedInUser}
-                      selectedUser={selectedUser}
-                    />
-                  ) : (
-                    <Typography>Bitte wählen Sie einen Benutzer aus.</Typography>
-                  )}
-                </AccordionDetails>
-              </Accordion>
             </Box>
           )}
         </Suspense>
