@@ -47,8 +47,8 @@ const EntryList = ({
     status: "Inaktiv",
     paymentStatus: "Nicht gezahlt",
     createdAt: new Date(),
-    validUntil: new Date(new Date().getFullYear(), 11, 31),
-    owner: loggedInUser,
+    validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // Set to end of next year (2026)
+    owner: loggedInUser || "",
     extensionHistory: [],
     bougetList: "",
     admin_fee: null,
@@ -59,8 +59,8 @@ const EntryList = ({
     password: "",
     aliasNotes: "",
     type: "Premium",
-    validUntil: new Date(new Date().getFullYear(), 11, 31),
-    owner: loggedInUser,
+    validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // Set to end of next year (2026)
+    owner: loggedInUser || "",
     extensionHistory: [],
     bougetList: "",
     admin_fee: null,
@@ -82,7 +82,7 @@ const EntryList = ({
     if (!createdAt) return false;
     try {
       const createdDate = new Date(createdAt);
-      const currentDate = new Date("2025-07-17T15:01:00+02:00"); // Current date: July 17, 2025, 15:01 PM CEST
+      const currentDate = new Date("2025-07-17T15:26:00+02:00"); // Current date: July 17, 2025, 15:26 PM CEST
       const timeDiff = currentDate - createdDate;
       const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
       return daysDiff <= 5; // Highlight entries created within 5 days
@@ -94,14 +94,14 @@ const EntryList = ({
 
   // Update status and paymentStatus for expired entries
   const updateExpiredEntries = useCallback(async () => {
-    const currentDate = new Date("2025-07-17T15:01:00+02:00");
+    const currentDate = new Date("2025-07-17T15:26:00+02:00");
     const expiredEntries = entries.filter((entry) => {
-      if (!entry.validUntil) return false;
+      if (!entry.validUntil || !entry.id) return false;
       try {
         const validUntil = new Date(entry.validUntil);
         return validUntil < currentDate && (entry.status !== "Inaktiv" || entry.paymentStatus !== "Nicht gezahlt");
       } catch (error) {
-        console.error(`Ungültiges Datum in Eintrag ${entry.id}:`, error);
+        console.error(`Ungültiges Datum in Eintrag ${entry.id || "unbekannt"}:`, error);
         return false;
       }
     });
@@ -132,14 +132,14 @@ const EntryList = ({
 
   // Calculate expired entries (validUntil before current date)
   const expiredEntries = useMemo(() => {
-    const currentDate = new Date("2025-07-17T15:01:00+02:00");
+    const currentDate = new Date("2025-07-17T15:26:00+02:00");
     return entries.filter((entry) => {
       if (!entry.validUntil) return false;
       try {
         const validUntil = new Date(entry.validUntil);
         return validUntil < currentDate && (role === "Admin" || entry.owner === loggedInUser);
       } catch (error) {
-        console.error(`Ungültiges Datum in Eintrag ${entry.id}:`, error);
+        console.error(`Ungültiges Datum in Eintrag ${entry.id || "unbekannt"}:`, error);
         return false;
       }
     });
@@ -148,7 +148,7 @@ const EntryList = ({
   const filteredEntries = useMemo(() => {
     let filtered = entries;
     if (role !== "Admin") {
-      filtered = entries.filter((entry) => entry.owner === loggedInUser);
+      filtered = filtered.filter((entry) => entry.owner === loggedInUser);
     } else if (ownerFilter) {
       filtered = filtered.filter((entry) => entry.owner === ownerFilter);
     }
@@ -167,8 +167,8 @@ const EntryList = ({
     }
     // Sort by validUntil
     return filtered.sort((a, b) => {
-      const dateA = new Date(a.validUntil || new Date());
-      const dateB = new Date(b.validUntil || new Date());
+      const dateA = a.validUntil ? new Date(a.validUntil) : new Date(0);
+      const dateB = b.validUntil ? new Date(b.validUntil) : new Date(0);
       return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
     });
   }, [
@@ -235,8 +235,8 @@ const EntryList = ({
       status: "Inaktiv",
       paymentStatus: "Nicht gezahlt",
       createdAt: new Date(),
-      validUntil: new Date(new Date().getFullYear(), 11, 31),
-      owner: loggedInUser,
+      validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // Set to end of next year (2026)
+      owner: loggedInUser || "",
       extensionHistory: [],
       bougetList: "",
       admin_fee: null,
@@ -251,8 +251,8 @@ const EntryList = ({
       password: "",
       aliasNotes: "",
       type: "Premium",
-      validUntil: new Date(new Date().getFullYear(), 11, 31),
-      owner: loggedInUser,
+      validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // Set to end of next year (2026)
+      owner: loggedInUser || "",
       extensionHistory: [],
       bougetList: "",
       admin_fee: null,
@@ -586,7 +586,6 @@ const EntryList = ({
           />
           <Select
             fullWidth
-            margin="normal"
             value={newEntry.type}
             onChange={(e) => setNewEntry({ ...newEntry, type: e.target.value })}
             disabled={isLoading}
@@ -665,7 +664,6 @@ const EntryList = ({
           />
           <Select
             fullWidth
-            margin="normal"
             value={manualEntry.type}
             onChange={(e) => setManualEntry({ ...manualEntry, type: e.target.value })}
             disabled={isLoading}
