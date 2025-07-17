@@ -82,7 +82,7 @@ const EntryList = ({
     if (!createdAt) return false;
     try {
       const createdDate = new Date(createdAt);
-      const currentDate = new Date("2025-07-17T16:20:00+02:00"); // Current date: July 17, 2025, 16:20 PM CEST
+      const currentDate = new Date("2025-07-17T22:15:00+02:00"); // Current date: July 17, 2025, 22:15 PM CEST
       const timeDiff = currentDate - createdDate;
       const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
       return daysDiff <= 5; // Highlight entries created within 5 days
@@ -95,7 +95,7 @@ const EntryList = ({
   // Update status and paymentStatus for expired entries
   const updateExpiredEntries = useCallback(async () => {
     if (!loggedInUser) return; // Prevent updates if no user is logged in
-    const currentDate = new Date("2025-07-17T16:20:00+02:00");
+    const currentDate = new Date("2025-07-17T22:15:00+02:00");
     const expiredEntries = entries.filter((entry) => {
       if (!entry.validUntil || !entry.id) return false;
       try {
@@ -133,7 +133,7 @@ const EntryList = ({
 
   // Calculate expired entries (validUntil before current date)
   const expiredEntries = useMemo(() => {
-    const currentDate = new Date("2025-07-17T16:20:00+02:00");
+    const currentDate = new Date("2025-07-17T22:15:00+02:00");
     return entries.filter((entry) => {
       if (!entry.validUntil) return false;
       try {
@@ -308,7 +308,7 @@ const EntryList = ({
       aliasNotes: manualEntry.aliasNotes,
       type: manualEntry.type,
       validUntil: validUntilDate,
-      owner: loggedInUser,
+      owner: manualEntry.owner || loggedInUser, // Allow Admin to set owner
       status: "Aktiv",
       paymentStatus: "Gezahlt",
       createdAt: new Date(),
@@ -556,6 +556,7 @@ const EntryList = ({
                     role={role}
                     loggedInUser={loggedInUser}
                     setEntries={setEntries}
+                    owners={owners} // Pass owners for Admin to change owner
                   />
                 </CardContent>
               </Card>
@@ -621,6 +622,25 @@ const EntryList = ({
             <MenuItem value="Premium">Premium</MenuItem>
             <MenuItem value="Basic">Basic</MenuItem>
           </Select>
+          {role === "Admin" && (
+            <Select
+              fullWidth
+              value={newEntry.owner || loggedInUser}
+              onChange={(e) => setNewEntry({ ...newEntry, owner: e.target.value })}
+              disabled={isLoading}
+              size={isMobile ? "small" : "medium"}
+              displayEmpty
+            >
+              <MenuItem value={loggedInUser}>{loggedInUser}</MenuItem>
+              {owners
+                .filter((owner) => owner !== loggedInUser)
+                .map((owner) => (
+                  <MenuItem key={owner} value={owner}>
+                    {owner}
+                  </MenuItem>
+                ))}
+            </Select>
+          )}
         </DialogContent>
         <DialogActions>
           <Button
@@ -716,21 +736,40 @@ const EntryList = ({
             size={isMobile ? "small" : "medium"}
           />
           {role === "Admin" && (
-            <TextField
-              label="Admin-Gebühr (€)"
-              fullWidth
-              margin="normal"
-              value={manualEntry.admin_fee || ""}
-              onChange={(e) => {
-                const value = e.target.value.replace(/[^0-9]/g, "");
-                const numValue = value ? parseInt(value) : null;
-                if (numValue && numValue > 999) return;
-                setManualEntry({ ...manualEntry, admin_fee: numValue });
-              }}
-              inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
-              disabled={isLoading}
-              size={isMobile ? "small" : "medium"}
-            />
+            <>
+              <TextField
+                label="Admin-Gebühr (€)"
+                fullWidth
+                margin="normal"
+                value={manualEntry.admin_fee || ""}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9]/g, "");
+                  const numValue = value ? parseInt(value) : null;
+                  if (numValue && numValue > 999) return;
+                  setManualEntry({ ...manualEntry, admin_fee: numValue });
+                }}
+                inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+                disabled={isLoading}
+                size={isMobile ? "small" : "medium"}
+              />
+              <Select
+                fullWidth
+                value={manualEntry.owner || loggedInUser}
+                onChange={(e) => setManualEntry({ ...manualEntry, owner: e.target.value })}
+                disabled={isLoading}
+                size={isMobile ? "small" : "medium"}
+                displayEmpty
+              >
+                <MenuItem value={loggedInUser}>{loggedInUser}</MenuItem>
+                {owners
+                  .filter((owner) => owner !== loggedInUser)
+                  .map((owner) => (
+                    <MenuItem key={owner} value={owner}>
+                      {owner}
+                    </MenuItem>
+                  ))}
+              </Select>
+            </>
           )}
         </DialogContent>
         <DialogActions>
