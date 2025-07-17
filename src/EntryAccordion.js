@@ -20,7 +20,7 @@ import { supabase } from "./supabaseClient";
 import { formatDate, handleError } from "./utils";
 import { useSnackbar } from "./useSnackbar";
 
-const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
+const EntryAccordion = ({ entry, role, loggedInUser, setEntries, owners }) => {
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [editedEntry, setEditedEntry] = useState({
     username: entry.username || "",
@@ -33,6 +33,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
     validUntil: entry.validUntil ? new Date(entry.validUntil).toISOString().split("T")[0] : "",
     admin_fee: entry.admin_fee != null ? entry.admin_fee.toString() : "",
     note: entry.note || "",
+    owner: entry.owner || loggedInUser, // Add owner to state
   });
   const [isLoading, setIsLoading] = useState(false);
   const { showSnackbar } = useSnackbar();
@@ -41,7 +42,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const isExtensionRequestAllowed = useCallback(() => {
     if (!entry.validUntil) return false;
     const validUntilDate = new Date(entry.validUntil);
-    const currentDate = new Date("2025-06-30T19:00:00+02:00"); // Current date: June 30, 2025, 07:00 PM CEST
+    const currentDate = new Date("2025-07-17T13:00:00+02:00"); // Current date: July 17, 2025, 01:00 PM CEST
     const timeDiff = validUntilDate - currentDate;
     const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
     return daysDiff <= 30; // Allow extension request if within 30 days
@@ -163,6 +164,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
       validUntil: validUntilDate.toISOString(),
       admin_fee: adminFee,
       note: editedEntry.note ? editedEntry.note.trim() : "",
+      owner: editedEntry.owner, // Include owner in update
     };
 
     setIsLoading(true);
@@ -358,6 +360,21 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
             onChange={(e) => setEditedEntry({ ...editedEntry, note: e.target.value })}
             disabled={isLoading}
           />
+          {role === "Admin" && (
+            <Select
+              fullWidth
+              margin="normal"
+              value={editedEntry.owner}
+              onChange={(e) => setEditedEntry({ ...editedEntry, owner: e.target.value })}
+              disabled={isLoading}
+            >
+              {owners.map((owner) => (
+                <MenuItem key={owner} value={owner}>
+                  {owner}
+                </MenuItem>
+              ))}
+            </Select>
+          )}
         </DialogContent>
         <DialogActions>
           <Button
