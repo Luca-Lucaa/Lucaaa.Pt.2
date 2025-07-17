@@ -77,7 +77,7 @@ const App = () => {
   const { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, closeSnackbar } = useSnackbar();
 
   const handleLogin = useCallback((username, password) => {
-    if (USER_CREDENTIALS[username] === password) {
+    if (USER_CREDENTIALS[username] && USER_CREDENTIALS[username] === password) {
       setLoggedInUser(username);
       setRole(username === "Admin" ? "Admin" : "Friend");
       setSelectedUser(username === "Admin" ? "Scholli" : "Admin");
@@ -205,11 +205,13 @@ const App = () => {
       <StyledContainer maxWidth="xl">
         <StyledAppBar position="static">
           <Toolbar>
-            <Typography variant="h6">Luca-TV</Typography>
+            <Typography variant="h6" sx={{ flexGrow: 1 }}>
+              Luca-TV
+            </Typography>
             {loggedInUser && (
               <Typography
                 variant="h6"
-                sx={{ marginLeft: "auto", marginRight: 2, fontSize: { xs: "14px", sm: "16px" } }}
+                sx={{ marginRight: 2, fontSize: { xs: "14px", sm: "16px" } }}
               >
                 {USER_EMOJIS[loggedInUser] || ""} {loggedInUser}
               </Typography>
@@ -329,7 +331,9 @@ const App = () => {
                 sx={{ mt: 2, borderRadius: 2 }}
               >
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography variant="h6">Chat mit {selectedUser || "niemandem"}</Typography>
+                  <Typography variant="h6">
+                    Chat mit {selectedUser || "niemandem"}
+                  </Typography>
                   {role === "Admin" && (
                     <Box sx={{ display: "flex", gap: 1, ml: 2 }}>
                       <Badge badgeContent={unreadCount["Scholli"] || 0} color="error">
@@ -341,6 +345,7 @@ const App = () => {
                             setSelectedUser("Scholli");
                           }}
                           sx={{ minWidth: 0, p: 0.5, borderRadius: 2 }}
+                          aria-label="Chat mit Scholli öffnen"
                         >
                           Scholli {USER_EMOJIS["Scholli"] || ""}
                         </Button>
@@ -354,6 +359,7 @@ const App = () => {
                             setSelectedUser("Jamaica05");
                           }}
                           sx={{ minWidth: 0, p: 0.5, borderRadius: 2 }}
+                          aria-label="Chat mit Jamaica05 öffnen"
                         >
                           Jamaica05 {USER_EMOJIS["Jamaica05"] || ""}
                         </Button>
@@ -362,12 +368,14 @@ const App = () => {
                   )}
                 </AccordionSummary>
                 <AccordionDetails>
-                  {selectedUser && (
+                  {selectedUser ? (
                     <CompactChatList
                       messages={messages}
                       loggedInUser={loggedInUser}
                       selectedUser={selectedUser}
                     />
+                  ) : (
+                    <Typography>Bitte wählen Sie einen Benutzer aus.</Typography>
                   )}
                 </AccordionDetails>
               </Accordion>
