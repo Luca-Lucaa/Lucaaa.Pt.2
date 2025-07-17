@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { supabase } from "./supabaseClient";
-import { formatDate, generateUsername, useDebounce, handleError, updateExpiredEntries } from "./utils";
+import { formatDate, generateUsername, useDebounce, handleError } from "./utils";
 import { useSnackbar } from "./useSnackbar";
 import { OWNER_COLORS } from "./config";
 import EntryAccordion from "./EntryAccordion";
@@ -73,46 +73,59 @@ const EntryList = ({
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const owners = useMemo(() => {
-    const uniqueOwners = [...new Set(entries.map((entry) => entry.owner).filter(Boolean))];
+    const uniqueOwners = [...new Set(entries.map((entry) => entry.owner))];
     return uniqueOwners.sort();
   }, [entries]);
 
   // Check if an entry is new (created within the last 5 days)
   const isNewEntry = useCallback((createdAt) => {
-    if (!createdAt) return false;
-    try {
-      const createdDate = new Date(createdAt);
-      const currentDate = new Date();
-      const timeDiff = currentDate - createdDate;
-      const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
-      return daysDiff <= 5; // Highlight entries created within 5 days
-    } catch (error) {
-      console.error("Fehler bei isNewEntry:", error);
-      return false;
-    }
+    const createdDate = new Date(createdAt);
+    const currentDate = new Date("2025-07-17T15:01:00+02:00"); // Current date: July 17, 2025, 15:01 PM CEST
+    const timeDiff = currentDate - createdDate;
+    const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
+    return daysDiff <= 5; // Highlight entries created within 5 days
   }, []);
+
+  // Update status and paymentStatus for expired entries
+  const updateExpiredEntries = useCallback(async () => {
+    const currentDate = new Date("2025-07-17T15:01:00+02:00");
+    const expiredEntries = entries.filter((entry) => {
+      const validUntil = new Date(entry.validUntil);
+      return validUntil < currentDate && (entry.status !== "Inaktiv" || entry.paymentStatus !== "Nicht gezahlt");
+    });
+
+    for (const entry of expiredEntries) {
+      try {
+        const { data, error } = await supabase
+          .from("entries")
+          .update({ status: "Inaktiv", paymentStatus: "Nicht gezahlt" })
+          .eq("id", entry.id)
+          .select()
+          .single();
+        if (error) throw error;
+        setEntries((prev) =>
+          prev.map((e) => (e.id === entry.id ? { ...e, status: "Inaktiv", paymentStatus: "Nicht gezahlt" } : e))
+        );
+      } catch (error) {
+        handleError(error, showSnackbar);
+      }
+    }
+  }, [entries, setEntries, showSnackbar]);
+
+  useEffect(() => {
+    if (entries.length > 0) {
+      updateExpiredEntries();
+    }
+  }, [entries, updateExpiredEntries]);
 
   // Calculate expired entries (validUntil before current date)
   const expiredEntries = useMemo(() => {
-    const currentDate = new Date();
+    const currentDate = new Date("2025-07-17T15:01:00+02:00");
     return entries.filter((entry) => {
-      if (!entry.validUntil) return false;
-      try {
-        const validUntil = new Date(entry.validUntil);
-        return validUntil < currentDate && (role === "Admin" || entry.owner === loggedInUser);
-      } catch (error) {
-        console.error(`Ungültiges Datum in Eintrag ${entry.id}:`, error);
-        return false;
-      }
+      const validUntil = new Date(entry.validUntil);
+      return validUntil < currentDate && (role === "Admin" || entry.owner === loggedInUser);
     });
   }, [entries, role, loggedInUser]);
-
-  // Update expired entries on load
-  useEffect(() => {
-    if (entries.length > 0 && !isLoading) {
-      updateExpiredEntries(entries, setEntries, showSnackbar);
-    }
-  }, [entries, setEntries, showSnackbar, isLoading]);
 
   const filteredEntries = useMemo(() => {
     let filtered = entries;
@@ -124,8 +137,8 @@ const EntryList = ({
     if (debouncedSearchTerm) {
       filtered = filtered.filter(
         (entry) =>
-          (entry.username || "").toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-          (entry.aliasNotes || "").toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+          entry.username.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+          entry.aliasNotes.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
       );
     }
     if (statusFilter) {
@@ -136,8 +149,8 @@ const EntryList = ({
     }
     // Sort by validUntil
     return filtered.sort((a, b) => {
-      const dateA = new Date(a.validUntil || new Date());
-      const dateB = new Date(b.validUntil || new Date());
+      const dateA = new Date(a.validUntil);
+      const dateB = new Date(b.validUntil);
       return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
     });
   }, [
@@ -256,31 +269,26 @@ const EntryList = ({
     }
     setIsLoading(true);
     const validUntilDate = new Date(manualEntry.validUntil);
-    if (isNaN(validUntilDate)) {
-      showSnackbar("Bitte ein gültiges Datum eingeben.", "error");
-      setIsLoading(false);
-      return;
-    }
     const newManualEntry = {
       username: manualEntry.username,
       password: manualEntry.password,
       aliasNotes: manualEntry.aliasNotes,
       type: manualEntry.type,
       validUntil: validUntilDate,
-      owner: manualEntry.owner || loggedInUser,
+      owner: loggedInUser,
       status: "Aktiv",
       paymentStatus: "Gezahlt",
       createdAt: new Date(),
       note: "Dieser Abonnent besteht bereits",
       extensionHistory: [],
       bougetList: manualEntry.bougetList,
-      admin_fee: role === "Admin" ? (manualEntry.admin_fee ? parseInt(manualEntry.admin_fee) : null) : null,
+      admin_fee: role === "Admin" ? manualEntry.admin_fee : null,
       extensionRequest: null,
     };
     try {
       const { data, error } = await supabase.from("entries").insert([newManualEntry]).select();
       if (error) throw error;
-      setEntries((prev) => [data[0], ...prev]);
+ pardEntries((prev) => [data[0], ...prev]);
       setOpenManualDialog(false);
       showSnackbar("Bestehender Abonnent erfolgreich eingepflegt!");
     } catch (error) {
@@ -498,7 +506,6 @@ const EntryList = ({
                     role={role}
                     loggedInUser={loggedInUser}
                     setEntries={setEntries}
-                    owners={owners}
                   />
                 </CardContent>
               </Card>
@@ -525,7 +532,6 @@ const EntryList = ({
             disabled
             sx={{ bgcolor: "#f0f0f0" }}
             size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Passwort"
@@ -536,7 +542,6 @@ const EntryList = ({
             disabled
             sx={{ bgcolor: "#f0f0f0" }}
             size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Spitzname, Notizen etc."
@@ -546,7 +551,6 @@ const EntryList = ({
             onChange={(e) => setNewEntry({ ...newEntry, aliasNotes: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
@@ -556,7 +560,6 @@ const EntryList = ({
             onChange={(e) => setNewEntry({ ...newEntry, bougetList: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           <Select
             fullWidth
@@ -608,7 +611,6 @@ const EntryList = ({
             onChange={(e) => setManualEntry({ ...manualEntry, username: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Passwort"
@@ -619,7 +621,6 @@ const EntryList = ({
             onChange={(e) => setManualEntry({ ...manualEntry, password: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Spitzname, Notizen etc."
@@ -629,7 +630,6 @@ const EntryList = ({
             onChange={(e) => setManualEntry({ ...manualEntry, aliasNotes: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           <TextField
             label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
@@ -639,7 +639,6 @@ const EntryList = ({
             onChange={(e) => setManualEntry({ ...manualEntry, bougetList: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           <Select
             fullWidth
@@ -667,7 +666,6 @@ const EntryList = ({
             }
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
           />
           {role === "Admin" && (
             <TextField
@@ -678,13 +676,12 @@ const EntryList = ({
               onChange={(e) => {
                 const value = e.target.value.replace(/[^0-9]/g, "");
                 const numValue = value ? parseInt(value) : null;
-                if (numValue && numValue > 999) return;
+                if (numValue > 999) return;
                 setManualEntry({ ...manualEntry, admin_fee: numValue });
               }}
               inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
               disabled={isLoading}
               size={isMobile ? "small" : "medium"}
-              InputLabelProps={{ shrink: true }}
             />
           )}
         </DialogContent>
