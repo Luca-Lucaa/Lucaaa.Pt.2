@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import React from "react";
 
 export const formatDate = (dateString) => {
   if (!dateString) return "Kein Datum";
