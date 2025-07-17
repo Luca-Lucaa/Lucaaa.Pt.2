@@ -82,7 +82,7 @@ const EntryList = ({
     if (!createdAt) return false;
     try {
       const createdDate = new Date(createdAt);
-      const currentDate = new Date("2025-07-17T22:15:00+02:00"); // Current date: July 17, 2025, 22:15 PM CEST
+      const currentDate = new Date("2025-07-17T22:33:00+02:00"); // Current date: July 17, 2025, 22:33 PM CEST
       const timeDiff = currentDate - createdDate;
       const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
       return daysDiff <= 5; // Highlight entries created within 5 days
@@ -95,7 +95,7 @@ const EntryList = ({
   // Update status and paymentStatus for expired entries
   const updateExpiredEntries = useCallback(async () => {
     if (!loggedInUser) return; // Prevent updates if no user is logged in
-    const currentDate = new Date("2025-07-17T22:15:00+02:00");
+    const currentDate = new Date("2025-07-17T22:33:00+02:00");
     const expiredEntries = entries.filter((entry) => {
       if (!entry.validUntil || !entry.id) return false;
       try {
@@ -133,7 +133,7 @@ const EntryList = ({
 
   // Calculate expired entries (validUntil before current date)
   const expiredEntries = useMemo(() => {
-    const currentDate = new Date("2025-07-17T22:15:00+02:00");
+    const currentDate = new Date("2025-07-17T22:33:00+02:00");
     return entries.filter((entry) => {
       if (!entry.validUntil) return false;
       try {
@@ -200,31 +200,10 @@ const EntryList = ({
 
   const entryCount = countEntriesByOwner(loggedInUser);
 
-  const milestones = [5, 10, 15, 20, 25, 50, 100];
-  const nextMilestone = milestones.find((milestone) => milestone > entryCount) || 100;
-  const progressToNext = nextMilestone - entryCount;
-
-  const motivationalPhrases = [
-    "Super Arbeit!",
-    "Fantastisch gemacht!",
-    "Du rockst das!",
-    "Unglaublich gut!",
-    "Weiter so, Champion!",
-    "Beeindruckend!",
-    "Toll drauf!",
-  ];
-
-  const motivationMessage = useMemo(() => {
-    const randomPhrase = motivationalPhrases[Math.floor(Math.random() * motivationalPhrases.length)];
+  const summaryMessage = useMemo(() => {
     if (!loggedInUser) return "";
-    if (entryCount === 0) {
-      return "🎉 Du hast noch keine Einträge erstellt. Lass uns mit dem ersten beginnen!";
-    } else if (entryCount >= 100) {
-      return `🎉 ${randomPhrase} Du hast ${entryCount} Einträge erreicht! Du bist ein wahrer Meister!`;
-    } else {
-      return `🎉 ${randomPhrase} Du hast ${entryCount} Einträge erreicht! Nur noch ${progressToNext} bis ${nextMilestone}!`;
-    }
-  }, [entryCount, loggedInUser]);
+    return `${entryCount} Einträge, Gesamtgebühren: ${calculateTotalFeesForOwner(loggedInUser).toLocaleString()} €`;
+  }, [entryCount, loggedInUser, calculateTotalFeesForOwner]);
 
   const handleOpenCreateEntryDialog = useCallback(() => {
     if (!loggedInUser) {
@@ -345,16 +324,11 @@ const EntryList = ({
         Abonnenten
       </Typography>
       {role !== "Admin" && loggedInUser && (
-        <Card sx={{ mb: 3, p: isMobile ? 1 : 2, bgcolor: "#e3f2fd", boxShadow: 3, borderRadius: 2 }}>
-          <CardContent>
-            <Typography variant="body1" sx={{ fontSize: isMobile ? "0.9rem" : "1.1rem" }}>
-              {motivationMessage}
-            </Typography>
-            <Typography variant="body2" sx={{ mt: 1, color: "#555", fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-              Gesamtgebühren: {calculateTotalFeesForOwner(loggedInUser).toLocaleString()} €
-            </Typography>
-          </CardContent>
-        </Card>
+        <Box sx={{ mb: 2, bgcolor: "#e3f2fd", p: 1, borderRadius: 1 }}>
+          <Typography variant="body2" sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem", color: "#555" }}>
+            {summaryMessage}
+          </Typography>
+        </Box>
       )}
       {/* Expired Subscribers Info Box */}
       <Card sx={{ mb: 3, p: isMobile ? 1 : 2, bgcolor: "#ffebee", boxShadow: 3, borderRadius: 2 }}>
