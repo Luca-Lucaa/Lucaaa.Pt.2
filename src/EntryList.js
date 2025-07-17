@@ -1,9 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import {
   Typography,
-  Text
-
-Field,
+  TextField,
   Button,
   Dialog,
   DialogTitle,
@@ -75,34 +73,46 @@ const EntryList = ({
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const owners = useMemo(() => {
-    const uniqueOwners = [...new Set(entries.map((entry) => entry.owner))];
+    const uniqueOwners = [...new Set(entries.map((entry) => entry.owner).filter(Boolean))];
     return uniqueOwners.sort();
   }, [entries]);
 
   // Check if an entry is new (created within the last 5 days)
   const isNewEntry = useCallback((createdAt) => {
-    const createdDate = new Date(createdAt);
-    const currentDate = new Date("2025-07-17T13:00:00+02:00"); // Current date: July 17, 2025, 01:00 PM CEST
-    const timeDiff = currentDate - createdDate;
-    const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
-    return daysDiff <= 5; // Highlight entries created within 5 days
+    if (!createdAt) return false;
+    try {
+      const createdDate = new Date(createdAt);
+      const currentDate = new Date();
+      const timeDiff = currentDate - createdDate;
+      const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
+      return daysDiff <= 5; // Highlight entries created within 5 days
+    } catch (error) {
+      console.error("Fehler bei isNewEntry:", error);
+      return false;
+    }
   }, []);
 
   // Calculate expired entries (validUntil before current date)
   const expiredEntries = useMemo(() => {
-    const currentDate = new Date("2025-07-17T13:00:00+02:00");
+    const currentDate = new Date();
     return entries.filter((entry) => {
-      const validUntil = new Date(entry.validUntil);
-      return validUntil < currentDate && (role === "Admin" || entry.owner === loggedInUser);
+      if (!entry.validUntil) return false;
+      try {
+        const validUntil = new Date(entry.validUntil);
+        return validUntil < currentDate && (role === "Admin" || entry.owner === loggedInUser);
+      } catch (error) {
+        console.error(`Ungültiges Datum in Eintrag ${entry.id}:`, error);
+        return false;
+      }
     });
   }, [entries, role, loggedInUser]);
 
   // Update expired entries on load
   useEffect(() => {
-    if (entries.length > 0) {
+    if (entries.length > 0 && !isLoading) {
       updateExpiredEntries(entries, setEntries, showSnackbar);
     }
-  }, [entries, setEntries, showSnackbar]);
+  }, [entries, setEntries, showSnackbar, isLoading]);
 
   const filteredEntries = useMemo(() => {
     let filtered = entries;
@@ -114,8 +124,8 @@ const EntryList = ({
     if (debouncedSearchTerm) {
       filtered = filtered.filter(
         (entry) =>
-          entry.username.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-          entry.aliasNotes.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+          (entry.username || "").toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+          (entry.aliasNotes || "").toLowerCase().includes(debouncedSearchTerm.toLowerCase())
       );
     }
     if (statusFilter) {
@@ -126,8 +136,8 @@ const EntryList = ({
     }
     // Sort by validUntil
     return filtered.sort((a, b) => {
-      const dateA = new Date(a.validUntil);
-      const dateB = new Date(b.validUntil);
+      const dateA = new Date(a.validUntil || new Date());
+      const dateB = new Date(b.validUntil || new Date());
       return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
     });
   }, [
@@ -246,20 +256,25 @@ const EntryList = ({
     }
     setIsLoading(true);
     const validUntilDate = new Date(manualEntry.validUntil);
+    if (isNaN(validUntilDate)) {
+      showSnackbar("Bitte ein gültiges Datum eingeben.", "error");
+      setIsLoading(false);
+      return;
+    }
     const newManualEntry = {
       username: manualEntry.username,
       password: manualEntry.password,
       aliasNotes: manualEntry.aliasNotes,
       type: manualEntry.type,
       validUntil: validUntilDate,
-      owner: manualEntry.owner || loggedInUser, // Allow owner to be set
+      owner: manualEntry.owner || loggedInUser,
       status: "Aktiv",
       paymentStatus: "Gezahlt",
       createdAt: new Date(),
       note: "Dieser Abonnent besteht bereits",
       extensionHistory: [],
       bougetList: manualEntry.bougetList,
-      admin_fee: role === "Admin" ? manualEntry.admin_fee : null,
+      admin_fee: role === "Admin" ? (manualEntry.admin_fee ? parseInt(manualEntry.admin_fee) : null) : null,
       extensionRequest: null,
     };
     try {
@@ -370,7 +385,7 @@ const EntryList = ({
             fullWidth
             sx={{ bgcolor: "#fff", borderRadius: 1 }}
             size={isMobile ? "small" : "medium"}
-        >
+          >
             <MenuItem value="">Alle Ersteller</MenuItem>
             {owners.map((owner) => (
               <MenuItem key={owner} value={owner}>
@@ -483,7 +498,7 @@ const EntryList = ({
                     role={role}
                     loggedInUser={loggedInUser}
                     setEntries={setEntries}
-                    owners={owners} // Pass owners for editing
+                    owners={owners}
                   />
                 </CardContent>
               </Card>
@@ -596,7 +611,7 @@ const EntryList = ({
             margin="normal"
             type="text"
             value={manualEntry.password}
-        onChange={(e) => setManualEntry({ ...manualEntry, password: e.target.value })}
+            onChange={(e) => setManualEntry({ ...manualEntry, password: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
           />
@@ -644,6 +659,7 @@ const EntryList = ({
             }
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
+            InputLabelProps={{ shrink: true }}
           />
           {role === "Admin" && (
             <>
@@ -655,7 +671,7 @@ const EntryList = ({
                 onChange={(e) => {
                   const value = e.target.value.replace(/[^0-9]/g, "");
                   const numValue = value ? parseInt(value) : null;
-                  if (numValue > 999) return;
+                  if (numValue && numValue > 999) return;
                   setManualEntry({ ...manualEntry, admin_fee: numValue });
                 }}
                 inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
