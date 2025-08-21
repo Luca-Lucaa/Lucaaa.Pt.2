@@ -1,4 +1,3 @@
-// EntryDialog.js
 import React from "react";
 import {
   Dialog,
@@ -11,10 +10,9 @@ import {
   Button,
   Typography,
 } from "@mui/material";
-
 const EntryDialog = ({ open, onClose, entryData, onSave }) => {
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+    <Dialog open={open} onClose={onClose}>
       <DialogTitle>Neuen Abonnenten anlegen</DialogTitle>
       <DialogContent>
         <TextField
@@ -38,6 +36,7 @@ const EntryDialog = ({ open, onClose, entryData, onSave }) => {
           fullWidth
           margin="normal"
           value={entryData.username}
+          A
           disabled
         />
         <TextField
@@ -67,5 +66,4 @@ const EntryDialog = ({ open, onClose, entryData, onSave }) => {
     </Dialog>
   );
 };
-
 export default EntryDialog;
