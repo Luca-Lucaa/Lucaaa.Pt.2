@@ -38,8 +38,8 @@ const EntryList = ({
   const [statusFilter, setStatusFilter] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
   const [ownerFilter, setOwnerFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState(""); // New filter for type
-  const [bougetFilter, setBougetFilter] = useState(""); // New filter for bougetList
+  const [typeFilter, setTypeFilter] = useState("");
+  const [bougetFilter, setBougetFilter] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
   const [isLoading, setIsLoading] = useState(false);
   const [newEntry, setNewEntry] = useState({
@@ -50,7 +50,7 @@ const EntryList = ({
     status: "Inaktiv",
     paymentStatus: "Nicht gezahlt",
     createdAt: new Date(),
-    validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // Set to end of next year (2026)
+    validUntil: new Date(new Date().getFullYear() + 1, 11, 31),
     owner: loggedInUser,
     extensionHistory: [],
     bougetList: "",
@@ -62,7 +62,7 @@ const EntryList = ({
     password: "",
     aliasNotes: "",
     type: "Premium",
-    validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // Set to end of next year (2026)
+    validUntil: new Date(new Date().getFullYear() + 1, 11, 31),
     owner: loggedInUser,
     extensionHistory: [],
     bougetList: "",
@@ -82,22 +82,37 @@ const EntryList = ({
 
   // Check if an entry is new (created within the last 5 days)
   const isNewEntry = useCallback((createdAt) => {
-    if (!createdAt) return false;
+    if (!createdAt) {
+      console.warn("isNewEntry: createdAt ist null oder undefiniert");
+      return false;
+    }
     try {
       const createdDate = new Date(createdAt);
+      if (isNaN(createdDate.getTime())) {
+        console.warn(`isNewEntry: Ungültiges createdAt-Datum: ${createdAt}`);
+        return false;
+      }
       const currentDate = new Date();
-      const timeDiff = currentDate - createdDate;
-      const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
+      const timeDiff = currentDate.getTime() - createdDate.getTime();
+      const daysDiff = timeDiff / (1000 * 60 * 60 * 24);
       return daysDiff <= 5; // Highlight entries created within 5 days
     } catch (error) {
-      console.error("Fehler bei isNewEntry:", error);
+      console.error("Fehler bei isNewEntry:", error, { createdAt });
       return false;
     }
   }, []);
 
+  // Force re-render every day to update isNewEntry (86400000 ms = 24 hours)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setEntries((prev) => [...prev]); // Trigger re-render by creating a new array reference
+    }, 86400000); // Every 24 hours
+    return () => clearInterval(interval);
+  }, [setEntries]);
+
   // Update status and paymentStatus for expired entries
   const updateExpiredEntries = useCallback(async () => {
-    if (!loggedInUser) return; // Prevent updates if no user is logged in
+    if (!loggedInUser) return;
     const currentDate = new Date();
     const expiredEntries = entries.filter((entry) => {
       if (!entry.validUntil || !entry.id) return false;
@@ -347,7 +362,7 @@ const EntryList = ({
               <Card
                 sx={{
                   bgcolor: OWNER_COLORS[entry.owner] || "#fff",
-                  border: isNewEntry(entry.createdAt) ? "2px solid green" : "none",
+                  border: isNewEntry(entry.createdAt) ? "2px solid #3b82f6" : "none",
                 }}
               >
                 <CardContent sx={{ p: 0 }}>
