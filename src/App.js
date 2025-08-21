@@ -1,3 +1,4 @@
+// App.js
 import React, { useState, useEffect, Suspense, lazy, useCallback } from "react";
 import {
   Container,
@@ -19,6 +20,7 @@ import {
   IconButton,
   useMediaQuery,
   useTheme,
+  Switch,
 } from "@mui/material";
 import BackupIcon from "@mui/icons-material/Backup";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -27,7 +29,7 @@ import ChatIcon from "@mui/icons-material/Chat";
 import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
 import { supabase } from "./supabaseClient";
 import { useMessages, handleError } from "./utils";
-import { USER_CREDENTIALS, USER_EMOJIS, THEME_CONFIG, GUIDES } from "./config";
+import { USER_CREDENTIALS, USER_EMOJIS, THEME_CONFIG_LIGHT, THEME_CONFIG_DARK, GUIDES } from "./config";
 import { useSnackbar } from "./useSnackbar";
 import CompactChatList from "./CompactChatList";
 
@@ -45,8 +47,6 @@ const StyledContainer = styled(Container)(({ theme }) => ({
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
   backgroundColor: theme.palette.primary.main,
 }));
-
-const theme = createTheme(THEME_CONFIG);
 
 const CustomSnackbar = ({ open, message, onClose, severity }) => (
   <Snackbar open={open} autoHideDuration={4000} onClose={onClose}>
@@ -69,9 +69,18 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [openManualDialog, setOpenManualDialog] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem("darkMode") === "true");
 
   const { messages, unreadCount, markAsRead } = useMessages(loggedInUser, selectedUser);
   const { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, closeSnackbar } = useSnackbar();
+
+  const theme = createTheme(darkMode ? THEME_CONFIG_DARK : THEME_CONFIG_LIGHT);
+
+  const handleToggleDarkMode = () => {
+    const newDarkMode = !darkMode;
+    setDarkMode(newDarkMode);
+    localStorage.setItem("darkMode", newDarkMode);
+  };
 
   const handleLogin = useCallback((username, password) => {
     if (USER_CREDENTIALS[username] && USER_CREDENTIALS[username] === password) {
@@ -164,140 +173,104 @@ const App = () => {
     setMenuAnchorEl(event.currentTarget);
   }, []);
 
-  const handleMenuClose = useCallback(() => {
+  const handleMenuClose = () => {
     setMenuAnchorEl(null);
-    setGuidesAnchorEl(null);
-    setChatAnchorEl(null);
-  }, []);
-
-  const handleImportOpen = useCallback(() => {
-    setImportDialogOpen(true);
-    setMenuAnchorEl(null);
-  }, []);
+  };
 
   const handleGuidesClick = useCallback((event) => {
     setGuidesAnchorEl(event.currentTarget);
   }, []);
 
-  const handleGuidesClose = useCallback(() => {
+  const handleGuidesClose = () => {
     setGuidesAnchorEl(null);
-  }, []);
+  };
 
   const handleChatClick = useCallback((event) => {
     setChatAnchorEl(event.currentTarget);
-  }, []);
+    markAsRead(selectedUser);
+  }, [markAsRead, selectedUser]);
 
-  const handleChatClose = useCallback(() => {
+  const handleChatClose = () => {
     setChatAnchorEl(null);
-  }, []);
+  };
 
-  const handleGuideDownload = useCallback((path) => {
+  const openGuide = (path) => {
     window.open(path, "_blank");
     setGuidesAnchorEl(null);
-    setMenuAnchorEl(null);
-  }, []);
+  };
 
-  const themeInstance = useTheme();
-  const isMobile = useMediaQuery(themeInstance.breakpoints.down("sm"));
-
-  useEffect(() => {
-    if (selectedUser && messages.length > 0) {
-      markAsRead();
-    }
-  }, [selectedUser, messages, markAsRead]);
+  const themeLocal = useTheme();
+  const isMobile = useMediaQuery(themeLocal.breakpoints.down("sm"));
 
   return (
     <ThemeProvider theme={theme}>
-      <StyledContainer maxWidth="xl">
+      <StyledContainer maxWidth="lg">
         <StyledAppBar position="static">
           <Toolbar>
-            <Typography variant="h6" sx={{ flexGrow: 1 }}>
-              Luca-TV
+            <Typography variant="h6" sx={{ flexGrow: 1, fontSize: { xs: "16px", sm: "20px" } }}>
+              Abonnenten Dashboard
             </Typography>
-            {loggedInUser && (
-              <Typography
-                variant="h6"
-                sx={{ marginRight: 2, fontSize: { xs: "14px", sm: "16px" } }}
+            {loggedInUser && role === "Admin" && (
+              <IconButton
+                color="inherit"
+                onClick={handleMenuClick}
+                sx={{ mr: 1 }}
+                aria-label="Backup-Menü öffnen"
               >
-                {USER_EMOJIS[loggedInUser] || ""} {loggedInUser}
-              </Typography>
+                <BackupIcon />
+              </IconButton>
             )}
+            <Menu
+              anchorEl={menuAnchorEl}
+              open={Boolean(menuAnchorEl)}
+              onClose={handleMenuClose}
+            >
+              <MenuItem onClick={exportEntries}>Backup erstellen</MenuItem>
+              <MenuItem onClick={() => setImportDialogOpen(true)}>Backup importieren</MenuItem>
+            </Menu>
             {loggedInUser && (
-              <Box sx={{ marginRight: 2, display: "flex", alignItems: "center", gap: 1 }}>
-                {isMobile ? (
+              <IconButton
+                color="inherit"
+                onClick={handleGuidesClick}
+                sx={{ mr: 1 }}
+                aria-label="Anleitungen-Menü öffnen"
+              >
+                <DescriptionIcon />
+              </IconButton>
+            )}
+            <Menu
+              anchorEl={guidesAnchorEl}
+              open={Boolean(guidesAnchorEl)}
+              onClose={handleGuidesClose}
+            >
+              {GUIDES.map((guide) => (
+                <MenuItem key={guide.name} onClick={() => openGuide(guide.path)}>
+                  {guide.name}
+                </MenuItem>
+              ))}
+            </Menu>
+            {loggedInUser && (
+              <Box sx={{ display: "flex", alignItems: "center", mr: 1 }}>
+                <Badge badgeContent={Object.values(unreadCount).reduce((a, b) => a + b, 0)} color="error">
                   <IconButton
                     color="inherit"
-                    onClick={handleMenuClick}
-                    sx={{ p: 0.5 }}
-                    aria-label="Menü öffnen"
+                    onClick={handleChatClick}
+                    aria-label="Chat-Menü öffnen"
                   >
-                    <MenuIcon />
+                    <ChatIcon />
                   </IconButton>
-                ) : (
-                  <>
-                    {role === "Admin" && (
-                      <Button
-                        variant="contained"
-                        color="secondary"
-                        startIcon={<BackupIcon />}
-                        onClick={handleMenuClick}
-                        sx={{ mr: 1, borderRadius: 2 }}
-                        aria-label="Backup-Menü öffnen"
-                      >
-                        Backup
-                      </Button>
-                    )}
-                    <Button
-                      variant="contained"
-                      color="secondary"
-                      startIcon={<DescriptionIcon />}
-                      onClick={handleGuidesClick}
-                      sx={{ mr: 1, borderRadius: 2 }}
-                      aria-label="Anleitungen öffnen"
-                    >
-                      Anleitungen
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="secondary"
-                      startIcon={<ChatIcon />}
-                      onClick={handleChatClick}
-                      sx={{ borderRadius: 2 }}
-                      aria-label="Chat öffnen"
-                    >
-                      Chat
-                    </Button>
-                  </>
-                )}
-                <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={handleMenuClose}>
-                  {role === "Admin" && (
-                    <>
-                      <MenuItem onClick={exportEntries}>Backup erstellen</MenuItem>
-                      <MenuItem onClick={handleImportOpen}>Backup importieren</MenuItem>
-                    </>
-                  )}
-                  <MenuItem onClick={handleGuidesClick}>Anleitungen</MenuItem>
-                  <MenuItem onClick={handleChatClick}>Chat</MenuItem>
-                </Menu>
-                <Menu anchorEl={guidesAnchorEl} open={Boolean(guidesAnchorEl)} onClose={handleGuidesClose}>
-                  {GUIDES.map((guide) => (
-                    <MenuItem key={guide.name} onClick={() => handleGuideDownload(guide.path)}>
-                      {guide.name}
-                    </MenuItem>
-                  ))}
-                </Menu>
+                </Badge>
                 <Menu
                   anchorEl={chatAnchorEl}
                   open={Boolean(chatAnchorEl)}
                   onClose={handleChatClose}
-                  sx={{ maxWidth: isMobile ? "90vw" : 400 }}
+                  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                  transformOrigin={{ vertical: "top", horizontal: "right" }}
+                  sx={{ maxWidth: "90vw", maxHeight: "80vh" }}
                 >
-                  <Box sx={{ p: 2, width: isMobile ? "80vw" : 350 }}>
-                    <Typography variant="h6" sx={{ mb: 1 }}>
-                      Chat mit {selectedUser || "niemandem"}
-                    </Typography>
+                  <Box sx={{ p: 2, minWidth: { xs: 250, sm: 400 } }}>
                     {role === "Admin" ? (
-                      <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+                      <Box sx={{ display: "flex", gap: 1, mb: 2, flexWrap: "wrap" }}>
                         <Badge badgeContent={unreadCount["Scholli"] || 0} color="error">
                           <Button
                             variant={selectedUser === "Scholli" ? "contained" : "outlined"}
@@ -346,6 +319,14 @@ const App = () => {
                   </Box>
                 </Menu>
               </Box>
+            )}
+            {loggedInUser && (
+              <Switch
+                checked={darkMode}
+                onChange={handleToggleDarkMode}
+                color="default"
+                aria-label="Dark Mode umschalten"
+              />
             )}
             {loggedInUser && (
               <Button
