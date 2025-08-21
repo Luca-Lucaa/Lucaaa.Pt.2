@@ -1,3 +1,4 @@
+// CompactChatList.js
 import React, { useState } from "react";
 import {
   List,
@@ -18,7 +19,7 @@ import { supabase } from "./supabaseClient";
 import { handleError } from "./utils";
 import ChatMessage from "./ChatMessage"; // Importiere die angepasste ChatMessage-Komponente
 
-const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
+const CompactChatList = ({ messages: initialMessages, loggedInUser, selectedUser }) => { // Added selectedUser
   const [showAll, setShowAll] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [replyTo, setReplyTo] = useState(null); // Zustand für die Antwortnachricht
@@ -31,7 +32,7 @@ const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
       const { error } = await supabase.from("messages").insert([
         {
           sender: loggedInUser,
-          receiver: "Admin",
+          receiver: selectedUser, // Use selectedUser as receiver
           message: newMessage,
           parent_message_id: replyTo ? replyTo.id : null, // Verknüpfung zur Antwort
         },
@@ -86,7 +87,7 @@ const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
   return (
     <Box sx={{ marginBottom: 2 }}>
       <Typography variant="h6" gutterBottom>
-        Chat
+        Chat mit {selectedUser}
       </Typography>
       <List>
         {displayedMessages.map((msg) => (
@@ -155,14 +156,6 @@ const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
-        anchorOrigin={{
-          vertical: "top",
-          horizontal: "right",
-        }}
-        transformOrigin={{
-          vertical: "top",
-          horizontal: "left",
-        }}
       >
         <MenuItem onClick={() => handleReply(displayedMessages.find(m => m.id === selectedMessageId))}>
           Antworten
