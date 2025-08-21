@@ -1,4 +1,3 @@
-// ChatMessage.js
 import React from "react";
 import { Box, Typography, IconButton, Menu, MenuItem, Badge } from "@mui/material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
