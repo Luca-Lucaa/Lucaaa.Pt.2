@@ -1,4 +1,3 @@
-// MessageList.js
 import React from "react";
 import { Typography, List, ListItem, ListItemText, Divider } from "@mui/material";
 import { useMessages } from "./utils";
