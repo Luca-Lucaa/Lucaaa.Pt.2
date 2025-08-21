@@ -1,4 +1,5 @@
 // config.js
+// config.js
 export const USER_CREDENTIALS = {
   Admin: "Admino25!",
   Scholli: "Scholli25",
@@ -11,12 +12,23 @@ export const USER_EMOJIS = {
   Jamaica05: "🎩",
 };
 
-export const THEME_CONFIG = {
+export const THEME_CONFIG_LIGHT = {
   palette: {
+    mode: "light",
     primary: { main: "#3b82f6" },
     secondary: { main: "#dc004e" },
     background: { default: "#e0e7ff", paper: "#ffffff" },
     text: { primary: "#333" },
+  },
+};
+
+export const THEME_CONFIG_DARK = {
+  palette: {
+    mode: "dark",
+    primary: { main: "#3b82f6" },
+    secondary: { main: "#dc004e" },
+    background: { default: "#121212", paper: "#1e1e1e" },
+    text: { primary: "#fff" },
   },
 };
 
