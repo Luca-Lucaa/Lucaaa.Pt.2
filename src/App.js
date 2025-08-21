@@ -1,4 +1,3 @@
-// App.js
 import React, { useState, useEffect, Suspense, lazy, useCallback } from "react";
 import {
   Container,
@@ -20,7 +19,6 @@ import {
   IconButton,
   useMediaQuery,
   useTheme,
-  Switch,
 } from "@mui/material";
 import BackupIcon from "@mui/icons-material/Backup";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -29,7 +27,7 @@ import ChatIcon from "@mui/icons-material/Chat";
 import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
 import { supabase } from "./supabaseClient";
 import { useMessages, handleError } from "./utils";
-import { USER_CREDENTIALS, USER_EMOJIS, THEME_CONFIG_LIGHT, THEME_CONFIG_DARK, GUIDES } from "./config";
+import { USER_CREDENTIALS, USER_EMOJIS, THEME_CONFIG_LIGHT, GUIDES } from "./config";
 import { useSnackbar } from "./useSnackbar";
 import CompactChatList from "./CompactChatList";
 
@@ -69,18 +67,11 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [openManualDialog, setOpenManualDialog] = useState(false);
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem("darkMode") === "true");
 
   const { messages, unreadCount, markAsRead } = useMessages(loggedInUser, selectedUser);
   const { snackbarOpen, snackbarMessage, snackbarSeverity, showSnackbar, closeSnackbar } = useSnackbar();
 
-  const theme = createTheme(darkMode ? THEME_CONFIG_DARK : THEME_CONFIG_LIGHT);
-
-  const handleToggleDarkMode = () => {
-    const newDarkMode = !darkMode;
-    setDarkMode(newDarkMode);
-    localStorage.setItem("darkMode", newDarkMode);
-  };
+  const theme = createTheme(THEME_CONFIG_LIGHT);
 
   const handleLogin = useCallback((username, password) => {
     if (USER_CREDENTIALS[username] && USER_CREDENTIALS[username] === password) {
@@ -321,14 +312,6 @@ const App = () => {
               </Box>
             )}
             {loggedInUser && (
-              <Switch
-                checked={darkMode}
-                onChange={handleToggleDarkMode}
-                color="default"
-                aria-label="Dark Mode umschalten"
-              />
-            )}
-            {loggedInUser && (
               <Button
                 onClick={handleLogout}
                 color="inherit"
@@ -341,7 +324,7 @@ const App = () => {
           </Toolbar>
         </StyledAppBar>
         <Suspense fallback={<Typography>🔄 Lade...</Typography>}>
-          {isLoading && <Typography sx={{ mt: 2 }}>🔄 Lade Daten...</Typography>}
+          {isLoading && <Typography sx={{ mt: 2 }>🔄 Lade Daten...</Typography>}
           {!loggedInUser ? (
             <Grid container justifyContent="center" sx={{ mt: 4 }}>
               <Grid item xs={12} sm={6} md={4}>
