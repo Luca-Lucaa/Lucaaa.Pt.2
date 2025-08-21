@@ -1,3 +1,4 @@
+// AdminDashboard.js
 import React, { useMemo, useState, useCallback } from "react";
 import {
   Box,
@@ -176,7 +177,7 @@ const AdminDashboard = ({
           <Card sx={{ borderRadius: 1, boxShadow: 1, p: 1 }}>
             <CardContent sx={{ p: 1 }}>
               <Typography variant="body2" color="textSecondary">
-                Gebühren
+                Gesamtgebühren
               </Typography>
               <Typography variant="h6" color="primary">
                 {stats.totalFees} €
@@ -184,11 +185,11 @@ const AdminDashboard = ({
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+        <Grid item xs={12} sm={3} md={2}>
+          <Box sx={{ display: "flex", gap: 1, flexDirection: { xs: "column", sm: "row" } }}>
             <Button
               variant="contained"
-              color="success"
+              color="primary"
               size="small"
               startIcon={<AddIcon />}
               onClick={() => setOpenCreateDialog(true)}
