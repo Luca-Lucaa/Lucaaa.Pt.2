@@ -320,11 +320,24 @@ const EntryList = ({
     }
   }, [openCreateDialog, generateUsername]);
 
+  // Calculate total admin fees for logged-in user (only for Scholli or Jamaica05)
+  const totalAdminFees = useMemo(() => {
+    if (role === "Admin") return null; // Admin sees all entries, no total
+    return entries
+      .filter((entry) => entry.owner === loggedInUser && entry.admin_fee != null)
+      .reduce((sum, entry) => sum + (entry.admin_fee || 0), 0);
+  }, [entries, loggedInUser, role]);
+
   return (
     <Box sx={{ mt: 2 }}>
       <Typography variant="h6" gutterBottom>
         Abonnenten-Liste
       </Typography>
+      {totalAdminFees !== null && (
+        <Typography variant="h6" color="primary" gutterBottom>
+          Gesamte Gebühren: {totalAdminFees} €
+        </Typography>
+      )}
       <Box sx={{ display: "flex", gap: 2, mb: 2, flexWrap: "wrap" }}>
         <TextField
           label="Suche nach Spitzname"
@@ -464,7 +477,7 @@ const EntryList = ({
             <MenuItem value="Premium">Premium</MenuItem>
             <MenuItem value="Basic">Basic</MenuItem>
           </Select>
-          {role === "Admin" && (
+          {role === "Admin" && loggedInUser !== "Scholli" && loggedInUser !== "Jamaica05" && (
             <>
               <TextField
                 label="Admin-Gebühr (€)"
