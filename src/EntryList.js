@@ -82,7 +82,7 @@ const EntryList = ({
     if (!createdAt) return false;
     try {
       const createdDate = new Date(createdAt);
-      const currentDate = new Date(); // Use dynamic current date
+      const currentDate = new Date(); // Use current date dynamically
       const timeDiff = currentDate - createdDate;
       const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
       return daysDiff <= 5; // Highlight entries created within 5 days
@@ -95,7 +95,7 @@ const EntryList = ({
   // Update status and paymentStatus for expired entries
   const updateExpiredEntries = useCallback(async () => {
     if (!loggedInUser) return; // Prevent updates if no user is logged in
-    const currentDate = new Date("2025-07-17T22:33:00+02:00");
+    const currentDate = new Date();
     const expiredEntries = entries.filter((entry) => {
       if (!entry.validUntil || !entry.id) return false;
       try {
@@ -123,7 +123,7 @@ const EntryList = ({
         handleError(error, showSnackbar);
       }
     }
-  },्छ
+  }, [entries, setEntries, showSnackbar, loggedInUser]);
 
   useEffect(() => {
     if (entries.length > 0 && !isLoading && loggedInUser) {
@@ -133,7 +133,7 @@ const EntryList = ({
 
   // Calculate expired entries (validUntil before current date)
   const expiredEntries = useMemo(() => {
-    const currentDate = new Date("2025-07-17T22:33:00+02:00");
+    const currentDate = new Date();
     return entries.filter((entry) => {
       if (!entry.validUntil) return false;
       try {
@@ -146,124 +146,217 @@ const EntryList = ({
     });
   }, [entries, role, loggedInUser]);
 
-  // Restlicher Code bleibt unverändert
-  // (Ich habe den Rest des Codes aus der Originaldatei übernommen, aber hier ausgelassen, da er unverändert ist und die Datei sehr lang ist. Bitte füge den Rest des Codes aus deiner Originaldatei ein, da nur die isNewEntry-Funktion geändert wurde.)
+  const filteredEntries = useMemo(() => {
+    let result = entries;
+    if (role !== "Admin") {
+      result = result.filter((entry) => entry.owner === loggedInUser);
+    }
+    if (debouncedSearchTerm) {
+      result = result.filter((entry) =>
+        entry.aliasNotes?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+      );
+    }
+    if (statusFilter) {
+      result = result.filter((entry) => entry.status === statusFilter);
+    }
+    if (paymentFilter) {
+      result = result.filter((entry) => entry.paymentStatus === paymentFilter);
+    }
+    if (ownerFilter) {
+      result = result.filter((entry) => entry.owner === ownerFilter);
+    }
+    return result.sort((a, b) => {
+      const dateA = new Date(a.createdAt);
+      const dateB = new Date(b.createdAt);
+      return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+    });
+  }, [entries, debouncedSearchTerm, statusFilter, paymentFilter, ownerFilter, sortOrder, role, loggedInUser]);
+
+  const handleAddEntry = useCallback(async () => {
+    if (!newEntry.aliasNotes.trim()) {
+      showSnackbar("Spitzname darf nicht leer sein.", "error");
+      return;
+    }
+    setIsLoading(true);
+    const newUsername = await generateUsername();
+    const newPassword = Math.random().toString(36).slice(-8);
+    const entryToAdd = {
+      ...newEntry,
+      username: newUsername,
+      password: newPassword,
+      createdAt: new Date().toISOString(),
+      validUntil: newEntry.validUntil.toISOString(),
+    };
+    try {
+      const { data, error } = await supabase.from("entries").insert([entryToAdd]).select().single();
+      if (error) throw error;
+      setEntries((prev) => [...prev, data]);
+      setOpenCreateDialog(false);
+      setNewEntry({
+        username: "",
+        password: "",
+        aliasNotes: "",
+        type: "Premium",
+        status: "Inaktiv",
+        paymentStatus: "Nicht gezahlt",
+        createdAt: new Date(),
+        validUntil: new Date(new Date().getFullYear() + 1, 11, 31),
+        owner: loggedInUser,
+        extensionHistory: [],
+        bougetList: "",
+        admin_fee: null,
+        extensionRequest: null,
+      });
+      showSnackbar("Eintrag erfolgreich erstellt!", "success");
+    } catch (error) {
+      handleError(error, showSnackbar);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [newEntry, setEntries, showSnackbar, loggedInUser, setOpenCreateDialog]);
+
+  const handleAddManualEntry = useCallback(async () => {
+    if (!manualEntry.username.trim()) {
+      showSnackbar("Benutzername darf nicht leer sein.", "error");
+      return;
+    }
+    if (!manualEntry.password.trim()) {
+      showSnackbar("Passwort darf nicht leer sein.", "error");
+      return;
+    }
+    if (!manualEntry.aliasNotes.trim()) {
+      showSnackbar("Spitzname darf nicht leer sein.", "error");
+      return;
+    }
+    setIsLoading(true);
+    const entryToAdd = {
+      ...manualEntry,
+      createdAt: new Date().toISOString(),
+      validUntil: manualEntry.validUntil.toISOString(),
+      status: "Inaktiv",
+      paymentStatus: "Nicht gezahlt",
+    };
+    try {
+      const { data, error } = await supabase.from("entries").insert([entryToAdd]).select().single();
+      if (error) throw error;
+      setEntries((prev) => [...prev, data]);
+      setOpenManualDialog(false);
+      setManualEntry({
+        username: "",
+        password: "",
+        aliasNotes: "",
+        type: "Premium",
+        validUntil: new Date(new Date().getFullYear() + 1, 11, 31),
+        owner: loggedInUser,
+        extensionHistory: [],
+        bougetList: "",
+        admin_fee: null,
+        extensionRequest: null,
+      });
+      showSnackbar("Eintrag erfolgreich erstellt!", "success");
+    } catch (error) {
+      handleError(error, showSnackbar);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [manualEntry, setEntries, showSnackbar, loggedInUser, setOpenManualDialog]);
 
   return (
-    <Box sx={{ p: 2 }}>
-      <Grid container spacing={2} alignItems="center">
-        <Grid item xs={12} sm={6} md={3}>
-          <TextField
-            label="Suche (Spitzname, Benutzername)"
-            fullWidth
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            size={isMobile ? "small" : "medium"}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={2}>
-          <Select
-            fullWidth
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            displayEmpty
-            size={isMobile ? "small" : "medium"}
-          >
-            <MenuItem value="">Alle Status</MenuItem>
-            <MenuItem value="Aktiv">Aktiv</MenuItem>
-            <MenuItem value="Inaktiv">Inaktiv</MenuItem>
-          </Select>
-        </Grid>
-        <Grid item xs={12} sm={6} md={2}>
-          <Select
-            fullWidth
-            value={paymentFilter}
-            onChange={(e) => setPaymentFilter(e.target.value)}
-            displayEmpty
-            size={isMobile ? "small" : "medium"}
-          >
-            <MenuItem value="">Alle Zahlungsstatus</MenuItem>
-            <MenuItem value="Gezahlt">Gezahlt</MenuItem>
-            <MenuItem value="Nicht gezahlt">Nicht gezahlt</MenuItem>
-          </Select>
-        </Grid>
+    <Box sx={{ mt: 2 }}>
+      <Typography variant="h6" gutterBottom>
+        Abonnenten-Liste
+      </Typography>
+      <Box sx={{ display: "flex", gap: 2, mb: 2, flexWrap: "wrap" }}>
+        <TextField
+          label="Suche nach Spitzname"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          size="small"
+          sx={{ flexGrow: 1, maxWidth: 200 }}
+        />
+        <Select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          displayEmpty
+          size="small"
+          sx={{ minWidth: 120 }}
+        >
+          <MenuItem value="">Alle Status</MenuItem>
+          <MenuItem value="Aktiv">Aktiv</MenuItem>
+          <MenuItem value="Inaktiv">Inaktiv</MenuItem>
+        </Select>
+        <Select
+          value={paymentFilter}
+          onChange={(e) => setPaymentFilter(e.target.value)}
+          displayEmpty
+          size="small"
+          sx={{ minWidth: 120 }}
+        >
+          <MenuItem value="">Alle Zahlungen</MenuItem>
+          <MenuItem value="Gezahlt">Gezahlt</MenuItem>
+          <MenuItem value="Nicht gezahlt">Nicht gezahlt</MenuItem>
+        </Select>
         {role === "Admin" && (
-          <Grid item xs={12} sm={6} md={2}>
-            <Select
-              fullWidth
-              value={ownerFilter}
-              onChange={(e) => setOwnerFilter(e.target.value)}
-              displayEmpty
-              size={isMobile ? "small" : "medium"}
-            >
-              <MenuItem value="">Alle Ersteller</MenuItem>
-              {owners.map((owner) => (
-                <MenuItem key={owner} value={owner}>
-                  {owner}
-                </MenuItem>
-              ))}
-            </Select>
-          </Grid>
-        )}
-        <Grid item xs={12} sm={6} md={3}>
           <Select
-            fullWidth
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value)}
-            size={isMobile ? "small" : "medium"}
+            value={ownerFilter}
+            onChange={(e) => setOwnerFilter(e.target.value)}
+            displayEmpty
+            size="small"
+            sx={{ minWidth: 120 }}
           >
-            <MenuItem value="asc">Älteste zuerst</MenuItem>
-            <MenuItem value="desc">Neueste zuerst</MenuItem>
+            <MenuItem value="">Alle Ersteller</MenuItem>
+            {owners.map((owner) => (
+              <MenuItem key={owner} value={owner}>
+                {owner}
+              </MenuItem>
+            ))}
           </Select>
-        </Grid>
-        <Grid item xs={12}>
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<AddIcon />}
-              onClick={() => setOpenCreateDialog(true)}
-              sx={{ flexGrow: 1 }}
-            >
-              Neuer Abonnent
-            </Button>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<AddIcon />}
-              onClick={() => setOpenManualDialog(true)}
-              sx={{ flexGrow: 1 }}
-            >
-              Bestehenden Abonnenten einpflegen
-            </Button>
-          </Box>
-        </Grid>
-      </Grid>
-      <Box sx={{ mt: 2 }}>
-        {expiredEntries.length > 0 && (
-          <Card sx={{ mb: 2, bgcolor: "#ffebee" }}>
-            <CardContent>
-              <Typography color="error">
-                {expiredEntries.length} Eintrag(e) abgelaufen!
-              </Typography>
-            </CardContent>
-          </Card>
         )}
-        {filteredEntries.length === 0 ? (
-          <Typography>Keine Einträge gefunden.</Typography>
-        ) : (
-          filteredEntries.map((entry) => (
-            <EntryAccordion
-              key={entry.id}
-              entry={entry}
-              role={role}
-              loggedInUser={loggedInUser}
-              setEntries={setEntries}
-              isNew={isNewEntry(entry.createdAt)}
-            />
-          ))
-        )}
+        <Select
+          value={sortOrder}
+          onChange={(e) => setSortOrder(e.target.value)}
+          size="small"
+          sx={{ minWidth: 120 }}
+        >
+          <MenuItem value="asc">Älteste zuerst</MenuItem>
+          <MenuItem value="desc">Neueste zuerst</MenuItem>
+        </Select>
       </Box>
+      <Box sx={{ mb: 2 }}>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<AddIcon />}
+          onClick={() => setOpenCreateDialog(true)}
+          sx={{ mr: 1 }}
+        >
+          Neuen Abonnenten anlegen
+        </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => setOpenManualDialog(true)}
+        >
+          Bestehenden Abonnenten einpflegen
+        </Button>
+      </Box>
+      {filteredEntries.length === 0 ? (
+        <Typography>Keine Einträge gefunden.</Typography>
+      ) : (
+        <Grid container spacing={2}>
+          {filteredEntries.map((entry) => (
+            <Grid item xs={12} key={entry.id}>
+              <EntryAccordion
+                entry={entry}
+                role={role}
+                loggedInUser={loggedInUser}
+                setEntries={setEntries}
+                isNewEntry={isNewEntry(entry.createdAt)} // Pass isNewEntry result
+              />
+            </Grid>
+          ))}
+        </Grid>
+      )}
       <Dialog
         open={openCreateDialog}
         onClose={() => setOpenCreateDialog(false)}
@@ -295,8 +388,7 @@ const EntryList = ({
           />
           <Select
             fullWidth
-            value insulting
-            {newEntry.type}
+            value={newEntry.type}
             onChange={(e) => setNewEntry({ ...newEntry, type: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
@@ -304,46 +396,41 @@ const EntryList = ({
             <MenuItem value="Premium">Premium</MenuItem>
             <MenuItem value="Basic">Basic</MenuItem>
           </Select>
-          <TextField
-            label="Benutzername"
-            fullWidth
-            margin="normal"
-            value={newEntry.username}
-            disabled
-            size={isMobile ? "small" : "medium"}
-          />
-          <TextField
-            label="Passwort"
-            fullWidth
-            margin="normal"
-            type="password"
-            value={newEntry.password}
-            disabled
-            size={isMobile ? "small" : "medium"}
-          />
-          <Typography sx={{ mt: 2, fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-            <strong>Aktuelles Datum:</strong> {formatDate(new Date())}
-          </Typography>
-          <Typography sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-            <strong>Gültig bis:</strong>{" "}
-            {formatDate(new Date(new Date().getFullYear() + 1, 11, 31))}
-          </Typography>
           {role === "Admin" && (
-            <TextField
-              label="Admin-Gebühr (€)"
-              fullWidth
-              margin="normal"
-              value={newEntry.admin_fee || ""}
-              onChange={(e) => {
-                const value = e.target.value.replace(/[^0-9]/g, "");
-                const numValue = value ? parseInt(value) : null;
-                if (numValue && numValue > 999) return;
-                setNewEntry({ ...newEntry, admin_fee: numValue });
-              }}
-              inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
-              disabled={isLoading}
-              size={isMobile ? "small" : "medium"}
-            />
+            <>
+              <TextField
+                label="Admin-Gebühr (€)"
+                fullWidth
+                margin="normal"
+                value={newEntry.admin_fee || ""}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9]/g, "");
+                  const numValue = value ? parseInt(value) : null;
+                  if (numValue && numValue > 999) return;
+                  setNewEntry({ ...newEntry, admin_fee: numValue });
+                }}
+                inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+                disabled={isLoading}
+                size={isMobile ? "small" : "medium"}
+              />
+              <Select
+                fullWidth
+                value={newEntry.owner || loggedInUser}
+                onChange={(e) => setNewEntry({ ...newEntry, owner: e.target.value })}
+                disabled={isLoading}
+                size={isMobile ? "small" : "medium"}
+                displayEmpty
+              >
+                <MenuItem value={loggedInUser}>{loggedInUser}</MenuItem>
+                {owners
+                  .filter((owner) => owner !== loggedInUser)
+                  .map((owner) => (
+                    <MenuItem key={owner} value={owner}>
+                      {owner}
+                    </MenuItem>
+                  ))}
+              </Select>
+            </>
           )}
         </DialogContent>
         <DialogActions>
@@ -351,7 +438,7 @@ const EntryList = ({
             onClick={() => setOpenCreateDialog(false)}
             color="secondary"
             disabled={isLoading}
-            sx={{ fontSize: isMobile ? "0.8jonas.fischer@plock-media.com8rem" : "0.875rem" }}
+            sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
           >
             Abbrechen
           </Button>
