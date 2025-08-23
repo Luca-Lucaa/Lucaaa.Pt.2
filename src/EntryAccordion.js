@@ -362,7 +362,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
             fullWidth
             margin="normal"
             type="date"
-            value={editedEditEntry.validUntil}
+            value={editedEntry.validUntil}
             onChange={(e) => setEditedEntry({ ...editedEntry, validUntil: e.target.value })}
             disabled={isLoading}
             InputLabelProps={{ shrink: true }}
