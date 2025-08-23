@@ -332,13 +332,15 @@ const EntryList = ({
         >
           Neuen Abonnenten anlegen
         </Button>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => setOpenManualDialog(true)}
-        >
-          Bestehenden Abonnenten einpflegen
-        </Button>
+        {role === "Admin" && (
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => setOpenManualDialog(true)}
+          >
+            Bestehenden Abonnenten einpflegen
+          </Button>
+        )}
       </Box>
       {filteredEntries.length === 0 ? (
         <Typography>Keine Einträge gefunden.</Typography>
@@ -351,7 +353,7 @@ const EntryList = ({
                 role={role}
                 loggedInUser={loggedInUser}
                 setEntries={setEntries}
-                isNewEntry={isNewEntry(entry.createdAt)} // Pass isNewEntry result
+                isNewEntry={isNewEntry(entry.createdAt)}
               />
             </Grid>
           ))}
@@ -452,136 +454,134 @@ const EntryList = ({
           </Button>
         </DialogActions>
       </Dialog>
-      <Dialog
-        open={openManualDialog}
-        onClose={() => setOpenManualDialog(false)}
-        fullWidth
-        maxWidth="sm"
-        fullScreen={isMobile}
-      >
-        <DialogTitle sx={{ fontSize: isMobile ? "1rem" : "1.25rem" }}>
-          Bestehenden Abonnenten einpflegen
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            label="Benutzername"
-            fullWidth
-            margin="normal"
-            value={manualEntry.username}
-            onChange={(e) => setManualEntry({ ...manualEntry, username: e.target.value })}
-            disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
-          />
-          <TextField
-            label="Passwort"
-            fullWidth
-            margin="normal"
-            type="text"
-            value={manualEntry.password}
-            onChange={(e) => setManualEntry({ ...manualEntry, password: e.target.value })}
-            disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
-          />
-          <TextField
-            label="Spitzname, Notizen etc."
-            fullWidth
-            margin="normal"
-            value={manualEntry.aliasNotes}
-            onChange={(e) => setManualEntry({ ...manualEntry, aliasNotes: e.target.value })}
-            disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
-          />
-          <TextField
-            label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
-            fullWidth
-            margin="normal"
-            value={manualEntry.bougetList || ""}
-            onChange={(e) => setManualEntry({ ...manualEntry, bougetList: e.target.value })}
-            disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
-          />
-          <Select
-            fullWidth
-            value={manualEntry.type}
-            onChange={(e) => setManualEntry({ ...manualEntry, type: e.target.value })}
-            disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
-          >
-            <MenuItem value="Premium">Premium</MenuItem>
-            <MenuItem value="Basic">Basic</MenuItem>
-          </Select>
-          <TextField
-            label="Gültig bis"
-            fullWidth
-            margin="normal"
-            type="date"
-            value={
-              manualEntry.validUntil
-                ? new Date(manualEntry.validUntil).toISOString().split("T")[0]
-                : ""
-            }
-            onChange={(e) =>
-              setManualEntry({ ...manualEntry, validUntil: new Date(e.target.value) })
-            }
-            disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
-          />
-          {role === "Admin" && (
-            <>
-              <TextField
-                label="Admin-Gebühr (€)"
-                fullWidth
-                margin="normal"
-                value={manualEntry.admin_fee || ""}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9]/g, "");
-                  const numValue = value ? parseInt(value) : null;
-                  if (numValue && numValue > 999) return;
-                  setManualEntry({ ...manualEntry, admin_fee: numValue });
-                }}
-                inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
-                disabled={isLoading}
-                size={isMobile ? "small" : "medium"}
-              />
-              <Select
-                fullWidth
-                value={manualEntry.owner || loggedInUser}
-                onChange={(e) => setManualEntry({ ...manualEntry, owner: e.target.value })}
-                disabled={isLoading}
-                size={isMobile ? "small" : "medium"}
-                displayEmpty
-              >
-                <MenuItem value={loggedInUser}>{loggedInUser}</MenuItem>
-                {owners
-                  .filter((owner) => owner !== loggedInUser)
-                  .map((owner) => (
-                    <MenuItem key={owner} value={owner}>
-                      {owner}
-                    </MenuItem>
-                  ))}
-              </Select>
-            </>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => setOpenManualDialog(false)}
-            color="secondary"
-            disabled={isLoading}
-            sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
-          >
-            Abbrechen
-          </Button>
-          <Button
-            onClick={handleAddManualEntry}
-            color="primary"
-            disabled={isLoading}
-            sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
-          >
-            {isLoading ? "Speichere..." : "Hinzufügen"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {role === "Admin" && (
+        <Dialog
+          open={openManualDialog}
+          onClose={() => setOpenManualDialog(false)}
+          fullWidth
+          maxWidth="sm"
+          fullScreen={isMobile}
+        >
+          <DialogTitle sx={{ fontSize: isMobile ? "1rem" : "1.25rem" }}>
+            Bestehenden Abonnenten einpflegen
+          </DialogTitle>
+          <DialogContent>
+            <TextField
+              label="Benutzername"
+              fullWidth
+              margin="normal"
+              value={manualEntry.username}
+              onChange={(e) => setManualEntry({ ...manualEntry, username: e.target.value })}
+              disabled={isLoading}
+              size={isMobile ? "small" : "medium"}
+            />
+            <TextField
+              label="Passwort"
+              fullWidth
+              margin="normal"
+              type="text"
+              value={manualEntry.password}
+              onChange={(e) => setManualEntry({ ...manualEntry, password: e.target.value })}
+              disabled={isLoading}
+              size={isMobile ? "small" : "medium"}
+            />
+            <TextField
+              label="Spitzname, Notizen etc."
+              fullWidth
+              margin="normal"
+              value={manualEntry.aliasNotes}
+              onChange={(e) => setManualEntry({ ...manualEntry, aliasNotes: e.target.value })}
+              disabled={isLoading}
+              size={isMobile ? "small" : "medium"}
+            />
+            <TextField
+              label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
+              fullWidth
+              margin="normal"
+              value={manualEntry.bougetList || ""}
+              onChange={(e) => setManualEntry({ ...manualEntry, bougetList: e.target.value })}
+              disabled={isLoading}
+              size={isMobile ? "small" : "medium"}
+            />
+            <Select
+              fullWidth
+              value={manualEntry.type}
+              onChange={(e) => setManualEntry({ ...manualEntry, type: e.target.value })}
+              disabled={isLoading}
+              size={isMobile ? "small" : "medium"}
+            >
+              <MenuItem value="Premium">Premium</MenuItem>
+              <MenuItem value="Basic">Basic</MenuItem>
+            </Select>
+            <TextField
+              label="Gültig bis"
+              fullWidth
+              margin="normal"
+              type="date"
+              value={
+                manualEntry.validUntil
+                  ? new Date(manualEntry.validUntil).toISOString().split("T")[0]
+                  : ""
+              }
+              onChange={(e) =>
+                setManualEntry({ ...manualEntry, validUntil: new Date(e.target.value) })
+              }
+              disabled={isLoading}
+              size={isMobile ? "small" : "medium"}
+            />
+            <TextField
+              label="Admin-Gebühr (€)"
+              fullWidth
+              margin="normal"
+              value={manualEntry.admin_fee || ""}
+              onChange={(e) => {
+                const value = e.target.value.replace(/[^0-9]/g, "");
+                const numValue = value ? parseInt(value) : null;
+                if (numValue && numValue > 999) return;
+                setManualEntry({ ...manualEntry, admin_fee: numValue });
+              }}
+              inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+              disabled={isLoading}
+              size={isMobile ? "small" : "medium"}
+            />
+            <Select
+              fullWidth
+              value={manualEntry.owner || loggedInUser}
+              onChange={(e) => setManualEntry({ ...manualEntry, owner: e.target.value })}
+              disabled={isLoading}
+              size={isMobile ? "small" : "medium"}
+              displayEmpty
+            >
+              <MenuItem value={loggedInUser}>{loggedInUser}</MenuItem>
+              {owners
+                .filter((owner) => owner !== loggedInUser)
+                .map((owner) => (
+                  <MenuItem key={owner} value={owner}>
+                    {owner}
+                  </MenuItem>
+                ))}
+            </Select>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => setOpenManualDialog(false)}
+              color="secondary"
+              disabled={isLoading}
+              sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
+            >
+              Abbrechen
+            </Button>
+            <Button
+              onClick={handleAddManualEntry}
+              color="primary"
+              disabled={isLoading}
+              sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
+            >
+              {isLoading ? "Speichere..." : "Hinzufügen"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </Box>
   );
 };
