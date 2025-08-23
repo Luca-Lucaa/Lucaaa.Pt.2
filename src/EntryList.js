@@ -483,34 +483,32 @@ const EntryList = ({
             <MenuItem value="Premium">Premium</MenuItem>
             <MenuItem value="Basic">Basic</MenuItem>
           </Select>
+          <TextField
+            label="Admin-Gebühr (€)"
+            fullWidth
+            margin="normal"
+            value={newEntry.admin_fee != null ? newEntry.admin_fee : ""}
+            disabled
+            size={isMobile ? "small" : "medium"}
+          />
           {role === "Admin" && (
-            <>
-              <TextField
-                label="Admin-Gebühr (€)"
-                fullWidth
-                margin="normal"
-                value={newEntry.admin_fee != null ? newEntry.admin_fee : ""}
-                disabled
-                size={isMobile ? "small" : "medium"}
-              />
-              <Select
-                fullWidth
-                value={newEntry.owner || loggedInUser}
-                onChange={(e) => setNewEntry({ ...newEntry, owner: e.target.value })}
-                disabled={isLoading}
-                size={isMobile ? "small" : "medium"}
-                displayEmpty
-              >
-                <MenuItem value={loggedInUser}>{loggedInUser}</MenuItem>
-                {owners
-                  .filter((owner) => owner !== loggedInUser)
-                  .map((owner) => (
-                    <MenuItem key={owner} value={owner}>
-                      {owner}
-                    </MenuItem>
-                  ))}
-              </Select>
-            </>
+            <Select
+              fullWidth
+              value={newEntry.owner || loggedInUser}
+              onChange={(e) => setNewEntry({ ...newEntry, owner: e.target.value })}
+              disabled={isLoading}
+              size={isMobile ? "small" : "medium"}
+              displayEmpty
+            >
+              <MenuItem value={loggedInUser}>{loggedInUser}</MenuItem>
+              {owners
+                .filter((owner) => owner !== loggedInUser)
+                .map((owner) => (
+                  <MenuItem key={owner} value={owner}>
+                    {owner}
+                  </MenuItem>
+                ))}
+            </Select>
           )}
         </DialogContent>
         <DialogActions>
