@@ -317,7 +317,7 @@ const EntryList = ({
       status: "Inaktiv",
       paymentStatus: "Nicht gezahlt",
       createdAt: new Date(),
-      validUntil: new Date(new Date().getFullYear() + 1, 11, 31),
+      validUntil: validUntil,
       owner: loggedInUser,
       extensionHistory: [],
       admin_fee: adminFee,
@@ -491,6 +491,23 @@ const EntryList = ({
             disabled
             size={isMobile ? "small" : "medium"}
           />
+          <TextField
+            label="Gültig bis"
+            fullWidth
+            margin="normal"
+            type="date"
+            value={
+              newEntry.validUntil
+                ? new Date(newEntry.validUntil).toISOString().split("T")[0]
+                : ""
+            }
+            disabled
+            size={isMobile ? "small" : "medium"}
+          />
+          <Typography variant="caption" color="textSecondary" sx={{ mt: 1 }}>
+            Hinweis: Abonnenten, die nach dem 1. Oktober angelegt werden, erhalten eine
+            Gültigkeit bis zum 31. Dezember des folgenden Jahres.
+          </Typography>
           {role === "Admin" && (
             <Select
               fullWidth
