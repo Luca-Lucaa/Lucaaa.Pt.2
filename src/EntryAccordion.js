@@ -210,7 +210,25 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
           }}
         >
           <Typography variant="body2">
+            <strong>Benutzername:</strong> {entry.username}
+          </Typography>
+          <Typography variant="body2">
+            <strong>Passwort:</strong> {entry.password}
+          </Typography>
+          <Typography variant="body2">
+            <strong>Spitzname/Notizen:</strong> {entry.aliasNotes}
+          </Typography>
+          <Typography variant="body2">
             <strong>Typ:</strong> {entry.type}
+          </Typography>
+          <Typography variant="body2">
+            <strong>Status:</strong> {entry.status}
+          </Typography>
+          <Typography variant="body2">
+            <strong>Zahlungsstatus:</strong> {entry.paymentStatus}
+          </Typography>
+          <Typography variant="body2">
+            <strong>Gültig bis:</strong> {formatDate(entry.validUntil)}
           </Typography>
           <Typography variant="body2">
             <strong>Ersteller:</strong> {entry.owner}
@@ -226,6 +244,19 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
           {entry.note && (
             <Typography variant="body2">
               <strong>Notiz:</strong> {entry.note}
+            </Typography>
+          )}
+          <Typography variant="body2">
+            <strong>Erstellt am:</strong> {formatDate(entry.createdAt)}
+          </Typography>
+          {entry.extensionRequest && (
+            <Typography variant="body2">
+              <strong>Verlängerungsanfrage:</strong>{" "}
+              {entry.extensionRequest.pending
+                ? "Ausstehend"
+                : entry.extensionRequest.approved
+                ? "Genehmigt"
+                : "Abgelehnt"}
             </Typography>
           )}
           {entry.extensionHistory?.length > 0 && (
@@ -255,13 +286,15 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
                   color={entry.paymentStatus === "Gezahlt" ? "error" : "success"}
                   size="small"
                 />
-                <Chip
-                  label="Bearbeiten"
-                  onClick={() => setOpenEditDialog(true)}
-                  color="primary"
-                  size="small"
-                />
               </>
+            )}
+            {role === "Admin" && (
+              <Chip
+                label="Bearbeiten"
+                onClick={() => setOpenEditDialog(true)}
+                color="primary"
+                size="small"
+              />
             )}
             {entry.owner === loggedInUser && !entry.extensionRequest?.pending && isExtensionRequestAllowed() && (
               <Chip
