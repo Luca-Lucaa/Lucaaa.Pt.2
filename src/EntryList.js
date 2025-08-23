@@ -174,8 +174,12 @@ const EntryList = ({
       return;
     }
     setIsLoading(true);
+    const newUsername = await generateUsername();
+    const newPassword = Math.random().toString(36).slice(-8);
     const entryToAdd = {
       ...newEntry,
+      username: newUsername,
+      password: newPassword,
       createdAt: new Date().toISOString(),
       validUntil: newEntry.validUntil.toISOString(),
     };
@@ -260,6 +264,9 @@ const EntryList = ({
         setNewEntry((prev) => ({ ...prev, username: newUsername, password: newPassword }));
       };
       generateCredentials();
+    } else {
+      // Reset credentials when dialog is closed
+      setNewEntry((prev) => ({ ...prev, username: "", password: "" }));
     }
   }, [openCreateDialog]);
 
