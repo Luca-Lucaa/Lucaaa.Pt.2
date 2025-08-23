@@ -169,7 +169,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
   }, [editedEntry, entry, setEntries, showSnackbar]);
 
   return (
-    <Accordion sx={{ bgcolor: isNewEntry ? "#e0f7ff" : OWNER_COLORS[entry.owner] || "#ffffff" }}>
+    <Accordion sx={{ bgcolor: OWNER_COLORS[entry.owner] || "#ffffff" }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
           <Box>
@@ -198,7 +198,17 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
         </Box>
       </AccordionSummary>
       <AccordionDetails>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.5,
+            p: 2,
+            bgcolor: isNewEntry ? "#e0f7ff" : "transparent",
+            borderRadius: 1,
+            border: isNewEntry ? "1px solid #bbdefb" : "none",
+          }}
+        >
           <Typography variant="body2">
             <strong>Typ:</strong> {entry.type}
           </Typography>
@@ -230,7 +240,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
               ))}
             </Box>
           )}
-          <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
+          <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
             {(role === "Admin" || entry.owner === loggedInUser) && (
               <>
                 <Chip
