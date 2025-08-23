@@ -174,10 +174,23 @@ const EntryList = ({
       return;
     }
     setIsLoading(true);
+    const createdAt = new Date();
+    let validUntil;
+    if (createdAt < new Date(createdAt.getFullYear(), 9, 1)) { // Before October 1st
+      validUntil = new Date(createdAt.getFullYear(), 11, 31); // December 31st of the current year
+    } else {
+      validUntil = new Date(createdAt.getFullYear() + 1, 11, 31); // December 31st of the next year
+    }
+    const monthsDiff = Math.ceil((validUntil - createdAt) / (1000 * 60 * 60 * 24 * 30)); // Approximate months
+    const adminFee = monthsDiff * 10; // 10 Euro per month
+
     const entryToAdd = {
       ...newEntry,
-      createdAt: new Date().toISOString(),
-      validUntil: newEntry.validUntil.toISOString(),
+      username: newEntry.username,
+      password: newEntry.password,
+      createdAt: createdAt.toISOString(),
+      validUntil: validUntil.toISOString(),
+      admin_fee: adminFee,
     };
     try {
       const { data, error } = await supabase.from("entries").insert([entryToAdd]).select().single();
