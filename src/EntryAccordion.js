@@ -16,6 +16,7 @@ import {
   Chip,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { supabase } from "./supabaseClient";
 import { formatDate, handleError } from "./utils";
 import { useSnackbar } from "./useSnackbar";
@@ -166,6 +167,22 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
     }
   }, [editedEntry, entry, setEntries, showSnackbar]);
 
+  const handleDeleteEntry = useCallback(async () => {
+    if (role !== "Admin") return; // Only Admin can delete
+    if (window.confirm(`Möchtest du den Eintrag für ${entry.aliasNotes} wirklich löschen?`)) {
+      try {
+        const { error } = await supabase.from("entries").delete().eq("id", entry.id);
+        if (error) throw error;
+        setEntries((prev) => prev.filter((e) => e.id !== entry.id));
+        showSnackbar("Eintrag erfolgreich gelöscht.", "success");
+      } catch (error) {
+        console.error("Error deleting entry:", error);
+        handleError(error, showSnackbar);
+        showSnackbar(`Fehler beim Löschen des Eintrags: ${error.message || "Unbekannter Fehler"}`, "error");
+      }
+    }
+  }, [entry, role, setEntries, showSnackbar]);
+
   return (
     <Accordion sx={{ bgcolor: OWNER_COLORS[entry.owner] || "#ffffff" }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -285,6 +302,12 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
                   label="Bearbeiten"
                   onClick={() => setOpenEditDialog(true)}
                   color="primary"
+                  size="small"
+                />
+                <Chip
+                  label="Löschen"
+                  onClick={handleDeleteEntry}
+                  color="error"
                   size="small"
                 />
               </>
