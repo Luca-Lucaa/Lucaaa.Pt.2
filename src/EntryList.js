@@ -483,7 +483,7 @@ const EntryList = ({
             <MenuItem value="Premium">Premium</MenuItem>
             <MenuItem value="Basic">Basic</MenuItem>
           </Select>
-          {role === "Admin" && loggedInUser !== "Scholli" && loggedInUser !== "Jamaica05" && (
+          {role === "Admin" && (
             <>
               <TextField
                 label="Admin-Gebühr (€)"
