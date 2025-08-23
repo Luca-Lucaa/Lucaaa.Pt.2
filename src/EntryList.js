@@ -181,8 +181,16 @@ const EntryList = ({
     } else {
       validUntil = new Date(createdAt.getFullYear() + 1, 11, 31); // December 31st of the next year
     }
-    const monthsDiff = Math.ceil((validUntil - createdAt) / (1000 * 60 * 60 * 24 * 30)); // Approximate months
-    const adminFee = monthsDiff * 10; // 10 Euro per month
+    const daysDiff = Math.ceil((validUntil - createdAt) / (1000 * 60 * 60 * 24)); // Total days
+    let adminFee = 0;
+    const fullMonths = Math.floor(daysDiff / 30); // Full months (30 days per month)
+    const remainingDays = daysDiff % 30; // Remaining days in the last month
+    adminFee += fullMonths * 10; // 10 Euro per full month
+    if (remainingDays >= 15) {
+      adminFee += 5; // 5 Euro for 15 or more days
+    } else if (remainingDays > 0) {
+      adminFee += 10; // 10 Euro for less than 15 days
+    }
 
     const entryToAdd = {
       ...newEntry,
