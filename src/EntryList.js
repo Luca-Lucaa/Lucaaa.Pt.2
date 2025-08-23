@@ -174,12 +174,8 @@ const EntryList = ({
       return;
     }
     setIsLoading(true);
-    const newUsername = await generateUsername();
-    const newPassword = Math.random().toString(36).slice(-8);
     const entryToAdd = {
       ...newEntry,
-      username: newUsername,
-      password: newPassword,
       createdAt: new Date().toISOString(),
       validUntil: newEntry.validUntil.toISOString(),
     };
@@ -254,6 +250,18 @@ const EntryList = ({
       setIsLoading(false);
     }
   }, [manualEntry, setEntries, showSnackbar, loggedInUser, setOpenManualDialog]);
+
+  // Generate username and password when the create dialog opens
+  useEffect(() => {
+    if (openCreateDialog) {
+      const generateCredentials = async () => {
+        const newUsername = await generateUsername();
+        const newPassword = Math.random().toString(36).slice(-8);
+        setNewEntry((prev) => ({ ...prev, username: newUsername, password: newPassword }));
+      };
+      generateCredentials();
+    }
+  }, [openCreateDialog]);
 
   return (
     <Box sx={{ mt: 2 }}>
@@ -368,7 +376,7 @@ const EntryList = ({
             label="Benutzername"
             fullWidth
             margin="normal"
-            value="Wird automatisch generiert"
+            value={newEntry.username || ""}
             disabled
             size={isMobile ? "small" : "medium"}
           />
@@ -376,7 +384,7 @@ const EntryList = ({
             label="Passwort"
             fullWidth
             margin="normal"
-            value="Wird automatisch generiert"
+            value={newEntry.password || ""}
             disabled
             size={isMobile ? "small" : "medium"}
           />
