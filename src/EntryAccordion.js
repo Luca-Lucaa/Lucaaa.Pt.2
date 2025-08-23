@@ -19,8 +19,9 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { supabase } from "./supabaseClient";
 import { formatDate, handleError } from "./utils";
 import { useSnackbar } from "./useSnackbar";
+import { OWNER_COLORS } from "./config";
 
-const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
+const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) => {
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [editedEntry, setEditedEntry] = useState({
     username: entry.username || "",
@@ -41,7 +42,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
   const isExtensionRequestAllowed = useCallback(() => {
     if (!entry.validUntil) return false;
     const validUntilDate = new Date(entry.validUntil);
-    const currentDate = new Date("2025-06-30T19:00:00+02:00"); // Current date: June 30, 2025, 07:00 PM CEST
+    const currentDate = new Date(); // Use current date dynamically
     const timeDiff = validUntilDate - currentDate;
     const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
     return daysDiff <= 30; // Allow extension request if within 30 days
@@ -130,46 +131,25 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
     }
     const adminFee = editedEntry.admin_fee ? parseInt(editedEntry.admin_fee) : null;
     if (editedEntry.admin_fee && (isNaN(adminFee) || adminFee < 0 || adminFee > 999)) {
-      showSnackbar("Admin-Gebühr muss zwischen 0 und 999 € liegen.", "error");
+      showSnackbar("Admin-Gebühr muss zwischen 0 und 999 liegen.", "error");
       return;
     }
-
-    // Check for unique username constraint
-    if (editedEntry.username !== entry.username) {
-      const { data: existingEntry, error: checkError } = await supabase
-        .from("entries")
-        .select("id")
-        .eq("username", editedEntry.username.trim())
-        .single();
-      if (checkError && checkError.code !== "PGRST116") { // PGRST116: No rows found
-        console.error("Error checking username:", checkError);
-        showSnackbar(`Fehler beim Überprüfen des Benutzernamens: ${checkError.message}`, "error");
-        return;
-      }
-      if (existingEntry) {
-        showSnackbar("Benutzername existiert bereits.", "error");
-        return;
-      }
-    }
-
-    const updatedEntry = {
-      username: editedEntry.username.trim(),
-      password: editedEntry.password.trim(),
-      aliasNotes: editedEntry.aliasNotes.trim(),
-      bougetList: editedEntry.bougetList ? editedEntry.bougetList.trim() : "",
-      type: editedEntry.type,
-      status: editedEntry.status,
-      paymentStatus: editedEntry.paymentStatus,
-      validUntil: validUntilDate.toISOString(),
-      admin_fee: adminFee,
-      note: editedEntry.note ? editedEntry.note.trim() : "",
-    };
-
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from("entries")
-        .update(updatedEntry)
+        .update({
+          username: editedEntry.username,
+          password: editedEntry.password,
+          aliasNotes: editedEntry.aliasNotes,
+          bougetList: editedEntry.bougetList,
+          type: editedEntry.type,
+          status: editedEntry.status,
+          paymentStatus: editedEntry.paymentStatus,
+          validUntil: validUntilDate.toISOString(),
+          admin_fee: adminFee,
+          note: editedEntry.note,
+        })
         .eq("id", entry.id)
         .select()
         .single();
@@ -178,59 +158,80 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries }) => {
         prev.map((e) => (e.id === entry.id ? { ...e, ...data } : e))
       );
       setOpenEditDialog(false);
-      showSnackbar("Abonnent erfolgreich aktualisiert.", "success");
+      showSnackbar("Eintrag erfolgreich aktualisiert!", "success");
     } catch (error) {
       console.error("Error updating entry:", error);
       handleError(error, showSnackbar);
-      showSnackbar(`Fehler beim Speichern: ${error.message || "Unbekannter Fehler"}`, "error");
+      showSnackbar(`Fehler beim Aktualisieren des Eintrags: ${error.message || "Unbekannter Fehler"}`, "error");
     } finally {
       setIsLoading(false);
     }
   }, [editedEntry, entry, setEntries, showSnackbar]);
 
   return (
-    <Accordion sx={{ mt: 1, borderRadius: 2, boxShadow: 2 }}>
+    <Accordion sx={{ bgcolor: isNewEntry ? "#e0f7ff" : OWNER_COLORS[entry.owner] || "#ffffff" }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Typography sx={{ fontWeight: "medium" }}>Details</Typography>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+          <Box>
+            <Typography>
+              <strong>{entry.aliasNotes}</strong> ({entry.username})
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              Gültig bis: {formatDate(entry.validUntil)}
+            </Typography>
+          </Box>
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+            {entry.status === "Aktiv" ? (
+              <Chip label="Aktiv" color="success" size="small" />
+            ) : (
+              <Chip label="Inaktiv" color="default" size="small" />
+            )}
+            {entry.paymentStatus === "Gezahlt" ? (
+              <Chip label="Gezahlt" color="primary" size="small" />
+            ) : (
+              <Chip label="Nicht gezahlt" color="error" size="small" />
+            )}
+            {entry.extensionRequest?.pending && (
+              <Chip label="Verlängerung angefragt" color="warning" size="small" />
+            )}
+          </Box>
+        </Box>
       </AccordionSummary>
       <AccordionDetails>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          <Typography
-            variant="body2"
-            sx={{
-              color: entry.status === "Aktiv" ? "success.main" : "error.main",
-            }}
-          >
-            Status: {entry.status}
+          <Typography variant="body2">
+            <strong>Typ:</strong> {entry.type}
           </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              color: entry.paymentStatus === "Gezahlt" ? "success.main" : "error.main",
-            }}
-          >
-            Zahlungsstatus: {entry.paymentStatus}
+          <Typography variant="body2">
+            <strong>Ersteller:</strong> {entry.owner}
           </Typography>
-          <Typography variant="body2">Passwort: {entry.password || "Keines"}</Typography>
-          <Typography variant="body2">Typ: {entry.type}</Typography>
-          <Typography variant="body2">Ersteller: {entry.owner}</Typography>
-          <Typography variant="body2">Bouget-Liste: {entry.bougetList || "Keine"}</Typography>
-          <Typography variant="body2">Admin-Gebühr: {entry.admin_fee ? `${entry.admin_fee} €` : "Keine"}</Typography>
-          <Typography variant="body2">Erstellt am: {formatDate(entry.createdAt)}</Typography>
-          <Typography variant="body2">Notiz: {entry.note || "Keine"}</Typography>
-          <Typography variant="body2">Verlängerungsanfrage: {entry.extensionRequest?.pending ? "Ausstehend" : "Keine"}</Typography>
+          <Typography variant="body2">
+            <strong>Bouget-Liste:</strong> {entry.bougetList || "Keine"}
+          </Typography>
+          {entry.admin_fee != null && (
+            <Typography variant="body2">
+              <strong>Admin-Gebühr:</strong> {entry.admin_fee} €
+            </Typography>
+          )}
+          {entry.note && (
+            <Typography variant="body2">
+              <strong>Notiz:</strong> {entry.note}
+            </Typography>
+          )}
           {entry.extensionHistory?.length > 0 && (
             <Box>
-              <Typography variant="body2" sx={{ fontWeight: "bold" }}>Verlängerungsverlauf:</Typography>
-              {entry.extensionHistory.map((ext, index) => (
+              <Typography variant="body2" fontWeight="bold">
+                Verlängerungsverlauf:
+              </Typography>
+              {entry.extensionHistory.map((history, index) => (
                 <Typography key={index} variant="body2">
-                  {formatDate(ext.approvalDate)}: Gültig bis {formatDate(ext.validUntil)}
+                  Genehmigt am: {formatDate(history.approvalDate)}, Gültig bis: {formatDate(history.validUntil)}
                 </Typography>
               ))}
             </Box>
           )}
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mt: 2 }}>
-            {role === "Admin" && (
+          <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
+            {(role === "Admin" || entry.owner === loggedInUser) && (
               <>
                 <Chip
                   label={entry.status === "Aktiv" ? "Deaktivieren" : "Aktivieren"}
