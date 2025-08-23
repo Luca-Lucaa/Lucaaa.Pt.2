@@ -27,7 +27,6 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
     username: entry.username || "",
     password: entry.password || "",
     aliasNotes: entry.aliasNotes || "",
-    bougetList: entry.bougetList || "",
     type: entry.type || "Premium",
     status: entry.status || "Inaktiv",
     paymentStatus: entry.paymentStatus || "Nicht gezahlt",
@@ -142,7 +141,6 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
           username: editedEntry.username,
           password: editedEntry.password,
           aliasNotes: editedEntry.aliasNotes,
-          bougetList: editedEntry.bougetList,
           type: editedEntry.type,
           status: editedEntry.status,
           paymentStatus: editedEntry.paymentStatus,
@@ -233,9 +231,6 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
           <Typography variant="body2">
             <strong>Ersteller:</strong> {entry.owner}
           </Typography>
-          <Typography variant="body2">
-            <strong>Bouget-Liste:</strong> {entry.bougetList || "Keine"}
-          </Typography>
           {entry.admin_fee != null && (
             <Typography variant="body2">
               <strong>Admin-Gebühr:</strong> {entry.admin_fee} €
@@ -272,7 +267,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
             </Box>
           )}
           <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
-            {(role === "Admin" || entry.owner === loggedInUser) && (
+            {role === "Admin" && (
               <>
                 <Chip
                   label={entry.status === "Aktiv" ? "Deaktivieren" : "Aktivieren"}
@@ -286,15 +281,13 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
                   color={entry.paymentStatus === "Gezahlt" ? "error" : "success"}
                   size="small"
                 />
+                <Chip
+                  label="Bearbeiten"
+                  onClick={() => setOpenEditDialog(true)}
+                  color="primary"
+                  size="small"
+                />
               </>
-            )}
-            {role === "Admin" && (
-              <Chip
-                label="Bearbeiten"
-                onClick={() => setOpenEditDialog(true)}
-                color="primary"
-                size="small"
-              />
             )}
             {entry.owner === loggedInUser && !entry.extensionRequest?.pending && isExtensionRequestAllowed() && (
               <Chip
@@ -334,14 +327,6 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
             onChange={(e) => setEditedEntry({ ...editedEntry, aliasNotes: e.target.value })}
             disabled={isLoading}
           />
-          <TextField
-            label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
-            fullWidth
-            margin="normal"
-            value={editedEntry.bougetList || ""}
-            onChange={(e) => setEditedEntry({ ...editedEntry, bougetList: e.target.value })}
-            disabled={isLoading}
-          />
           <Select
             fullWidth
             margin="normal"
@@ -377,7 +362,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
             fullWidth
             margin="normal"
             type="date"
-            value={editedEntry.validUntil}
+            value={editedEditEntry.validUntil}
             onChange={(e) => setEditedEntry({ ...editedEntry, validUntil: e.target.value })}
             disabled={isLoading}
             InputLabelProps={{ shrink: true }}
