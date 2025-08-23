@@ -286,39 +286,45 @@ const EntryList = ({
     }
   }, [loggedInUser]);
 
-  // Generate username, password, and calculate admin fee when the create dialog opens
-  useEffect(() => {
-    if (openCreateDialog) {
-      const generateCredentials = async () => {
-        const newUsername = await generateUsername();
-        const newPassword = Math.random().toString(36).slice(-8);
-        const createdAt = new Date();
-        let validUntil;
-        if (createdAt < new Date(createdAt.getFullYear(), 9, 1)) { // Before October 1st
-          validUntil = new Date(createdAt.getFullYear(), 11, 31); // December 31st of the current year
-        } else {
-          validUntil = new Date(createdAt.getFullYear() + 1, 11, 31); // December 31st of the next year
-        }
-        const daysDiff = Math.ceil((validUntil - createdAt) / (1000 * 60 * 60 * 24)); // Total days
-        let adminFee = 0;
-        const fullMonths = Math.floor(daysDiff / 30); // Full months (30 days per month)
-        const remainingDays = daysDiff % 30; // Remaining days in the last month
-        adminFee += fullMonths * 10; // 10 Euro per full month
-        if (remainingDays > 25) {
-          // No fee for more than 25 days
-        } else if (remainingDays > 10) {
-          adminFee += 5; // 5 Euro for 11-25 days
-        } else if (remainingDays > 0) {
-          adminFee += 10; // 10 Euro for 1-10 days
-        }
-        setNewEntry((prev) => ({ ...prev, username: newUsername, password: newPassword, admin_fee: adminFee }));
-      };
-      generateCredentials();
+  // Calculate admin fee and generate credentials when the create dialog opens
+  const handleOpenCreateDialog = useCallback(() => {
+    const newUsername = generateUsername();
+    const newPassword = Math.random().toString(36).slice(-8);
+    const createdAt = new Date();
+    let validUntil;
+    if (createdAt < new Date(createdAt.getFullYear(), 9, 1)) { // Before October 1st
+      validUntil = new Date(createdAt.getFullYear(), 11, 31); // December 31st of the current year
     } else {
-      // Reset credentials and admin fee when dialog is closed
-      setNewEntry((prev) => ({ ...prev, username: "", password: "", admin_fee: null }));
+      validUntil = new Date(createdAt.getFullYear() + 1, 11, 31); // December 31st of the next year
     }
-  }, [openCreateDialog, generateUsername]);
+    const daysDiff = Math.ceil((validUntil - createdAt) / (1000 * 60 * 60 * 24)); // Total days
+    let adminFee = 0;
+    const fullMonths = Math.floor(daysDiff / 30); // Full months (30 days per month)
+    const remainingDays = daysDiff % 30; // Remaining days in the last month
+    adminFee += fullMonths * 10; // 10 Euro per full month
+    if (remainingDays > 25) {
+      // No fee for more than 25 days
+    } else if (remainingDays > 10) {
+      adminFee += 5; // 5 Euro for 11-25 days
+    } else if (remainingDays > 0) {
+      adminFee += 10; // 10 Euro for 1-10 days
+    }
+    setNewEntry({
+      username: newUsername,
+      password: newPassword,
+      aliasNotes: "",
+      type: "Premium",
+      status: "Inaktiv",
+      paymentStatus: "Nicht gezahlt",
+      createdAt: new Date(),
+      validUntil: new Date(new Date().getFullYear() + 1, 11, 31),
+      owner: loggedInUser,
+      extensionHistory: [],
+      admin_fee: adminFee,
+      extensionRequest: null,
+    });
+    setOpenCreateDialog(true);
+  }, [generateUsername, loggedInUser, setOpenCreateDialog]);
 
   // Calculate total admin fees for logged-in user (only for Scholli or Jamaica05)
   const totalAdminFees = useMemo(() => {
@@ -399,7 +405,7 @@ const EntryList = ({
           variant="contained"
           color="primary"
           startIcon={<AddIcon />}
-          onClick={() => setOpenCreateDialog(true)}
+          onClick={handleOpenCreateDialog}
           sx={{ mr: 1 }}
         >
           Neuen Abonnenten anlegen
