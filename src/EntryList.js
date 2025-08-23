@@ -16,7 +16,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { supabase } from "./supabaseClient";
-import { formatDate, generateUsername, useDebounce, handleError } from "./utils";
+import { formatDate, useDebounce, handleError } from "./utils";
 import { useSnackbar } from "./useSnackbar";
 import { OWNER_COLORS } from "./config";
 import EntryAccordion from "./EntryAccordion";
@@ -174,12 +174,8 @@ const EntryList = ({
       return;
     }
     setIsLoading(true);
-    const newUsername = await generateUsername();
-    const newPassword = Math.random().toString(36).slice(-8);
     const entryToAdd = {
       ...newEntry,
-      username: newUsername,
-      password: newPassword,
       createdAt: new Date().toISOString(),
       validUntil: newEntry.validUntil.toISOString(),
     };
@@ -255,6 +251,18 @@ const EntryList = ({
     }
   }, [manualEntry, setEntries, showSnackbar, loggedInUser, setOpenManualDialog]);
 
+  // Custom username generation based on loggedInUser
+  const generateUsername = useCallback(() => {
+    const randomNum = Math.floor(100 + Math.random() * 900); // Generates a 3-digit number (100-999)
+    if (loggedInUser === "Jamaica05") {
+      return `${randomNum}-pricod-4`;
+    } else if (loggedInUser === "Scholli") {
+      return `${randomNum}-telucod-5`;
+    } else {
+      return `${randomNum}-admcod-0`; // Default for Admin or other users
+    }
+  }, [loggedInUser]);
+
   // Generate username and password when the create dialog opens
   useEffect(() => {
     if (openCreateDialog) {
@@ -268,7 +276,7 @@ const EntryList = ({
       // Reset credentials when dialog is closed
       setNewEntry((prev) => ({ ...prev, username: "", password: "" }));
     }
-  }, [openCreateDialog]);
+  }, [openCreateDialog, generateUsername]);
 
   return (
     <Box sx={{ mt: 2 }}>
