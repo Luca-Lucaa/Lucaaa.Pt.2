@@ -10,8 +10,6 @@ import {
   Box,
   Select,
   MenuItem,
-  Card,
-  CardContent,
   Grid,
   useMediaQuery,
   useTheme,
@@ -50,7 +48,6 @@ const EntryList = ({
     validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // Set to end of next year (2026)
     owner: loggedInUser,
     extensionHistory: [],
-    bougetList: "",
     admin_fee: null,
     extensionRequest: null,
   });
@@ -62,7 +59,6 @@ const EntryList = ({
     validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // Set to end of next year (2026)
     owner: loggedInUser,
     extensionHistory: [],
-    bougetList: "",
     admin_fee: null,
     extensionRequest: null,
   });
@@ -203,7 +199,6 @@ const EntryList = ({
         validUntil: new Date(new Date().getFullYear() + 1, 11, 31),
         owner: loggedInUser,
         extensionHistory: [],
-        bougetList: "",
         admin_fee: null,
         extensionRequest: null,
       });
@@ -249,7 +244,6 @@ const EntryList = ({
         validUntil: new Date(new Date().getFullYear() + 1, 11, 31),
         owner: loggedInUser,
         extensionHistory: [],
-        bougetList: "",
         admin_fee: null,
         extensionRequest: null,
       });
@@ -371,20 +365,27 @@ const EntryList = ({
         </DialogTitle>
         <DialogContent>
           <TextField
+            label="Benutzername"
+            fullWidth
+            margin="normal"
+            value="Wird automatisch generiert"
+            disabled
+            size={isMobile ? "small" : "medium"}
+          />
+          <TextField
+            label="Passwort"
+            fullWidth
+            margin="normal"
+            value="Wird automatisch generiert"
+            disabled
+            size={isMobile ? "small" : "medium"}
+          />
+          <TextField
             label="Spitzname, Notizen etc."
             fullWidth
             margin="normal"
             value={newEntry.aliasNotes}
             onChange={(e) => setNewEntry({ ...newEntry, aliasNotes: e.target.value })}
-            disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
-          />
-          <TextField
-            label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
-            fullWidth
-            margin="normal"
-            value={newEntry.bougetList || ""}
-            onChange={(e) => setNewEntry({ ...newEntry, bougetList: e.target.value })}
             disabled={isLoading}
             size={isMobile ? "small" : "medium"}
           />
@@ -491,15 +492,6 @@ const EntryList = ({
               margin="normal"
               value={manualEntry.aliasNotes}
               onChange={(e) => setManualEntry({ ...manualEntry, aliasNotes: e.target.value })}
-              disabled={isLoading}
-              size={isMobile ? "small" : "medium"}
-            />
-            <TextField
-              label="Bouget-Liste (z.B. GER, CH, USA, XXX usw... oder Alles)"
-              fullWidth
-              margin="normal"
-              value={manualEntry.bougetList || ""}
-              onChange={(e) => setManualEntry({ ...manualEntry, bougetList: e.target.value })}
               disabled={isLoading}
               size={isMobile ? "small" : "medium"}
             />
