@@ -20,6 +20,7 @@ import { formatDate, useDebounce, handleError } from "./utils";
 import { useSnackbar } from "./useSnackbar";
 import { OWNER_COLORS } from "./config";
 import EntryAccordion from "./EntryAccordion";
+import EntryDialog from "./EntryDialog";
 
 const EntryList = ({
   role,
@@ -45,7 +46,7 @@ const EntryList = ({
     status: "Inaktiv",
     paymentStatus: "Nicht gezahlt",
     createdAt: new Date(),
-    validUntil: new Date(new Date().getFullYear() + 1, 11, 31),
+    validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // End of next year (2026)
     owner: loggedInUser,
     extensionHistory: [],
     admin_fee: null,
@@ -56,7 +57,7 @@ const EntryList = ({
     password: "",
     aliasNotes: "",
     type: "Premium",
-    validUntil: new Date(new Date().getFullYear() + 1, 11, 31),
+    validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // End of next year (2026)
     owner: loggedInUser,
     extensionHistory: [],
     admin_fee: null,
@@ -73,7 +74,7 @@ const EntryList = ({
     const createdDate = new Date(createdAt);
     const validUntilDate = new Date(validUntil);
     const dayOfMonth = createdDate.getDate();
-    
+
     // Berechnung für den angebrochenen Monat
     let partialMonthFee = 0;
     if (dayOfMonth <= 10) {
@@ -89,7 +90,7 @@ const EntryList = ({
     const startMonth = createdDate.getFullYear() * 12 + createdDate.getMonth() + (dayOfMonth > 25 ? 1 : 0);
     const endMonth = validUntilDate.getFullYear() * 12 + validUntilDate.getMonth();
     fullMonths = Math.max(0, endMonth - startMonth);
-    
+
     // Gesamtgebühr: Angebrochener Monat + volle Monate * 10 €
     return partialMonthFee + fullMonths * 10;
   };
@@ -99,6 +100,7 @@ const EntryList = ({
     return uniqueOwners.sort();
   }, [entries]);
 
+  // Check if an entry is new (created within the last 5 days)
   const isNewEntry = useCallback((createdAt) => {
     if (!createdAt) return false;
     try {
@@ -113,6 +115,7 @@ const EntryList = ({
     }
   }, []);
 
+  // Update status and paymentStatus for expired entries
   const updateExpiredEntries = useCallback(async () => {
     if (!loggedInUser) return;
     const currentDate = new Date();
@@ -151,6 +154,7 @@ const EntryList = ({
     }
   }, [entries, updateExpiredEntries, isLoading, loggedInUser]);
 
+  // Calculate expired entries (validUntil before current date)
   const expiredEntries = useMemo(() => {
     const currentDate = new Date();
     return entries.filter((entry) => {
@@ -260,7 +264,7 @@ const EntryList = ({
       showSnackbar("Spitzname darf nicht leer sein.", "error");
       return;
     }
-    const validUntilDate = new Date(PerformanceNavigationTiming.validUntil);
+    const validUntilDate = new Date(manualEntry.validUntil);
     if (isNaN(validUntilDate)) {
       showSnackbar("Bitte ein gültiges Datum eingeben.", "error");
       return;
@@ -424,84 +428,12 @@ const EntryList = ({
         maxWidth="sm"
         fullScreen={isMobile}
       >
-        <DialogTitle sx={{ fontSize: isMobile ? "1rem" : "1.25rem" }}>
-          Neuen Abonnenten anlegen
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            label="Benutzername"
-            fullWidth
-            margin="normal"
-            value={newEntry.username}
-            onChange={(e) => setNewEntry({ ...newEntry, username: e.target.value })}
-            disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
-          />
-          <TextField
-            label="Passwort"
-            fullWidth
-            margin="normal"
-            type="text"
-            value={newEntry.password}
-            onChange={(e) => setNewEntry({ ...newEntry, password: e.target.value })}
-            disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
-          />
-          <TextField
-            label="Spitzname, Notizen etc."
-            fullWidth
-            margin="normal"
-            value={newEntry.aliasNotes}
-            onChange={(e) => setNewEntry({ ...newEntry, aliasNotes: e.target.value })}
-            disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
-          />
-          <Select
-            fullWidth
-            value={newEntry.type}
-            onChange={(e) => setNewEntry({ ...newEntry, type: e.target.value })}
-            disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
-          >
-            <MenuItem value="Premium">Premium</MenuItem>
-            <MenuItem value="Basic">Basic</MenuItem>
-          </Select>
-          <TextField
-            label="Gültig bis"
-            fullWidth
-            margin="normal"
-            type="date"
-            value={
-              newEntry.validUntil
-                ? new Date(newEntry.validUntil).toISOString().split("T")[0]
-                : ""
-            }
-            onChange={(e) =>
-              setNewEntry({ ...newEntry, validUntil: new Date(e.target.value) })
-            }
-            disabled={isLoading}
-            size={isMobile ? "small" : "medium"}
-            InputLabelProps={{ shrink: true }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => setOpenCreateDialog(false)}
-            color="secondary"
-            disabled={isLoading}
-            sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
-          >
-            Abbrechen
-          </Button>
-          <Button
-            onClick={handleAddEntry}
-            color="primary"
-            disabled={isLoading}
-            sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
-          >
-            {isLoading ? "Speichere..." : "Erstellen"}
-          </Button>
-        </DialogActions>
+        <EntryDialog
+          open={openCreateDialog}
+          onClose={() => setOpenCreateDialog(false)}
+          entryData={newEntry}
+          onSave={(updatedEntry) => setNewEntry({ ...newEntry, ...updatedEntry })}
+        />
       </Dialog>
       {role === "Admin" && (
         <Dialog
@@ -516,7 +448,7 @@ const EntryList = ({
           </DialogTitle>
           <DialogContent>
             <TextField
-              label="Ben отцаname"
+              label="Benutzername"
               fullWidth
               margin="normal"
               value={manualEntry.username}
