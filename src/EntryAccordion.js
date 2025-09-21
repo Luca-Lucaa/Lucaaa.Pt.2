@@ -32,19 +32,20 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
     status: entry.status || "Inaktiv",
     paymentStatus: entry.paymentStatus || "Nicht gezahlt",
     validUntil: entry.validUntil ? new Date(entry.validUntil).toISOString().split("T")[0] : "",
-    admin_fee: entry.admin_fee != null ? entry.admin_fee.toString() : "0",
+    admin_fee: entry.admin_fee != null ? entry.admin_fee.toString() : "",
     note: entry.note || "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const { showSnackbar } = useSnackbar();
 
+  // Check if validUntil is within 30 days from today
   const isExtensionRequestAllowed = useCallback(() => {
     if (!entry.validUntil) return false;
     const validUntilDate = new Date(entry.validUntil);
-    const currentDate = new Date();
+    const currentDate = new Date(); // Use current date dynamically
     const timeDiff = validUntilDate - currentDate;
-    const daysDiff = timeDiff / (1000 * 60 * 60 * 24);
-    return daysDiff <= 30;
+    const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
+    return daysDiff <= 30; // Allow extension request if within 30 days
   }, [entry.validUntil]);
 
   const handleToggleStatus = useCallback(async () => {
@@ -90,7 +91,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
     try {
       const updatedData = {
         ...editedEntry,
-        admin_fee: role === "Admin" ? parseInt(editedEntry.admin_fee) || 0 : entry.admin_fee, // Only Admin can change admin_fee
+        admin_fee: role === "Admin" ? parseInt(editedEntry.admin_fee) || 0 : entry.admin_fee,
         validUntil: new Date(editedEntry.validUntil).toISOString(),
       };
       const { data, error } = await supabase
@@ -280,7 +281,7 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
             label="Admin-Gebühr (€)"
             fullWidth
             margin="normal"
-            value={editedEntry.admin_fee || "0"}
+            value={editedEntry.admin_fee || ""}
             onChange={(e) => {
               const value = e.target.value.replace(/[^0-9]/g, "");
               setEditedEntry({ ...editedEntry, admin_fee: value });
