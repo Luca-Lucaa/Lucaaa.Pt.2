@@ -48,7 +48,7 @@ const EntryList = ({
     validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // Set to end of next year (2026)
     owner: loggedInUser,
     extensionHistory: [],
-    admin_fee: 0, // Always set to 0
+    admin_fee: 0, // Changed to 0
     extensionRequest: null,
   });
   const [manualEntry, setManualEntry] = useState({
@@ -59,7 +59,7 @@ const EntryList = ({
     validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // Set to end of next year (2026)
     owner: loggedInUser,
     extensionHistory: [],
-    admin_fee: 0, // Always set to 0
+    admin_fee: 0, // Changed to 0
     extensionRequest: null,
   });
 
@@ -434,6 +434,21 @@ const EntryList = ({
               onChange={(e) =>
                 setManualEntry({ ...manualEntry, validUntil: new Date(e.target.value) })
               }
+              disabled={isLoading}
+              size={isMobile ? "small" : "medium"}
+            />
+            <TextField
+              label="Admin-Gebühr (€)"
+              fullWidth
+              margin="normal"
+              value={manualEntry.admin_fee || ""}
+              onChange={(e) => {
+                const value = e.target.value.replace(/[^0-9]/g, "");
+                const numValue = value ? parseInt(value) : null;
+                if (numValue && numValue > 999) return;
+                setManualEntry({ ...manualEntry, admin_fee: numValue });
+              }}
+              inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
               disabled={isLoading}
               size={isMobile ? "small" : "medium"}
             />
