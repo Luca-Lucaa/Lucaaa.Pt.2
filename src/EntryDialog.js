@@ -51,10 +51,13 @@ const EntryDialog = ({ open, onClose, entryData, onSave, loggedInUser }) => {
           label="Admin-Gebühr (€)"
           fullWidth
           margin="normal"
-          value={entryData.admin_fee || ""}
+          value={loggedInUser === "Admin" ? entryData.admin_fee || "" : ""}
+          placeholder={loggedInUser !== "Admin" ? "Admin bestimmt die Gebühren" : ""}
           onChange={(e) => {
-            const value = e.target.value.replace(/[^0-9]/g, "");
-            onSave({ ...entryData, admin_fee: value ? parseInt(value) : null });
+            if (loggedInUser === "Admin") {
+              const value = e.target.value.replace(/[^0-9]/g, "");
+              onSave({ ...entryData, admin_fee: value ? parseInt(value) : null });
+            }
           }}
           inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
           disabled={loggedInUser !== "Admin"}
