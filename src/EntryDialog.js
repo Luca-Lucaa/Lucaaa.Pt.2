@@ -10,7 +10,8 @@ import {
   Button,
   Typography,
 } from "@mui/material";
-const EntryDialog = ({ open, onClose, entryData, onSave }) => {
+
+const EntryDialog = ({ open, onClose, entryData, onSave, loggedInUser }) => {
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>Neuen Abonnenten anlegen</DialogTitle>
@@ -36,7 +37,6 @@ const EntryDialog = ({ open, onClose, entryData, onSave }) => {
           fullWidth
           margin="normal"
           value={entryData.username}
-          A
           disabled
         />
         <TextField
@@ -46,6 +46,18 @@ const EntryDialog = ({ open, onClose, entryData, onSave }) => {
           type="password"
           value={entryData.password}
           disabled
+        />
+        <TextField
+          label="Admin-Gebühr (€)"
+          fullWidth
+          margin="normal"
+          value={entryData.admin_fee || ""}
+          onChange={(e) => {
+            const value = e.target.value.replace(/[^0-9]/g, "");
+            onSave({ ...entryData, admin_fee: value ? parseInt(value) : null });
+          }}
+          inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+          disabled={loggedInUser !== "Admin"}
         />
         <Typography variant="body1">
           <strong>Aktuelles Datum:</strong> {new Date().toLocaleDateString()}
@@ -66,4 +78,5 @@ const EntryDialog = ({ open, onClose, entryData, onSave }) => {
     </Dialog>
   );
 };
+
 export default EntryDialog;
