@@ -21,6 +21,23 @@ import { useSnackbar } from "./useSnackbar";
 import { OWNER_COLORS } from "./config";
 import EntryAccordion from "./EntryAccordion";
 
+// Funktion zur Generierung eines zufälligen Benutzernamens
+const generateUsername = () => {
+  const timestamp = Date.now().toString(36);
+  const randomStr = Math.random().toString(36).substr(2, 5);
+  return `user_${timestamp}_${randomStr}`;
+};
+
+// Funktion zur Generierung eines zufälligen Passworts
+const generatePassword = () => {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+  let password = "";
+  for (let i = 0; i < 12; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+};
+
 const EntryList = ({
   role,
   loggedInUser,
@@ -165,10 +182,17 @@ const EntryList = ({
       showSnackbar("Das Gültigkeitsdatum muss in der Zukunft liegen.", "error");
       return;
     }
+
+    // Automatische Generierung von Benutzernamen und Passwort, wenn leer
+    const finalUsername = newEntry.username.trim() === "" ? generateUsername() : newEntry.username;
+    const finalPassword = newEntry.password.trim() === "" ? generatePassword() : newEntry.password;
+
     setIsLoading(true);
     try {
       const updatedEntry = {
         ...newEntry,
+        username: finalUsername,
+        password: finalPassword,
         owner: loggedInUser,
         admin_fee: newEntry.admin_fee ? Number(newEntry.admin_fee) : null,
         validUntil: selectedDate.toISOString(),
