@@ -137,14 +137,15 @@ const EntryList = ({
         const matchesStatus = statusFilter === "" || entry.status === statusFilter;
         const matchesPayment = paymentFilter === "" || entry.paymentStatus === paymentFilter;
         const matchesOwner = ownerFilter === "" || entry.owner === ownerFilter;
-        return matchesSearch && matchesStatus && matchesPayment && matchesOwner;
+        const matchesOwnership = role === "Admin" || entry.owner === loggedInUser;
+        return matchesSearch && matchesStatus && matchesPayment && matchesOwner && matchesOwnership;
       })
       .sort((a, b) => {
         const dateA = new Date(a.createdAt);
         const dateB = new Date(b.createdAt);
         return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
       });
-  }, [entries, debouncedSearchTerm, statusFilter, paymentFilter, ownerFilter, sortOrder]);
+  }, [entries, debouncedSearchTerm, statusFilter, paymentFilter, ownerFilter, sortOrder, role, loggedInUser]);
 
   const handleAddEntry = async () => {
     if (!newEntry.username || !newEntry.password || !newEntry.aliasNotes) {
