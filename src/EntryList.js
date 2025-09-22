@@ -45,7 +45,7 @@ const EntryList = ({
     status: "Inaktiv",
     paymentStatus: "Nicht gezahlt",
     createdAt: new Date(),
-    validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // Set to end of next year (2026)
+    validUntil: new Date(new Date().getFullYear() + 1, 11, 31),
     owner: loggedInUser,
     extensionHistory: [],
     admin_fee: null,
@@ -56,7 +56,7 @@ const EntryList = ({
     password: "",
     aliasNotes: "",
     type: "Premium",
-    validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // Set to end of next year (2026)
+    validUntil: new Date(new Date().getFullYear() + 1, 11, 31),
     owner: loggedInUser,
     extensionHistory: [],
     admin_fee: null,
@@ -73,6 +73,26 @@ const EntryList = ({
     return uniqueOwners.sort();
   }, [entries]);
 
+  const filteredEntries = useMemo(() => {
+    return entries
+      .filter((entry) => {
+        const matchesSearch =
+          debouncedSearchTerm === "" ||
+          (entry.username || "").toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+          (entry.aliasNotes || "").toLowerCase().includes(debouncedSearchTerm.toLowerCase());
+        const matchesStatus = statusFilter === "" || entry.status === statusFilter;
+        const matchesPayment = paymentFilter === "" || entry.paymentStatus === paymentFilter;
+        const matchesOwner = ownerFilter === "" || entry.owner === ownerFilter;
+        const matchesOwnership = role === "Admin" || entry.owner === loggedInUser;
+        return matchesSearch && matchesStatus && matchesPayment && matchesOwner && matchesOwnership;
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.createdAt);
+        const dateB = new Date(b.createdAt);
+        return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+      });
+  }, [entries, debouncedSearchTerm, statusFilter, paymentFilter, ownerFilter, sortOrder, role, loggedInUser]);
+
   // Calculate total admin fees for filtered entries
   const totalAdminFees = useMemo(() => {
     return filteredEntries.reduce((sum, entry) => {
@@ -85,10 +105,10 @@ const EntryList = ({
     if (!createdAt) return false;
     try {
       const createdDate = new Date(createdAt);
-      const currentDate = new Date(); // Use current date dynamically
+      const currentDate = new Date();
       const timeDiff = currentDate - createdDate;
-      const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
-      return daysDiff <= 5; // Highlight entries created within 5 days
+      const daysDiff = timeDiff / (1000 * 60 * 60 * 24);
+      return daysDiff <= 5;
     } catch (error) {
       console.error("Fehler bei isNewEntry:", error);
       return false;
@@ -97,7 +117,7 @@ const EntryList = ({
 
   // Update status and paymentStatus for expired entries
   const updateExpiredEntries = useCallback(async () => {
-    if (!loggedInUser) return; // Prevent updates if no user is logged in
+    if (!loggedInUser) return;
     const currentDate = new Date();
     const expiredEntries = entries.filter((entry) => {
       if (!entry.validUntil || !entry.id) return false;
@@ -133,26 +153,6 @@ const EntryList = ({
       updateExpiredEntries();
     }
   }, [entries, updateExpiredEntries, isLoading]);
-
-  const filteredEntries = useMemo(() => {
-    return entries
-      .filter((entry) => {
-        const matchesSearch =
-          debouncedSearchTerm === "" ||
-          (entry.username || "").toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-          (entry.aliasNotes || "").toLowerCase().includes(debouncedSearchTerm.toLowerCase());
-        const matchesStatus = statusFilter === "" || entry.status === statusFilter;
-        const matchesPayment = paymentFilter === "" || entry.paymentStatus === paymentFilter;
-        const matchesOwner = ownerFilter === "" || entry.owner === ownerFilter;
-        const matchesOwnership = role === "Admin" || entry.owner === loggedInUser;
-        return matchesSearch && matchesStatus && matchesPayment && matchesOwner && matchesOwnership;
-      })
-      .sort((a, b) => {
-        const dateA = new Date(a.createdAt);
-        const dateB = new Date(b.createdAt);
-        return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
-      });
-  }, [entries, debouncedSearchTerm, statusFilter, paymentFilter, ownerFilter, sortOrder, role, loggedInUser]);
 
   const handleAddEntry = async () => {
     if (!newEntry.username || !newEntry.password || !newEntry.aliasNotes) {
