@@ -16,7 +16,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { supabase } from "./supabaseClient";
-import { formatDate, useDebounce, handleError, generateUsername } from "./utils";
+import { formatDate, useDebounce, handleError, generateUsername, generatePassword } from "./utils";
 import { useSnackbar } from "./useSnackbar";
 import { OWNER_COLORS } from "./config";
 import EntryAccordion from "./EntryAccordion";
@@ -45,7 +45,7 @@ const EntryList = ({
     status: "Inaktiv",
     paymentStatus: "Nicht gezahlt",
     createdAt: new Date(),
-    validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // Set to end of next year (2026)
+    validUntil: new Date(new Date().getFullYear() + 1, 11, 31),
     owner: loggedInUser,
     extensionHistory: [],
     admin_fee: null,
@@ -56,7 +56,7 @@ const EntryList = ({
     password: "",
     aliasNotes: "",
     type: "Premium",
-    validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // Set to end of next year (2026)
+    validUntil: new Date(new Date().getFullYear() + 1, 11, 31),
     owner: loggedInUser,
     extensionHistory: [],
     admin_fee: null,
@@ -78,10 +78,10 @@ const EntryList = ({
     if (!createdAt) return false;
     try {
       const createdDate = new Date(createdAt);
-      const currentDate = new Date(); // Use current date dynamically
+      const currentDate = new Date();
       const timeDiff = currentDate - createdDate;
-      const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
-      return daysDiff <= 5; // Highlight entries created within 5 days
+      const daysDiff = timeDiff / (1000 * 60 * 60 * 24);
+      return daysDiff <= 5;
     } catch (error) {
       console.error("Fehler bei isNewEntry:", error);
       return false;
@@ -90,7 +90,7 @@ const EntryList = ({
 
   // Update status and paymentStatus for expired entries
   const updateExpiredEntries = useCallback(async () => {
-    if (!loggedInUser) return; // Prevent updates if no user is logged in
+    if (!loggedInUser) return;
     const currentDate = new Date();
     const expiredEntries = entries.filter((entry) => {
       if (!entry.validUntil || !entry.id) return false;
@@ -137,14 +137,22 @@ const EntryList = ({
         const matchesStatus = statusFilter === "" || entry.status === statusFilter;
         const matchesPayment = paymentFilter === "" || entry.paymentStatus === paymentFilter;
         const matchesOwner = ownerFilter === "" || entry.owner === ownerFilter;
-        return matchesSearch && matchesStatus && matchesPayment && matchesOwner;
+        const matchesOwnership = role === "Admin" || entry.owner === loggedInUser;
+        return matchesSearch && matchesStatus && matchesPayment && matchesOwner && matchesOwnership;
       })
       .sort((a, b) => {
         const dateA = new Date(a.createdAt);
         const dateB = new Date(b.createdAt);
         return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
       });
-  }, [entries, debouncedSearchTerm, statusFilter, paymentFilter, ownerFilter, sortOrder]);
+  }, [entries, debouncedSearchTerm, statusFilter, paymentFilter, ownerFilter, sortOrder, role, loggedInUser]);
+
+  // Calculate total admin fees for filtered entries
+  const totalAdminFees = useMemo(() => {
+    return filteredEntries.reduce((sum, entry) => {
+      return sum + (entry.admin_fee && Number.isFinite(entry.admin_fee) ? entry.admin_fee : 0);
+    }, 0);
+  }, [filteredEntries]);
 
   const handleAddEntry = async () => {
     if (!newEntry.aliasNotes) {
@@ -157,11 +165,12 @@ const EntryList = ({
       showSnackbar("Das Gültigkeitsdatum muss in der Zukunft liegen.", "error");
       return;
     }
+
     setIsLoading(true);
     try {
       const updatedEntry = {
         ...newEntry,
-        username: generateUsername(loggedInUser),
+        username: newEntry.username || generateUsername(loggedInUser),
         password: newEntry.password || generatePassword(),
         owner: loggedInUser,
         admin_fee: newEntry.admin_fee ? Number(newEntry.admin_fee) : null,
@@ -319,25 +328,29 @@ const EntryList = ({
         Gesamtgebühren: {totalAdminFees} €
       </Typography>
       <Box sx={{ mb: 2, display: "flex", justifyContent: "flex-end" }}>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setOpenCreateDialog(true)}
-          sx={{ mr: 1, fontSize: isMobile ? "0.8rem" : "0.875rem" }}
-          disabled={isLoading}
-        >
-          Neuer Eintrag
-        </Button>
-        {role === "Admin" && (
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => setOpenManualDialog(true)}
-            sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
-            disabled={isLoading}
-          >
-            Manueller Eintrag
-          </Button>
+        {(role === "Admin" || role === "Friend") && (
+          <>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setOpenCreateDialog(true)}
+              sx={{ mr: 1, fontSize: isMobile ? "0.8rem" : "0.875rem" }}
+              disabled={isLoading}
+            >
+              Neuer Eintrag
+            </Button>
+            {role === "Admin" && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setOpenManualDialog(true)}
+                sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
+                disabled={isLoading}
+              >
+                Manueller Eintrag
+              </Button>
+            )}
+          </>
         )}
       </Box>
       <Box>
