@@ -13,6 +13,8 @@ import {
   TextField,
   Select,
   MenuItem,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -33,6 +35,9 @@ const AdminDashboard = ({
   const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [newValidUntil, setNewValidUntil] = useState("");
+  const [openManualDialog, setOpenManualDialogLocal] = useState(false);
+  const [selectedEntryForEdit, setSelectedEntryForEdit] = useState(null);
+  const [editedEntry, setEditedEntry] = useState(null);
   const { showSnackbar } = useSnackbar();
 
   const stats = useMemo(() => {
@@ -158,6 +163,76 @@ const AdminDashboard = ({
     [setEntries, showSnackbar]
   );
 
+  const handleOpenManualDialog = useCallback(
+    (entry) => {
+      setSelectedEntryForEdit(entry);
+      setEditedEntry({
+        ...entry,
+        validUntil: entry.validUntil ? new Date(entry.validUntil).toISOString().split("T")[0] : "",
+      });
+      setOpenManualDialogLocal(true);
+      setOpenManualDialog(true);
+    },
+    [setOpenManualDialog]
+  );
+
+  const handleCloseManualDialog = useCallback(() => {
+    setOpenManualDialogLocal(false);
+    setOpenManualDialog(false);
+    setSelectedEntryForEdit(null);
+    setEditedEntry(null);
+  }, [setOpenManualDialog]);
+
+  const handleManualEntry = useCallback(
+    async () => {
+      if (!editedEntry) {
+        showSnackbar("Kein Eintrag ausgewählt.", "error");
+        return;
+      }
+
+      // Validierung
+      if (!editedEntry.username || !editedEntry.password || !editedEntry.aliasNotes) {
+        showSnackbar("Bitte füllen Sie alle Pflichtfelder aus.", "error");
+        return;
+      }
+      const selectedDate = new Date(editedEntry.validUntil);
+      const currentDate = new Date();
+      if (selectedDate < currentDate) {
+        showSnackbar("Das Gültigkeitsdatum muss in der Zukunft liegen.", "error");
+        return;
+      }
+      if (editedEntry.admin_fee && isNaN(editedEntry.admin_fee)) {
+        showSnackbar("Die Gebühr muss eine Zahl sein.", "error");
+        return;
+      }
+
+      const updatedEntry = {
+        ...editedEntry,
+        validUntil: selectedDate.toISOString(),
+        admin_fee: editedEntry.admin_fee ? Number(editedEntry.admin_fee) : null,
+        ...(editedEntry.paymentStatus === "Gezahlt" && { admin_fee: 0 }), // Setze admin_fee auf 0, wenn Status "Gezahlt" ist
+      };
+
+      try {
+        const { data, error } = await supabase
+          .from("entries")
+          .update(updatedEntry)
+          .eq("id", editedEntry.id)
+          .select()
+          .single();
+        if (error) throw error;
+        setEntries((prev) =>
+          prev.map((e) => (e.id === editedEntry.id ? { ...e, ...data } : e))
+        );
+        showSnackbar("Eintrag erfolgreich aktualisiert.");
+        handleCloseManualDialog();
+      } catch (error) {
+        handleError(error, showSnackbar);
+      }
+    },
+    [editedEntry, setEntries, showSnackbar, handleCloseManualDialog]
+  );
+
   return (
     <Box sx={{ p: 2, borderBottom: "1px solid #e0e0e0" }}>
       <Typography variant="h6" gutterBottom sx={{ mb: 1 }}>
@@ -229,7 +304,7 @@ const AdminDashboard = ({
               color="primary"
               size="small"
               startIcon={<EditIcon />}
-              onClick={() => setOpenManualDialog(true)}
+              onClick={() => handleOpenManualDialog(null)}
               sx={{ borderRadius: 1, flexGrow: 1 }}
             >
               Bestehend
@@ -334,6 +409,14 @@ const AdminDashboard = ({
                       <MenuItem value="Gezahlt">Gezahlt</MenuItem>
                       <MenuItem value="Nicht gezahlt">Nicht gezahlt</MenuItem>
                     </Select>
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      size="small"
+                      onClick={() => handleOpenManualDialog(entry)}
+                    >
+                      Bearbeiten
+                    </Button>
                   </Box>
                 </Card>
               </Grid>
@@ -379,6 +462,153 @@ const AdminDashboard = ({
             color="success"
           >
             Genehmigen
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={openManualDialog}
+        onClose={handleCloseManualDialog}
+      >
+        <DialogTitle>Eintrag bearbeiten</DialogTitle>
+        <DialogContent>
+          {selectedEntryForEdit ? (
+            <>
+              <TextField
+                label="Benutzername"
+                fullWidth
+                margin="normal"
+                value={editedEntry?.username || ""}
+                onChange={(e) =>
+                  setEditedEntry({ ...editedEntry, username: e.target.value })
+                }
+              />
+              <TextField
+                label="Passwort"
+                fullWidth
+                margin="normal"
+                type="password"
+                value={editedEntry?.password || ""}
+                onChange={(e) =>
+                  setEditedEntry({ ...editedEntry, password: e.target.value })
+                }
+              />
+              <TextField
+                label="Spitzname"
+                fullWidth
+                margin="normal"
+                value={editedEntry?.aliasNotes || ""}
+                onChange={(e) =>
+                  setEditedEntry({ ...editedEntry, aliasNotes: e.target.value })
+                }
+              />
+              <FormControl fullWidth margin="normal">
+                <InputLabel>Typ</InputLabel>
+                <Select
+                  value={editedEntry?.type || "Premium"}
+                  onChange={(e) =>
+                    setEditedEntry({ ...editedEntry, type: e.target.value })
+                  }
+                >
+                  <MenuItem value="Premium">Premium</MenuItem>
+                  <MenuItem value="Basic">Basic</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl fullWidth margin="normal">
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={editedEntry?.status || "Inaktiv"}
+                  onChange={(e) =>
+                    setEditedEntry({ ...editedEntry, status: e.target.value })
+                  }
+                >
+                  <MenuItem value="Aktiv">Aktiv</MenuItem>
+                  <MenuItem value="Inaktiv">Inaktiv</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl fullWidth margin="normal">
+                <InputLabel>Zahlungsstatus</InputLabel>
+                <Select
+                  value={editedEntry?.paymentStatus || "Nicht gezahlt"}
+                  onChange={(e) =>
+                    setEditedEntry({ ...editedEntry, paymentStatus: e.target.value })
+                  }
+                >
+                  <MenuItem value="Gezahlt">Gezahlt</MenuItem>
+                  <MenuItem value="Nicht gezahlt">Nicht gezahlt</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField
+                label="Gültig bis"
+                type="date"
+                fullWidth
+                margin="normal"
+                value={editedEntry?.validUntil || ""}
+                onChange={(e) =>
+                  setEditedEntry({ ...editedEntry, validUntil: e.target.value })
+                }
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                label="Ersteller"
+                fullWidth
+                margin="normal"
+                value={editedEntry?.owner || ""}
+                onChange={(e) =>
+                  setEditedEntry({ ...editedEntry, owner: e.target.value })
+                }
+              />
+              <TextField
+                label="Admin-Gebühr (€)"
+                fullWidth
+                margin="normal"
+                value={editedEntry?.admin_fee || ""}
+                onChange={(e) =>
+                  setEditedEntry({
+                    ...editedEntry,
+                    admin_fee: e.target.value.replace(/[^0-9]/g, ""),
+                  })
+                }
+              />
+            </>
+          ) : (
+            <Box>
+              <Typography sx={{ mb: 2 }}>Wählen Sie einen Eintrag aus:</Typography>
+              <Select
+                fullWidth
+                value={selectedEntryForEdit?.id || ""}
+                onChange={(e) => {
+                  const entry = entries.find((e) => e.id === e.target.value);
+                  setSelectedEntryForEdit(entry);
+                  setEditedEntry({
+                    ...entry,
+                    validUntil: entry.validUntil
+                      ? new Date(entry.validUntil).toISOString().split("T")[0]
+                      : "",
+                  });
+                }}
+              >
+                <MenuItem value="" disabled>
+                  Eintrag auswählen
+                </MenuItem>
+                {entries.map((entry) => (
+                  <MenuItem key={entry.id} value={entry.id}>
+                    {entry.aliasNotes} ({entry.username})
+                  </MenuItem>
+                ))}
+              </Select>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseManualDialog} color="secondary">
+            Abbrechen
+          </Button>
+          <Button
+            onClick={handleManualEntry}
+            color="primary"
+            disabled={!selectedEntryForEdit}
+          >
+            Speichern
           </Button>
         </DialogActions>
       </Dialog>
