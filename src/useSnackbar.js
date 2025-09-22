@@ -1,5 +1,4 @@
-// useSnackbar.js
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 export const useSnackbar = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -12,15 +11,27 @@ export const useSnackbar = () => {
     setSnackbarOpen(true);
   }, []);
 
-  const hideSnackbar = useCallback(() => {
+  const closeSnackbar = useCallback(() => {
     setSnackbarOpen(false);
+    setSnackbarMessage("");
+    setSnackbarSeverity("success");
   }, []);
+
+  // Automatisches Schließen des Snackbars nach 4000ms
+  useEffect(() => {
+    if (snackbarOpen) {
+      const timer = setTimeout(() => {
+        closeSnackbar();
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [snackbarOpen, closeSnackbar]);
 
   return {
     snackbarOpen,
     snackbarMessage,
     snackbarSeverity,
     showSnackbar,
-    hideSnackbar,
+    closeSnackbar,
   };
 };
