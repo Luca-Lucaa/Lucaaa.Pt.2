@@ -11,6 +11,8 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -130,6 +132,32 @@ const AdminDashboard = ({
     [selectedEntry, setEntries, showSnackbar]
   );
 
+  const handleUpdatePaymentStatus = useCallback(
+    async (entry, newStatus) => {
+      if (!entry) return;
+      try {
+        const updatedEntry = {
+          paymentStatus: newStatus,
+          ...(newStatus === "Gezahlt" && { admin_fee: 0 }), // Setze admin_fee auf 0, wenn Status "Gezahlt" ist
+        };
+        const { data, error } = await supabase
+          .from("entries")
+          .update(updatedEntry)
+          .eq("id", entry.id)
+          .select()
+          .single();
+        if (error) throw error;
+        setEntries((prev) =>
+          prev.map((e) => (e.id === entry.id ? { ...e, ...data } : e))
+        );
+        showSnackbar(`Zahlungsstatus auf "${newStatus}" geändert.`);
+      } catch (error) {
+        handleError(error, showSnackbar);
+      }
+    },
+    [setEntries, showSnackbar]
+  );
+
   return (
     <Box sx={{ p: 2, borderBottom: "1px solid #e0e0e0" }}>
       <Typography variant="h6" gutterBottom sx={{ mb: 1 }}>
@@ -185,10 +213,10 @@ const AdminDashboard = ({
           </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={4}>
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+          <Box sx={{ display: "flex", gap: 1 }}>
             <Button
               variant="contained"
-              color="success"
+              color="primary"
               size="small"
               startIcon={<AddIcon />}
               onClick={() => setOpenCreateDialog(true)}
@@ -265,6 +293,9 @@ const AdminDashboard = ({
                     <Typography variant="body2" color="textSecondary">
                       Gültig bis: {formatDate(entry.validUntil)}
                     </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      Zahlungsstatus: {entry.paymentStatus}
+                    </Typography>
                   </CardContent>
                   <Box sx={{ display: "flex", gap: 1, p: 1 }}>
                     <Button
@@ -294,6 +325,15 @@ const AdminDashboard = ({
                     >
                       Ablehnen
                     </Button>
+                    <Select
+                      value={entry.paymentStatus}
+                      onChange={(e) => handleUpdatePaymentStatus(entry, e.target.value)}
+                      size="small"
+                      sx={{ minWidth: 120 }}
+                    >
+                      <MenuItem value="Gezahlt">Gezahlt</MenuItem>
+                      <MenuItem value="Nicht gezahlt">Nicht gezahlt</MenuItem>
+                    </Select>
                   </Box>
                 </Card>
               </Grid>
