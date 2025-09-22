@@ -17,12 +17,12 @@ export const useSnackbar = () => {
     setSnackbarSeverity("success");
   }, []);
 
-  // Automatisches Schließen des Snackbars nach 4000ms
+  // Automatisches Schließen des Snackbars nach 2000ms
   useEffect(() => {
     if (snackbarOpen) {
       const timer = setTimeout(() => {
         closeSnackbar();
-      }, 4000);
+      }, 2000);
       return () => clearTimeout(timer);
     }
   }, [snackbarOpen, closeSnackbar]);
