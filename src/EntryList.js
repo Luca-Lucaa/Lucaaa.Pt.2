@@ -16,27 +16,10 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { supabase } from "./supabaseClient";
-import { formatDate, useDebounce, handleError } from "./utils";
+import { formatDate, useDebounce, handleError, generateUsername } from "./utils";
 import { useSnackbar } from "./useSnackbar";
 import { OWNER_COLORS } from "./config";
 import EntryAccordion from "./EntryAccordion";
-
-// Funktion zur Generierung eines zufälligen Benutzernamens
-const generateUsername = () => {
-  const timestamp = Date.now().toString(36);
-  const randomStr = Math.random().toString(36).substr(2, 5);
-  return `user_${timestamp}_${randomStr}`;
-};
-
-// Funktion zur Generierung eines zufälligen Passworts
-const generatePassword = () => {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-  let password = "";
-  for (let i = 0; i < 12; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return password;
-};
 
 const EntryList = ({
   role,
@@ -62,7 +45,7 @@ const EntryList = ({
     status: "Inaktiv",
     paymentStatus: "Nicht gezahlt",
     createdAt: new Date(),
-    validUntil: new Date(new Date().getFullYear() + 1, 11, 31),
+    validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // Set to end of next year (2026)
     owner: loggedInUser,
     extensionHistory: [],
     admin_fee: null,
@@ -73,7 +56,7 @@ const EntryList = ({
     password: "",
     aliasNotes: "",
     type: "Premium",
-    validUntil: new Date(new Date().getFullYear() + 1, 11, 31),
+    validUntil: new Date(new Date().getFullYear() + 1, 11, 31), // Set to end of next year (2026)
     owner: loggedInUser,
     extensionHistory: [],
     admin_fee: null,
@@ -90,42 +73,15 @@ const EntryList = ({
     return uniqueOwners.sort();
   }, [entries]);
 
-  const filteredEntries = useMemo(() => {
-    return entries
-      .filter((entry) => {
-        const matchesSearch =
-          debouncedSearchTerm === "" ||
-          (entry.username || "").toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-          (entry.aliasNotes || "").toLowerCase().includes(debouncedSearchTerm.toLowerCase());
-        const matchesStatus = statusFilter === "" || entry.status === statusFilter;
-        const matchesPayment = paymentFilter === "" || entry.paymentStatus === paymentFilter;
-        const matchesOwner = ownerFilter === "" || entry.owner === ownerFilter;
-        const matchesOwnership = role === "Admin" || entry.owner === loggedInUser;
-        return matchesSearch && matchesStatus && matchesPayment && matchesOwner && matchesOwnership;
-      })
-      .sort((a, b) => {
-        const dateA = new Date(a.createdAt);
-        const dateB = new Date(b.createdAt);
-        return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
-      });
-  }, [entries, debouncedSearchTerm, statusFilter, paymentFilter, ownerFilter, sortOrder, role, loggedInUser]);
-
-  // Calculate total admin fees for filtered entries
-  const totalAdminFees = useMemo(() => {
-    return filteredEntries.reduce((sum, entry) => {
-      return sum + (entry.admin_fee && Number.isFinite(entry.admin_fee) ? entry.admin_fee : 0);
-    }, 0);
-  }, [filteredEntries]);
-
   // Check if an entry is new (created within the last 5 days)
   const isNewEntry = useCallback((createdAt) => {
     if (!createdAt) return false;
     try {
       const createdDate = new Date(createdAt);
-      const currentDate = new Date();
+      const currentDate = new Date(); // Use current date dynamically
       const timeDiff = currentDate - createdDate;
-      const daysDiff = timeDiff / (1000 * 60 * 60 * 24);
-      return daysDiff <= 5;
+      const daysDiff = timeDiff / (1000 * 60 * 60 * 24); // Convert milliseconds to days
+      return daysDiff <= 5; // Highlight entries created within 5 days
     } catch (error) {
       console.error("Fehler bei isNewEntry:", error);
       return false;
@@ -134,7 +90,7 @@ const EntryList = ({
 
   // Update status and paymentStatus for expired entries
   const updateExpiredEntries = useCallback(async () => {
-    if (!loggedInUser) return;
+    if (!loggedInUser) return; // Prevent updates if no user is logged in
     const currentDate = new Date();
     const expiredEntries = entries.filter((entry) => {
       if (!entry.validUntil || !entry.id) return false;
@@ -171,8 +127,27 @@ const EntryList = ({
     }
   }, [entries, updateExpiredEntries, isLoading]);
 
+  const filteredEntries = useMemo(() => {
+    return entries
+      .filter((entry) => {
+        const matchesSearch =
+          debouncedSearchTerm === "" ||
+          (entry.username || "").toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+          (entry.aliasNotes || "").toLowerCase().includes(debouncedSearchTerm.toLowerCase());
+        const matchesStatus = statusFilter === "" || entry.status === statusFilter;
+        const matchesPayment = paymentFilter === "" || entry.paymentStatus === paymentFilter;
+        const matchesOwner = ownerFilter === "" || entry.owner === ownerFilter;
+        return matchesSearch && matchesStatus && matchesPayment && matchesOwner;
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.createdAt);
+        const dateB = new Date(b.createdAt);
+        return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+      });
+  }, [entries, debouncedSearchTerm, statusFilter, paymentFilter, ownerFilter, sortOrder]);
+
   const handleAddEntry = async () => {
-    if (!newEntry.username || !newEntry.password || !newEntry.aliasNotes) {
+    if (!newEntry.aliasNotes) {
       showSnackbar("Bitte füllen Sie alle Pflichtfelder aus.", "error");
       return;
     }
@@ -182,17 +157,12 @@ const EntryList = ({
       showSnackbar("Das Gültigkeitsdatum muss in der Zukunft liegen.", "error");
       return;
     }
-
-    // Automatische Generierung von Benutzernamen und Passwort, wenn leer
-    const finalUsername = newEntry.username.trim() === "" ? generateUsername() : newEntry.username;
-    const finalPassword = newEntry.password.trim() === "" ? generatePassword() : newEntry.password;
-
     setIsLoading(true);
     try {
       const updatedEntry = {
         ...newEntry,
-        username: finalUsername,
-        password: finalPassword,
+        username: generateUsername(loggedInUser),
+        password: newEntry.password || generatePassword(),
         owner: loggedInUser,
         admin_fee: newEntry.admin_fee ? Number(newEntry.admin_fee) : null,
         validUntil: selectedDate.toISOString(),
@@ -236,7 +206,7 @@ const EntryList = ({
     const selectedDate = new Date(manualEntry.validUntil);
     const currentDate = new Date();
     if (selectedDate < currentDate) {
-      showSnackbar("Das Gültigkeitsdatum muss in der Zukunft liegen.", "error");
+      showSnackbar("Das Datum muss in der Zukunft liegen.", "error");
       return;
     }
     setIsLoading(true);
@@ -349,29 +319,25 @@ const EntryList = ({
         Gesamtgebühren: {totalAdminFees} €
       </Typography>
       <Box sx={{ mb: 2, display: "flex", justifyContent: "flex-end" }}>
-        {(role === "Admin" || role === "Friend") && (
-          <>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setOpenCreateDialog(true)}
-              sx={{ mr: 1, fontSize: isMobile ? "0.8rem" : "0.875rem" }}
-              disabled={isLoading}
-            >
-              Neuer Eintrag
-            </Button>
-            {role === "Admin" && (
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setOpenManualDialog(true)}
-                sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
-                disabled={isLoading}
-              >
-                Manueller Eintrag
-              </Button>
-            )}
-          </>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setOpenCreateDialog(true)}
+          sx={{ mr: 1, fontSize: isMobile ? "0.8rem" : "0.875rem" }}
+          disabled={isLoading}
+        >
+          Neuer Eintrag
+        </Button>
+        {role === "Admin" && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setOpenManualDialog(true)}
+            sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
+            disabled={isLoading}
+          >
+            Manueller Eintrag
+          </Button>
         )}
       </Box>
       <Box>
