@@ -49,7 +49,7 @@ const StyledAppBar = styled(AppBar)(({ theme }) => ({
 const theme = createTheme(THEME_CONFIG);
 
 const CustomSnackbar = ({ open, message, onClose, severity }) => (
-  <Snackbar open={open} autoHideDuration={4000} onClose={onClose}>
+  <Snackbar open={open} autoHideDuration={2000} onClose={onClose}>
     <Alert onClose={onClose} severity={severity} sx={{ width: "100%" }}>
       {message}
     </Alert>
