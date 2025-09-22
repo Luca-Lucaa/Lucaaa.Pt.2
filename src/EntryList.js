@@ -325,7 +325,7 @@ const EntryList = ({
         Gesamtgebühren: {totalAdminFees} €
       </Typography>
       <Box sx={{ mb: 2, display: "flex", justifyContent: "flex-end" }}>
-        {role === "Admin" && (
+        {(role === "Admin" || role === "Friend") && (
           <>
             <Button
               variant="contained"
@@ -336,15 +336,17 @@ const EntryList = ({
             >
               Neuer Eintrag
             </Button>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setOpenManualDialog(true)}
-              sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
-              disabled={isLoading}
-            >
-              Manueller Eintrag
-            </Button>
+            {role === "Admin" && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setOpenManualDialog(true)}
+                sx={{ fontSize: isMobile ? "0.8rem" : "0.875rem" }}
+                disabled={isLoading}
+              >
+                Manueller Eintrag
+              </Button>
+            )}
           </>
         )}
       </Box>
