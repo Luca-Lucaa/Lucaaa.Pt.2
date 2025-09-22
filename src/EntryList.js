@@ -181,18 +181,6 @@ const EntryList = ({
     } else {
       validUntil = new Date(createdAt.getFullYear() + 1, 11, 31); // December 31st of the next year
     }
-    const daysDiff = Math.ceil((validUntil - createdAt) / (1000 * 60 * 60 * 24)); // Total days
-    let adminFee = 0;
-    const fullMonths = Math.floor(daysDiff / 30); // Full months (30 days per month)
-    const remainingDays = daysDiff % 30; // Remaining days in the last month
-    adminFee += fullMonths * 10; // 10 Euro per full month
-    if (remainingDays > 25) {
-      // No fee for more than 25 days
-    } else if (remainingDays > 10) {
-      adminFee += 5; // 5 Euro for 11-25 days
-    } else if (remainingDays > 0) {
-      adminFee += 10; // 10 Euro for 1-10 days
-    }
 
     const entryToAdd = {
       ...newEntry,
@@ -200,7 +188,7 @@ const EntryList = ({
       password: newEntry.password,
       createdAt: createdAt.toISOString(),
       validUntil: validUntil.toISOString(),
-      admin_fee: adminFee,
+      admin_fee: null, // Admin fee is set to null
     };
     try {
       const { data, error } = await supabase.from("entries").insert([entryToAdd]).select().single();
@@ -297,18 +285,6 @@ const EntryList = ({
     } else {
       validUntil = new Date(createdAt.getFullYear() + 1, 11, 31); // December 31st of the next year
     }
-    const daysDiff = Math.ceil((validUntil - createdAt) / (1000 * 60 * 60 * 24)); // Total days
-    let adminFee = 0;
-    const fullMonths = Math.floor(daysDiff / 30); // Full months (30 days per month)
-    const remainingDays = daysDiff % 30; // Remaining days in the last month
-    adminFee += fullMonths * 10; // 10 Euro per full month
-    if (remainingDays > 25) {
-      // No fee for more than 25 days
-    } else if (remainingDays > 10) {
-      adminFee += 5; // 5 Euro for 11-25 days
-    } else if (remainingDays > 0) {
-      adminFee += 10; // 10 Euro for 1-10 days
-    }
     setNewEntry({
       username: newUsername,
       password: newPassword,
@@ -320,7 +296,7 @@ const EntryList = ({
       validUntil: validUntil,
       owner: loggedInUser,
       extensionHistory: [],
-      admin_fee: adminFee,
+      admin_fee: null,
       extensionRequest: null,
     });
     setOpenCreateDialog(true);
@@ -487,7 +463,7 @@ const EntryList = ({
             label="Admin-Gebühr (€)"
             fullWidth
             margin="normal"
-            value={newEntry.admin_fee != null ? newEntry.admin_fee : ""}
+            value="Gebühr wird durch den Admin gesetzt"
             disabled
             size={isMobile ? "small" : "medium"}
           />
