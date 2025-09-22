@@ -73,6 +73,13 @@ const EntryList = ({
     return uniqueOwners.sort();
   }, [entries]);
 
+  // Calculate total admin fees for filtered entries
+  const totalAdminFees = useMemo(() => {
+    return filteredEntries.reduce((sum, entry) => {
+      return sum + (entry.admin_fee && Number.isFinite(entry.admin_fee) ? entry.admin_fee : 0);
+    }, 0);
+  }, [filteredEntries]);
+
   // Check if an entry is new (created within the last 5 days)
   const isNewEntry = useCallback((createdAt) => {
     if (!createdAt) return false;
@@ -249,7 +256,7 @@ const EntryList = ({
         Einträge
       </Typography>
       <Grid container spacing={isMobile ? 1 : 2} sx={{ mb: isMobile ? 1 : 2 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={role === "Admin" ? 3 : 4}>
           <TextField
             label="Suche (Benutzername oder Spitzname)"
             fullWidth
@@ -258,7 +265,7 @@ const EntryList = ({
             size={isMobile ? "small" : "medium"}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={role === "Admin" ? 3 : 4}>
           <Select
             fullWidth
             value={statusFilter}
@@ -271,7 +278,7 @@ const EntryList = ({
             <MenuItem value="Inaktiv">Inaktiv</MenuItem>
           </Select>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={role === "Admin" ? 3 : 4}>
           <Select
             fullWidth
             value={paymentFilter}
@@ -284,23 +291,25 @@ const EntryList = ({
             <MenuItem value="Nicht gezahlt">Nicht gezahlt</MenuItem>
           </Select>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Select
-            fullWidth
-            value={ownerFilter}
-            onChange={(e) => setOwnerFilter(e.target.value)}
-            displayEmpty
-            size={isMobile ? "small" : "medium"}
-          >
-            <MenuItem value="">Alle Ersteller</MenuItem>
-            {owners.map((owner) => (
-              <MenuItem key={owner} value={owner}>
-                {owner}
-              </MenuItem>
-            ))}
-          </Select>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        {role === "Admin" && (
+          <Grid item xs={12} sm={6} md={3}>
+            <Select
+              fullWidth
+              value={ownerFilter}
+              onChange={(e) => setOwnerFilter(e.target.value)}
+              displayEmpty
+              size={isMobile ? "small" : "medium"}
+            >
+              <MenuItem value="">Alle Ersteller</MenuItem>
+              {owners.map((owner) => (
+                <MenuItem key={owner} value={owner}>
+                  {owner}
+                </MenuItem>
+              ))}
+            </Select>
+          </Grid>
+        )}
+        <Grid item xs={12} sm={6} md={role === "Admin" ? 3 : 4}>
           <Select
             fullWidth
             value={sortOrder}
@@ -312,6 +321,9 @@ const EntryList = ({
           </Select>
         </Grid>
       </Grid>
+      <Typography variant="body1" sx={{ mb: 2 }}>
+        Gesamtgebühren: {totalAdminFees} €
+      </Typography>
       <Box sx={{ mb: 2, display: "flex", justifyContent: "flex-end" }}>
         {role === "Admin" && (
           <>
