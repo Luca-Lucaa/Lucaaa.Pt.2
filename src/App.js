@@ -166,13 +166,6 @@ const App = () => {
 
   const handleMenuClose = useCallback(() => {
     setMenuAnchorEl(null);
-    setGuidesAnchorEl(null);
-    setChatAnchorEl(null);
-  }, []);
-
-  const handleImportOpen = useCallback(() => {
-    setImportDialogOpen(true);
-    setMenuAnchorEl(null);
   }, []);
 
   const handleGuidesClick = useCallback((event) => {
@@ -185,119 +178,94 @@ const App = () => {
 
   const handleChatClick = useCallback((event) => {
     setChatAnchorEl(event.currentTarget);
-  }, []);
+    if (selectedUser) {
+      markAsRead();
+    }
+  }, [markAsRead, selectedUser]);
 
   const handleChatClose = useCallback(() => {
     setChatAnchorEl(null);
   }, []);
 
-  const handleGuideDownload = useCallback((path) => {
-    window.open(path, "_blank");
-    setGuidesAnchorEl(null);
-    setMenuAnchorEl(null);
-  }, []);
-
   const themeInstance = useTheme();
   const isMobile = useMediaQuery(themeInstance.breakpoints.down("sm"));
 
-  useEffect(() => {
-    if (selectedUser && messages.length > 0) {
-      markAsRead();
-    }
-  }, [selectedUser, messages, markAsRead]);
-
   return (
     <ThemeProvider theme={theme}>
-      <StyledContainer maxWidth="xl">
+      <StyledContainer>
         <StyledAppBar position="static">
-          <Toolbar>
-            <Typography variant="h6" sx={{ flexGrow: 1 }}>
-              Luca-TV
+          <Toolbar sx={{ flexWrap: "wrap", gap: 1 }}>
+            <Typography
+              variant="h6"
+              sx={{ flexGrow: 1, fontSize: { xs: "1rem", sm: "1.25rem" } }}
+            >
+              Luca-TV-PT.2
             </Typography>
             {loggedInUser && (
-              <Typography
-                variant="h6"
-                sx={{ marginRight: 2, fontSize: { xs: "14px", sm: "16px" } }}
-              >
-                {USER_EMOJIS[loggedInUser] || ""} {loggedInUser}
-              </Typography>
-            )}
-            {loggedInUser && (
-              <Box sx={{ marginRight: 2, display: "flex", alignItems: "center", gap: 1 }}>
-                {isMobile ? (
-                  <IconButton
-                    color="inherit"
-                    onClick={handleMenuClick}
-                    sx={{ p: 0.5 }}
-                    aria-label="Menü öffnen"
-                  >
-                    <MenuIcon />
-                  </IconButton>
-                ) : (
-                  <>
-                    {role === "Admin" && (
-                      <Button
-                        variant="contained"
-                        color="secondary"
-                        startIcon={<BackupIcon />}
-                        onClick={handleMenuClick}
-                        sx={{ mr: 1, borderRadius: 2 }}
-                        aria-label="Backup-Menü öffnen"
-                      >
-                        Backup
-                      </Button>
-                    )}
-                    <Button
-                      variant="contained"
-                      color="secondary"
-                      startIcon={<DescriptionIcon />}
-                      onClick={handleGuidesClick}
-                      sx={{ mr: 1, borderRadius: 2 }}
-                      aria-label="Anleitungen öffnen"
-                    >
-                      Anleitungen
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="secondary"
-                      startIcon={<ChatIcon />}
-                      onClick={handleChatClick}
-                      sx={{ borderRadius: 2 }}
-                      aria-label="Chat öffnen"
-                    >
-                      Chat
-                    </Button>
-                  </>
-                )}
-                <Menu anchorEl={menuAnchorEl} open={Boolean(menuAnchorEl)} onClose={handleMenuClose}>
-                  {role === "Admin" && (
-                    <>
-                      <MenuItem onClick={exportEntries}>Backup erstellen</MenuItem>
-                      <MenuItem onClick={handleImportOpen}>Backup importieren</MenuItem>
-                    </>
-                  )}
-                  <MenuItem onClick={handleGuidesClick}>Anleitungen</MenuItem>
-                  <MenuItem onClick={handleChatClick}>Chat</MenuItem>
+              <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                <IconButton
+                  color="inherit"
+                  onClick={handleMenuClick}
+                  aria-label="Menü öffnen"
+                >
+                  <MenuIcon />
+                </IconButton>
+                <Menu
+                  anchorEl={menuAnchorEl}
+                  open={Boolean(menuAnchorEl)}
+                  onClose={handleMenuClose}
+                >
+                  <MenuItem onClick={exportEntries}>
+                    <BackupIcon sx={{ mr: 1 }} /> Backup erstellen
+                  </MenuItem>
+                  <MenuItem onClick={() => setImportDialogOpen(true)}>
+                    <BackupIcon sx={{ mr: 1 }} /> Backup importieren
+                  </MenuItem>
+                  <MenuItem onClick={handleGuidesClick}>
+                    <DescriptionIcon sx={{ mr: 1 }} /> Anleitungen
+                  </MenuItem>
                 </Menu>
-                <Menu anchorEl={guidesAnchorEl} open={Boolean(guidesAnchorEl)} onClose={handleGuidesClose}>
-                  {GUIDES.map((guide) => (
-                    <MenuItem key={guide.name} onClick={() => handleGuideDownload(guide.path)}>
+                <Menu
+                  anchorEl={guidesAnchorEl}
+                  open={Boolean(guidesAnchorEl)}
+                  onClose={handleGuidesClose}
+                >
+                  {GUIDES.map((guide, index) => (
+                    <MenuItem
+                      key={index}
+                      onClick={() => {
+                        window.open(guide.url, "_blank");
+                        handleGuidesClose();
+                      }}
+                    >
                       {guide.name}
                     </MenuItem>
                   ))}
                 </Menu>
+                <IconButton
+                  color="inherit"
+                  onClick={handleChatClick}
+                  aria-label="Chat öffnen"
+                >
+                  <Badge badgeContent={Object.values(unreadCount).reduce((a, b) => a + b, 0)} color="error">
+                    <ChatIcon />
+                  </Badge>
+                </IconButton>
                 <Menu
                   anchorEl={chatAnchorEl}
                   open={Boolean(chatAnchorEl)}
                   onClose={handleChatClose}
-                  sx={{ maxWidth: isMobile ? "90vw" : 400 }}
+                  PaperProps={{
+                    sx: {
+                      maxHeight: "80vh",
+                      width: { xs: "90vw", sm: "400px" },
+                      p: 2,
+                    },
+                  }}
                 >
-                  <Box sx={{ p: 2, width: isMobile ? "80vw" : 350 }}>
-                    <Typography variant="h6" sx={{ mb: 1 }}>
-                      Chat mit {selectedUser || "niemandem"}
-                    </Typography>
+                  <Box sx={{ p: 2 }}>
                     {role === "Admin" ? (
-                      <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+                      <Box sx={{ display: "flex", gap: 1, mb: 2, flexWrap: "wrap" }}>
                         <Badge badgeContent={unreadCount["Scholli"] || 0} color="error">
                           <Button
                             variant={selectedUser === "Scholli" ? "contained" : "outlined"}
