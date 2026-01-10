@@ -1,29 +1,35 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   List,
   ListItem,
   Divider,
-  Button,
   Typography,
   Box,
   TextField,
   IconButton,
   Menu,
   MenuItem,
-  Badge,
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
-import MoreVertIcon from "@mui/icons-material/MoreVert"; // Für das Kontextmenü
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { supabase } from "./supabaseClient";
 import { handleError } from "./utils";
-import ChatMessage from "./ChatMessage"; // Importiere die angepasste ChatMessage-Komponente
+import ChatMessage from "./ChatMessage";
+import EmojiPicker from 'emoji-picker-react';
 
 const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
-  const [showAll, setShowAll] = useState(false);
   const [newMessage, setNewMessage] = useState("");
-  const [replyTo, setReplyTo] = useState(null); // Zustand für die Antwortnachricht
-  const [anchorEl, setAnchorEl] = useState(null); // Für das Kontextmenü
-  const [selectedMessageId, setSelectedMessageId] = useState(null); // Ausgewählte Nachricht für Reaktion/Antwort
+  const [replyTo, setReplyTo] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedMessageId, setSelectedMessageId] = useState(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  const messagesEndRef = useRef(null);
+
+  // Auto-Scroll zum unteren Ende bei neuen Nachrichten
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [initialMessages]);
 
   const sendMessage = async () => {
     if (!newMessage.trim()) return;
@@ -33,12 +39,12 @@ const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
           sender: loggedInUser,
           receiver: "Admin",
           message: newMessage,
-          parent_message_id: replyTo ? replyTo.id : null, // Verknüpfung zur Antwort
+          parent_message_id: replyTo ? replyTo.id : null,
         },
       ]);
       if (error) throw error;
       setNewMessage("");
-      setReplyTo(null); // Antwort zurücksetzen nach Senden
+      setReplyTo(null);
     } catch (error) {
       handleError(error);
     }
@@ -51,16 +57,19 @@ const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
         .select("reactions")
         .eq("id", messageId)
         .single();
+
       const currentReactions = message.reactions || {};
       const updatedReactions = {
         ...currentReactions,
         [emoji]: (currentReactions[emoji] || 0) + 1,
       };
+
       await supabase
         .from("messages")
         .update({ reactions: updatedReactions })
         .eq("id", messageId);
-      handleMenuClose(); // Menü schließen nach Reaktion
+      
+      handleMenuClose();
     } catch (error) {
       handleError(error);
     }
@@ -74,6 +83,7 @@ const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
   const handleMenuClose = () => {
     setAnchorEl(null);
     setSelectedMessageId(null);
+    setShowEmojiPicker(false);
   };
 
   const handleReply = (message) => {
@@ -81,17 +91,29 @@ const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
     handleMenuClose();
   };
 
-  const displayedMessages = showAll ? initialMessages : initialMessages.slice(-5);
+  const onEmojiClick = (emojiObject) => {
+    if (selectedMessageId) {
+      addReaction(selectedMessageId, emojiObject.emoji);
+    }
+    setShowEmojiPicker(false);
+  };
 
   return (
-    <Box sx={{ marginBottom: 2 }}>
+    <Box sx={{ 
+      marginBottom: 2, 
+      maxHeight: '500px', 
+      overflowY: 'auto',
+      px: 1,
+      pb: 2
+    }}>
       <Typography variant="h6" gutterBottom>
         Chat
       </Typography>
-      <List>
-        {displayedMessages.map((msg) => (
+
+      <List disablePadding>
+        {initialMessages.map((msg) => (
           <React.Fragment key={msg.id}>
-            <ListItem>
+            <ListItem disablePadding sx={{ mb: 2 }}>
               <ChatMessage
                 message={msg.message}
                 sender={msg.sender}
@@ -100,41 +122,48 @@ const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
                 reactions={msg.reactions || {}}
                 onReact={(emoji) => addReaction(msg.id, emoji)}
                 onMenuOpen={(e) => handleMenuOpen(e, msg.id)}
-                parentMessage={msg.parent_message_id ? initialMessages.find(m => m.id === msg.parent_message_id) : null}
+                parentMessage={
+                  msg.parent_message_id 
+                    ? initialMessages.find(m => m.id === msg.parent_message_id) 
+                    : null
+                }
+                isRead={msg.read}
               />
             </ListItem>
-            <Divider />
           </React.Fragment>
         ))}
+        <div ref={messagesEndRef} />
       </List>
-      {initialMessages.length > 5 && (
-        <Button
-          onClick={() => setShowAll(!showAll)}
-          variant="outlined"
-          fullWidth
-          sx={{ marginTop: 2 }}
-        >
-          {showAll ? "Weniger anzeigen" : "Alle Nachrichten anzeigen"}
-        </Button>
-      )}
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, marginTop: 2 }}>
+
+      <Box sx={{ 
+        position: 'sticky', 
+        bottom: 0, 
+        backgroundColor: 'background.paper',
+        pt: 2,
+        pb: 1,
+        zIndex: 10
+      }}>
         {replyTo && (
           <Box
             sx={{
-              backgroundColor: "grey.100",
-              padding: 1,
-              borderRadius: 1,
-              marginBottom: 1,
+              backgroundColor: "grey.200",
+              padding: 1.5,
+              borderRadius: 2,
+              mb: 1.5,
+              borderLeft: '4px solid',
+              borderColor: 'primary.main',
+              maxWidth: '85%',
             }}
           >
             <Typography variant="caption" color="text.secondary">
-              Antwort auf: {replyTo.sender} - {replyTo.message}
+              Antwort auf: <strong>{replyTo.sender}</strong> — {replyTo.message}
             </Typography>
           </Box>
         )}
-        <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+
+        <Box sx={{ display: "flex", gap: 1, alignItems: "flex-end" }}>
           <TextField
-            label="Neue Nachricht"
+            label="Nachricht schreiben..."
             variant="outlined"
             fullWidth
             value={newMessage}
@@ -145,31 +174,52 @@ const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
                 sendMessage();
               }
             }}
+            multiline
+            minRows={1}
+            maxRows={5}
+            size="small"
           />
-          <IconButton onClick={sendMessage} color="primary" disabled={!newMessage.trim()}>
+          <IconButton 
+            onClick={sendMessage} 
+            color="primary" 
+            disabled={!newMessage.trim()}
+            size="medium"
+          >
             <SendIcon />
           </IconButton>
         </Box>
+
+        {showEmojiPicker && (
+          <Box sx={{ mt: 1, position: 'absolute', right: 16, bottom: 80, zIndex: 20 }}>
+            <EmojiPicker 
+              onEmojiClick={onEmojiClick} 
+              width={320} 
+              height={400}
+              previewConfig={{ showPreview: false }}
+            />
+          </Box>
+        )}
       </Box>
+
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
         anchorOrigin={{
-          vertical: "top",
-          horizontal: "right",
+          vertical: 'top',
+          horizontal: 'right',
         }}
         transformOrigin={{
-          vertical: "top",
-          horizontal: "left",
+          vertical: 'top',
+          horizontal: 'right',
         }}
       >
-        <MenuItem onClick={() => handleReply(displayedMessages.find(m => m.id === selectedMessageId))}>
+        <MenuItem onClick={() => handleReply(initialMessages.find(m => m.id === selectedMessageId))}>
           Antworten
         </MenuItem>
-        <MenuItem onClick={() => addReaction(selectedMessageId, "👍")}>👍 Like</MenuItem>
-        <MenuItem onClick={() => addReaction(selectedMessageId, "❤️")}>❤️ Liebe</MenuItem>
-        <MenuItem onClick={() => addReaction(selectedMessageId, "😂")}>😂 Lachen</MenuItem>
+        <MenuItem onClick={() => setShowEmojiPicker(true)}>
+          Reaktion hinzufügen...
+        </MenuItem>
       </Menu>
     </Box>
   );
