@@ -148,8 +148,10 @@ const EntryList = ({
       result = result.filter((entry) => entry.owner === loggedInUser);
     }
     if (debouncedSearchTerm) {
+      const term = debouncedSearchTerm.toLowerCase().trim();
       result = result.filter((entry) =>
-        entry.aliasNotes?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+        (entry.aliasNotes?.toLowerCase() || "").includes(term) ||
+        (entry.username?.toLowerCase() || "").includes(term)
       );
     }
     if (statusFilter) {
@@ -158,40 +160,37 @@ const EntryList = ({
     if (paymentFilter) {
       result = result.filter((entry) => entry.paymentStatus === paymentFilter);
     }
-    if (ownerFilter) {
+    if (ownerFilter && role === "Admin") {
       result = result.filter((entry) => entry.owner === ownerFilter);
     }
-    return result.sort((a, b) => {
-      const dateA = new Date(a.createdAt);
-      const dateB = new Date(b.createdAt);
+
+    result = [...result].sort((a, b) => {
+      const dateA = a.validUntil ? new Date(a.validUntil) : new Date(0);
+      const dateB = b.validUntil ? new Date(b.validUntil) : new Date(0);
       return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
     });
-  }, [entries, debouncedSearchTerm, statusFilter, paymentFilter, ownerFilter, sortOrder, role, loggedInUser]);
 
-  const handleAddEntry = useCallback(async () => {
-    if (!newEntry.aliasNotes.trim()) {
-      showSnackbar("Spitzname darf nicht leer sein.", "error");
-      return;
-    }
+    return result;
+  }, [
+    entries,
+    debouncedSearchTerm,
+    statusFilter,
+    paymentFilter,
+    ownerFilter,
+    sortOrder,
+    role,
+    loggedInUser,
+  ]);
+
+  const handleAddEntry = async () => {
     setIsLoading(true);
-    const createdAt = new Date();
-    let validUntil;
-    if (createdAt < new Date(createdAt.getFullYear(), 9, 1)) { // Before October 1st
-      validUntil = new Date(createdAt.getFullYear(), 11, 31); // December 31st of the current year
-    } else {
-      validUntil = new Date(createdAt.getFullYear() + 1, 11, 31); // December 31st of the next year
-    }
-
-    const entryToAdd = {
-      ...newEntry,
-      username: newEntry.username,
-      password: newEntry.password,
-      createdAt: createdAt.toISOString(),
-      validUntil: validUntil.toISOString(),
-      admin_fee: null, // Admin fee is set to null
-    };
     try {
-      const { data, error } = await supabase.from("entries").insert([entryToAdd]).select().single();
+      const entryToInsert = {
+        ...newEntry,
+        createdAt: new Date().toISOString(),
+        validUntil: newEntry.validUntil.toISOString(),
+      };
+      const { data, error } = await supabase.from("entries").insert([entryToInsert]).select().single();
       if (error) throw error;
       setEntries((prev) => [...prev, data]);
       setOpenCreateDialog(false);
@@ -215,31 +214,17 @@ const EntryList = ({
     } finally {
       setIsLoading(false);
     }
-  }, [newEntry, setEntries, showSnackbar, loggedInUser, setOpenCreateDialog]);
+  };
 
-  const handleAddManualEntry = useCallback(async () => {
-    if (!manualEntry.username.trim()) {
-      showSnackbar("Benutzername darf nicht leer sein.", "error");
-      return;
-    }
-    if (!manualEntry.password.trim()) {
-      showSnackbar("Passwort darf nicht leer sein.", "error");
-      return;
-    }
-    if (!manualEntry.aliasNotes.trim()) {
-      showSnackbar("Spitzname darf nicht leer sein.", "error");
-      return;
-    }
+  const handleAddManualEntry = async () => {
     setIsLoading(true);
-    const entryToAdd = {
-      ...manualEntry,
-      createdAt: new Date().toISOString(),
-      validUntil: manualEntry.validUntil.toISOString(),
-      status: "Inaktiv",
-      paymentStatus: "Nicht gezahlt",
-    };
     try {
-      const { data, error } = await supabase.from("entries").insert([entryToAdd]).select().single();
+      const entryToInsert = {
+        ...manualEntry,
+        createdAt: new Date().toISOString(),
+        validUntil: manualEntry.validUntil.toISOString(),
+      };
+      const { data, error } = await supabase.from("entries").insert([entryToInsert]).select().single();
       if (error) throw error;
       setEntries((prev) => [...prev, data]);
       setOpenManualDialog(false);
@@ -254,192 +239,109 @@ const EntryList = ({
         admin_fee: null,
         extensionRequest: null,
       });
-      showSnackbar("Eintrag erfolgreich erstellt!", "success");
+      showSnackbar("Manueller Eintrag erfolgreich hinzugefügt!", "success");
     } catch (error) {
       handleError(error, showSnackbar);
     } finally {
       setIsLoading(false);
     }
-  }, [manualEntry, setEntries, showSnackbar, loggedInUser, setOpenManualDialog]);
-
-  // Custom username generation based on loggedInUser
-  const generateUsername = useCallback(() => {
-    const randomNum = Math.floor(100 + Math.random() * 900); // Generates a 3-digit number (100-999)
-    if (loggedInUser === "Jamaica05") {
-      return `${randomNum}-pricod-4`;
-    } else if (loggedInUser === "Scholli") {
-      return `${randomNum}-telucod-5`;
-    } else {
-      return `${randomNum}-admcod-0`; // Default for Admin or other users
-    }
-  }, [loggedInUser]);
-
-  // Calculate admin fee and generate credentials when the create dialog opens
-  const handleOpenCreateDialog = useCallback(() => {
-    const newUsername = generateUsername();
-    const newPassword = Math.random().toString(36).slice(-8);
-    const createdAt = new Date();
-    let validUntil;
-    if (createdAt < new Date(createdAt.getFullYear(), 9, 1)) { // Before October 1st
-      validUntil = new Date(createdAt.getFullYear(), 11, 31); // December 31st of the current year
-    } else {
-      validUntil = new Date(createdAt.getFullYear() + 1, 11, 31); // December 31st of the next year
-    }
-    setNewEntry({
-      username: newUsername,
-      password: newPassword,
-      aliasNotes: "",
-      type: "Premium",
-      status: "Inaktiv",
-      paymentStatus: "Nicht gezahlt",
-      createdAt: new Date(),
-      validUntil: validUntil,
-      owner: loggedInUser,
-      extensionHistory: [],
-      admin_fee: null,
-      extensionRequest: null,
-    });
-    setOpenCreateDialog(true);
-  }, [generateUsername, loggedInUser, setOpenCreateDialog]);
-
-  // Calculate total admin fees for logged-in user (only for Scholli or Jamaica05)
-  const totalAdminFees = useMemo(() => {
-    if (role === "Admin") return null; // Admin sees all entries, no total
-    return entries
-      .filter((entry) => entry.owner === loggedInUser && entry.admin_fee != null)
-      .reduce((sum, entry) => sum + (entry.admin_fee || 0), 0);
-  }, [entries, loggedInUser, role]);
+  };
 
   return (
-    <Box sx={{ mt: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        Abonnenten-Liste
-      </Typography>
-      {totalAdminFees !== null && (
-        <Typography variant="h6" color="primary" gutterBottom>
-          Gesamte Gebühren: {totalAdminFees} €
-        </Typography>
-      )}
-      <Box sx={{ display: "flex", gap: 2, mb: 2, flexWrap: "wrap" }}>
-        <TextField
-          label="Suche nach Spitzname"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          size="small"
-          sx={{ flexGrow: 1, maxWidth: 200 }}
-        />
-        <Select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          displayEmpty
-          size="small"
-          sx={{ minWidth: 120 }}
-        >
-          <MenuItem value="">Alle Status</MenuItem>
-          <MenuItem value="Aktiv">Aktiv</MenuItem>
-          <MenuItem value="Inaktiv">Inaktiv</MenuItem>
-        </Select>
-        <Select
-          value={paymentFilter}
-          onChange={(e) => setPaymentFilter(e.target.value)}
-          displayEmpty
-          size="small"
-          sx={{ minWidth: 120 }}
-        >
-          <MenuItem value="">Alle Zahlungen</MenuItem>
-          <MenuItem value="Gezahlt">Gezahlt</MenuItem>
-          <MenuItem value="Nicht gezahlt">Nicht gezahlt</MenuItem>
-        </Select>
-        {role === "Admin" && (
-          <Select
-            value={ownerFilter}
-            onChange={(e) => setOwnerFilter(e.target.value)}
-            displayEmpty
-            size="small"
-            sx={{ minWidth: 120 }}
-          >
-            <MenuItem value="">Alle Ersteller</MenuItem>
-            {owners.map((owner) => (
-              <MenuItem key={owner} value={owner}>
-                {owner}
-              </MenuItem>
-            ))}
-          </Select>
-        )}
-        <Select
-          value={sortOrder}
-          onChange={(e) => setSortOrder(e.target.value)}
-          size="small"
-          sx={{ minWidth: 120 }}
-        >
-          <MenuItem value="asc">Älteste zuerst</MenuItem>
-          <MenuItem value="desc">Neueste zuerst</MenuItem>
-        </Select>
-      </Box>
-      <Box sx={{ mb: 2 }}>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddIcon />}
-          onClick={handleOpenCreateDialog}
-          sx={{ mr: 1 }}
-        >
-          Neuen Abonnenten anlegen
-        </Button>
-        {role === "Admin" && (
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => setOpenManualDialog(true)}
-          >
-            Bestehenden Abonnenten einpflegen
-          </Button>
-        )}
-      </Box>
-      {filteredEntries.length === 0 ? (
-        <Typography>Keine Einträge gefunden.</Typography>
-      ) : (
-        <Grid container spacing={2}>
-          {filteredEntries.map((entry) => (
-            <Grid item xs={12} key={entry.id}>
-              <EntryAccordion
-                entry={entry}
-                role={role}
-                loggedInUser={loggedInUser}
-                setEntries={setEntries}
-                isNewEntry={isNewEntry(entry.createdAt)}
-              />
-            </Grid>
-          ))}
+    <Box>
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={12} sm={6} md={4}>
+          <TextField
+            fullWidth
+            label="Suche"
+            variant="outlined"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </Grid>
+
+        <Grid item xs={6} sm={3} md={2}>
+          <Select
+            fullWidth
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            displayEmpty
+            variant="outlined"
+          >
+            <MenuItem value="">Alle Stati</MenuItem>
+            <MenuItem value="Aktiv">Aktiv</MenuItem>
+            <MenuItem value="Inaktiv">Inaktiv</MenuItem>
+          </Select>
+        </Grid>
+
+        <Grid item xs={6} sm={3} md={2}>
+          <Select
+            fullWidth
+            value={paymentFilter}
+            onChange={(e) => setPaymentFilter(e.target.value)}
+            displayEmpty
+            variant="outlined"
+          >
+            <MenuItem value="">Alle Zahlungen</MenuItem>
+            <MenuItem value="Gezahlt">Gezahlt</MenuItem>
+            <MenuItem value="Nicht gezahlt">Nicht gezahlt</MenuItem>
+          </Select>
+        </Grid>
+
+        {role === "Admin" && (
+          <Grid item xs={12} sm={4} md={2}>
+            <Select
+              fullWidth
+              value={ownerFilter}
+              onChange={(e) => setOwnerFilter(e.target.value)}
+              displayEmpty
+              variant="outlined"
+            >
+              <MenuItem value="">Alle Ersteller</MenuItem>
+              {owners.map((owner) => (
+                <MenuItem key={owner} value={owner}>
+                  {owner}
+                </MenuItem>
+              ))}
+            </Select>
+          </Grid>
+        )}
+
+        <Grid item xs={12} sm={4} md={2}>
+          <Select
+            fullWidth
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+            variant="outlined"
+          >
+            <MenuItem value="asc">Gültig bis ↑</MenuItem>
+            <MenuItem value="desc">Gültig bis ↓</MenuItem>
+          </Select>
+        </Grid>
+      </Grid>
+
+      {filteredEntries.length === 0 ? (
+        <Typography variant="body1" color="text.secondary" align="center" sx={{ my: 4 }}>
+          Keine Einträge gefunden...
+        </Typography>
+      ) : (
+        filteredEntries.map((entry) => (
+          <EntryAccordion
+            key={entry.id}
+            entry={entry}
+            role={role}
+            loggedInUser={loggedInUser}
+            setEntries={setEntries}
+            isNewEntry={isNewEntry(entry.createdAt)}
+          />
+        ))
       )}
-      <Dialog
-        open={openCreateDialog}
-        onClose={() => setOpenCreateDialog(false)}
-        fullWidth
-        maxWidth="sm"
-        fullScreen={isMobile}
-      >
+
+      <Dialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)} fullWidth maxWidth="sm" fullScreen={isMobile}>
         <DialogTitle sx={{ fontSize: isMobile ? "1rem" : "1.25rem" }}>
           Neuen Abonnenten anlegen
         </DialogTitle>
         <DialogContent>
-          <TextField
-            label="Benutzername"
-            fullWidth
-            margin="normal"
-            value={newEntry.username || ""}
-            disabled
-            size={isMobile ? "small" : "medium"}
-          />
-          <TextField
-            label="Passwort"
-            fullWidth
-            margin="normal"
-            value={newEntry.password || ""}
-            disabled
-            size={isMobile ? "small" : "medium"}
-          />
           <TextField
             label="Spitzname, Notizen etc."
             fullWidth
@@ -451,6 +353,7 @@ const EntryList = ({
           />
           <Select
             fullWidth
+            margin="normal"
             value={newEntry.type}
             onChange={(e) => setNewEntry({ ...newEntry, type: e.target.value })}
             disabled={isLoading}
@@ -460,49 +363,45 @@ const EntryList = ({
             <MenuItem value="Basic">Basic</MenuItem>
           </Select>
           <TextField
-            label="Admin-Gebühr (€)"
+            label="Benutzername"
             fullWidth
             margin="normal"
-            value="Gebühr wird durch den Admin gesetzt"
+            value={newEntry.username}
             disabled
             size={isMobile ? "small" : "medium"}
           />
           <TextField
-            label="Gültig bis"
+            label="Passwort"
             fullWidth
             margin="normal"
-            type="date"
-            value={
-              newEntry.validUntil
-                ? new Date(newEntry.validUntil).toISOString().split("T")[0]
-                : ""
-            }
+            type="password"
+            value={newEntry.password}
             disabled
             size={isMobile ? "small" : "medium"}
           />
-          <Typography variant="caption" color="textSecondary" sx={{ mt: 1 }}>
-            Hinweis: Abonnenten, die nach dem 1. Oktober angelegt werden, erhalten eine
-            Gültigkeit bis zum 31. Dezember des folgenden Jahres.
+          <TextField
+            label="Admin-Gebühr (€)"
+            fullWidth
+            margin="normal"
+            value={loggedInUser === "Admin" ? newEntry.admin_fee || "" : ""}
+            placeholder={loggedInUser !== "Admin" ? "Admin bestimmt die Gebühren" : ""}
+            onChange={(e) => {
+              if (loggedInUser === "Admin") {
+                const value = e.target.value.replace(/[^0-9]/g, "");
+                setNewEntry({ ...newEntry, admin_fee: value ? parseInt(value) : null });
+              }
+            }}
+            inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+            disabled={loggedInUser !== "Admin" || isLoading}
+            size={isMobile ? "small" : "medium"}
+          />
+          <Typography variant="body1">
+            <strong>Aktuelles Datum:</strong> {new Date().toLocaleDateString()}
           </Typography>
-          {role === "Admin" && (
-            <Select
-              fullWidth
-              value={newEntry.owner || loggedInUser}
-              onChange={(e) => setNewEntry({ ...newEntry, owner: e.target.value })}
-              disabled={isLoading}
-              size={isMobile ? "small" : "medium"}
-              displayEmpty
-            >
-              <MenuItem value={loggedInUser}>{loggedInUser}</MenuItem>
-              {owners
-                .filter((owner) => owner !== loggedInUser)
-                .map((owner) => (
-                  <MenuItem key={owner} value={owner}>
-                    {owner}
-                  </MenuItem>
-                ))}
-            </Select>
-          )}
+          <Typography variant="body1">
+            <strong>Gültig bis:</strong>{" "}
+            {new Date(new Date().getFullYear() + 1, 11, 31).toLocaleDateString()}
+          </Typography>
         </DialogContent>
         <DialogActions>
           <Button
@@ -523,6 +422,7 @@ const EntryList = ({
           </Button>
         </DialogActions>
       </Dialog>
+
       {role === "Admin" && (
         <Dialog
           open={openManualDialog}
@@ -588,6 +488,7 @@ const EntryList = ({
               }
               disabled={isLoading}
               size={isMobile ? "small" : "medium"}
+              InputLabelProps={{ shrink: true }}
             />
             <TextField
               label="Admin-Gebühr (€)"
