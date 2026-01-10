@@ -15,14 +15,12 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { supabase } from "./supabaseClient";
 import { handleError } from "./utils";
 import ChatMessage from "./ChatMessage";
-import EmojiPicker from 'emoji-picker-react';
 
 const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
   const [newMessage, setNewMessage] = useState("");
   const [replyTo, setReplyTo] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedMessageId, setSelectedMessageId] = useState(null);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const messagesEndRef = useRef(null);
 
@@ -83,19 +81,11 @@ const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
   const handleMenuClose = () => {
     setAnchorEl(null);
     setSelectedMessageId(null);
-    setShowEmojiPicker(false);
   };
 
   const handleReply = (message) => {
     setReplyTo(message);
     handleMenuClose();
-  };
-
-  const onEmojiClick = (emojiObject) => {
-    if (selectedMessageId) {
-      addReaction(selectedMessageId, emojiObject.emoji);
-    }
-    setShowEmojiPicker(false);
   };
 
   return (
@@ -188,17 +178,6 @@ const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
             <SendIcon />
           </IconButton>
         </Box>
-
-        {showEmojiPicker && (
-          <Box sx={{ mt: 1, position: 'absolute', right: 16, bottom: 80, zIndex: 20 }}>
-            <EmojiPicker 
-              onEmojiClick={onEmojiClick} 
-              width={320} 
-              height={400}
-              previewConfig={{ showPreview: false }}
-            />
-          </Box>
-        )}
       </Box>
 
       <Menu
@@ -217,8 +196,14 @@ const CompactChatList = ({ messages: initialMessages, loggedInUser }) => {
         <MenuItem onClick={() => handleReply(initialMessages.find(m => m.id === selectedMessageId))}>
           Antworten
         </MenuItem>
-        <MenuItem onClick={() => setShowEmojiPicker(true)}>
-          Reaktion hinzufügen...
+        <MenuItem onClick={() => addReaction(selectedMessageId, "👍")}>
+          👍 Like
+        </MenuItem>
+        <MenuItem onClick={() => addReaction(selectedMessageId, "❤️")}>
+          ❤️ Herz
+        </MenuItem>
+        <MenuItem onClick={() => addReaction(selectedMessageId, "😂")}>
+          😂 Lachen
         </MenuItem>
       </Menu>
     </Box>
