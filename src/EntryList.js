@@ -422,7 +422,6 @@ const EntryList = ({
           </Button>
         </DialogActions>
       </Dialog>
-
       {role === "Admin" && (
         <Dialog
           open={openManualDialog}
@@ -488,7 +487,6 @@ const EntryList = ({
               }
               disabled={isLoading}
               size={isMobile ? "small" : "medium"}
-              InputLabelProps={{ shrink: true }}
             />
             <TextField
               label="Admin-Gebühr (€)"
