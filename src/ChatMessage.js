@@ -1,8 +1,27 @@
 import React from "react";
-import { Box, Typography, IconButton, Menu, MenuItem, Badge } from "@mui/material";
+import { 
+  Box, 
+  Typography, 
+  IconButton, 
+  Menu, 
+  MenuItem, 
+  Badge, 
+  Tooltip 
+} from "@mui/material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
-const ChatMessage = ({ message, sender, timestamp, isOwnMessage, reactions, onReact, onMenuOpen, parentMessage }) => {
+const ChatMessage = ({ 
+  message, 
+  sender, 
+  timestamp, 
+  isOwnMessage, 
+  reactions, 
+  onReact, 
+  onMenuOpen, 
+  parentMessage, 
+  isRead 
+}) => {
   const [anchorEl, setAnchorEl] = React.useState(null);
 
   const formattedTimestamp = new Date(timestamp).toLocaleString("de-DE", {
@@ -22,75 +41,142 @@ const ChatMessage = ({ message, sender, timestamp, isOwnMessage, reactions, onRe
     setAnchorEl(null);
   };
 
-  // Sicherstellen, dass reactions ein Objekt ist
   const safeReactions = reactions || {};
 
   return (
     <Box
       sx={{
         display: "flex",
-        justifyContent: isOwnMessage ? "flex-end" : "flex-start",
-        marginBottom: 2,
-        width: "100%",
+        flexDirection: "column",
+        alignItems: isOwnMessage ? "flex-end" : "flex-start",
+        maxWidth: "85%",
+        mb: 1.5,
       }}
     >
       {parentMessage && (
         <Box
           sx={{
             backgroundColor: "grey.100",
-            padding: 1,
-            borderRadius: 1,
-            marginBottom: 1,
-            width: "100%",
+            p: 1.5,
+            borderRadius: 2,
+            mb: 1,
+            maxWidth: "90%",
+            borderLeft: "4px solid",
+            borderColor: "grey.400",
+            fontSize: "0.85rem",
           }}
         >
           <Typography variant="caption" color="text.secondary">
-            Antwort auf: {parentMessage.sender} - {parentMessage.message}
+            Antwort auf: <strong>{parentMessage.sender}</strong>
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 0.5 }}>
+            {parentMessage.message}
           </Typography>
         </Box>
       )}
+
       <Box
         sx={{
-          maxWidth: "70%",
-          padding: 1.5,
-          borderRadius: 2,
-          backgroundColor: isOwnMessage ? "primary.main" : "grey.200",
+          p: 2,
+          borderRadius: 3,
+          backgroundColor: isOwnMessage ? "primary.light" : "grey.200",
           color: isOwnMessage ? "primary.contrastText" : "text.primary",
           boxShadow: 1,
           position: "relative",
+          maxWidth: "100%",
+          wordBreak: "break-word",
         }}
       >
         <Typography variant="body1">{message}</Typography>
-        <Typography variant="caption" sx={{ display: "block", textAlign: "right" }}>
-          {sender} - {formattedTimestamp}
-        </Typography>
-        {Object.entries(safeReactions).length > 0 && (
-          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 0.5, mt: 0.5 }}>
+
+        <Box 
+          sx={{ 
+            display: "flex", 
+            justifyContent: "space-between", 
+            alignItems: "center",
+            mt: 1.5,
+            fontSize: "0.75rem",
+            opacity: 0.7
+          }}
+        >
+          <Typography variant="caption">
+            {sender} • {formattedTimestamp}
+          </Typography>
+
+          {isOwnMessage && (
+            <Tooltip title={isRead ? "Gelesen" : "Gesendet"}>
+              <CheckCircleIcon 
+                fontSize="small" 
+                color={isRead ? "success" : "action"} 
+                sx={{ ml: 1 }}
+              />
+            </Tooltip>
+          )}
+        </Box>
+
+        {Object.keys(safeReactions).length > 0 && (
+          <Box 
+            sx={{ 
+              display: "flex", 
+              justifyContent: "flex-end", 
+              gap: 1, 
+              mt: 1.5,
+              flexWrap: "wrap"
+            }}
+          >
             {Object.entries(safeReactions).map(([emoji, count]) => (
-              <Badge key={emoji} badgeContent={count} color="secondary">
-                <span role="img" aria-label={emoji}>
+              <Badge 
+                key={emoji} 
+                badgeContent={count} 
+                color="secondary"
+                sx={{ 
+                  "& .MuiBadge-badge": { 
+                    fontSize: '0.7rem', 
+                    minWidth: 18, 
+                    height: 18 
+                  }
+                }}
+              >
+                <span role="img" aria-label={emoji} style={{ fontSize: '1.3rem' }}>
                   {emoji}
                 </span>
               </Badge>
             ))}
           </Box>
         )}
+
         <IconButton
           size="small"
           onClick={handleMenuOpen}
-          sx={{ position: "absolute", top: 0, right: 0 }}
+          sx={{ 
+            position: "absolute", 
+            top: 4, 
+            right: 4,
+            opacity: 0.6,
+            '&:hover': { opacity: 1 }
+          }}
         >
           <MoreVertIcon fontSize="small" />
         </IconButton>
       </Box>
+
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
       >
         <MenuItem onClick={() => { onReact("👍"); handleMenuClose(); }}>👍 Like</MenuItem>
-        <MenuItem onClick={() => { onReact("❤️"); handleMenuClose(); }}>❤️ Liebe</MenuItem>
+        <MenuItem onClick={() => { onReact("❤️"); handleMenuClose(); }}>❤️ Herz</MenuItem>
         <MenuItem onClick={() => { onReact("😂"); handleMenuClose(); }}>😂 Lachen</MenuItem>
+        <MenuItem onClick={() => { onReact("😮"); handleMenuClose(); }}>😮 Überrascht</MenuItem>
       </Menu>
     </Box>
   );
