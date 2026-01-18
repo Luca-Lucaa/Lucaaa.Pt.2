@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Accordion,
   AccordionSummary,
@@ -37,6 +37,48 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
   });
   const [isLoading, setIsLoading] = useState(false);
   const { showSnackbar } = useSnackbar();
+
+  // ────────────────────────────────────────────────
+  // NEU: Lokales "gesehen"-Flag für neue Einträge (pro Browser)
+  // ────────────────────────────────────────────────
+  const [seenNewEntries, setSeenNewEntries] = useState(() => {
+    try {
+      const saved = localStorage.getItem("admin_seen_new_entries");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("admin_seen_new_entries", JSON.stringify([...seenNewEntries]));
+    } catch (err) {
+      console.warn("localStorage konnte nicht geschrieben werden", err);
+    }
+  }, [seenNewEntries]);
+
+  // Eintrag gilt als "neu", wenn er < 72 Stunden alt ist UND noch nicht als gesehen markiert wurde
+  const isNewForAdmin = useCallback(() => {
+    if (role !== "Admin") return false;
+    if (!entry?.createdAt) return false;
+    if (seenNewEntries.has(entry.id)) return false;
+
+    const created = new Date(entry.createdAt);
+    const now = new Date();
+    const hoursDiff = (now - created) / (1000 * 60 * 60);
+    return hoursDiff <= 72; // ← hier kannst du die Stunden ändern (24 = 1 Tag, 120 = 5 Tage, ...)
+  }, [entry, seenNewEntries, role]);
+
+  const markAsSeen = useCallback(() => {
+    if (!entry?.id) return;
+    setSeenNewEntries((prev) => {
+      const next = new Set(prev);
+      next.add(entry.id);
+      return next;
+    });
+    showSnackbar("Als gesehen markiert (lokal im Browser gespeichert)", "success");
+  }, [entry, showSnackbar]);
 
   // Check if validUntil is within 30 days from today
   const isExtensionRequestAllowed = useCallback(() => {
@@ -184,7 +226,18 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
   }, [entry, role, setEntries, showSnackbar]);
 
   return (
-    <Accordion sx={{ bgcolor: OWNER_COLORS[entry.owner] || "#ffffff" }}>
+    <Accordion
+      sx={{
+        bgcolor: OWNER_COLORS[entry.owner] || "#ffffff",
+        ...(isNewForAdmin() && {
+          borderLeft: "6px solid #ef4444",
+          backgroundColor: "rgba(254, 226, 226, 0.35)",
+          "&:hover": {
+            backgroundColor: "rgba(254, 226, 226, 0.55)",
+          },
+        }),
+      }}
+    >
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
           <Box>
@@ -196,6 +249,9 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
             </Typography>
           </Box>
           <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+            {isNewForAdmin() && (
+              <Chip label="NEU" color="error" size="small" sx={{ fontWeight: "bold" }} />
+            )}
             {entry.status === "Aktiv" ? (
               <Chip label="Aktiv" color="success" size="small" />
             ) : (
@@ -283,9 +339,17 @@ const EntryAccordion = ({ entry, role, loggedInUser, setEntries, isNewEntry }) =
               ))}
             </Box>
           )}
-          <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
+          <Box sx={{ display: "flex", gap: 1, mt: 2, flexWrap: "wrap" }}>
             {role === "Admin" && (
               <>
+                {isNewForAdmin() && (
+                  <Chip
+                    label="Als gesehen markieren"
+                    onClick={markAsSeen}
+                    color="success"
+                    size="small"
+                  />
+                )}
                 <Chip
                   label={entry.status === "Aktiv" ? "Deaktivieren" : "Aktivieren"}
                   onClick={handleToggleStatus}
